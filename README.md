@@ -34,6 +34,11 @@ Quick start (HTML app)
 1. Open Arculus_Recovery.html in a modern browser (Chrome/Edge/Firefox/Safari).
 2. No server setup is required.
 
+Current Support
+Bitcoin
+Dogecoin
+Litecoin
+
 Suggested GitHub notes for users
 - Security warning: Never share your real seed phrase, private keys, or exported output.
 - Use on an air-gapped/offline machine when possible.
