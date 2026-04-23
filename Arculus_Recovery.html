@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arculus Recovery</title>
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --ok: #1b8f2f;
+      --bad: #b71c1c;
+      --border: #d1d5db;
+      --focus: #2563eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Helvetica, Arial, sans-serif;
+      background: linear-gradient(180deg, #eef2ff 0%, var(--bg) 18%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .app {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 10px 25px rgba(17, 24, 39, 0.06);
+    }
+    h1 { margin: 0 0 14px; font-size: 24px; }
+    .grid { display: grid; grid-template-columns: 260px 1fr; gap: 10px 12px; align-items: start; }
+    .label { font-weight: 600; padding-top: 8px; }
+    textarea, input, select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 14px;
+      background: #fff;
+      color: var(--text);
+    }
+    textarea:focus, input:focus, select:focus { outline: 2px solid var(--focus); border-color: var(--focus); }
+    #mnemonic { min-height: 96px; resize: vertical; font-family: inherit; }
+    .seed-row { display: flex; gap: 14px; align-items: center; padding-top: 6px; }
+    .words-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      gap: 8px;
+    }
+    .word-cell { display: grid; grid-template-columns: 28px 1fr; gap: 6px; align-items: center; }
+    .word-num { color: var(--muted); text-align: right; font-size: 12px; }
+    .valid { color: var(--ok) !important; font-weight: 700 !important; }
+    .invalid { color: var(--bad) !important; font-weight: 700 !important; }
+    .muted { color: var(--muted); }
+    .row-inline { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .buttons { display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
+    button {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.primary { background: #111827; color: #fff; border-color: #111827; }
+    button:hover { filter: brightness(0.98); }
+    #status { margin: 6px 0; min-height: 20px; font-weight: 600; }
+    #output { min-height: 280px; white-space: pre; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .footer { margin-top: 10px; font-size: 12px; color: var(--muted); }
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+      .label { padding-top: 0; }
+      .words-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Arculus Recovery</h1>
+    <div class="grid">
+      <div class="label">Mnemonic (12 or 24 words)</div>
+      <textarea id="mnemonic" spellcheck="false" placeholder="Paste mnemonic here..."></textarea>
+
+      <div></div>
+      <div class="seed-row">
+        <span class="muted">Seed length:</span>
+        <label><input type="radio" name="seedLen" value="12" checked> 12 words</label>
+        <label><input type="radio" name="seedLen" value="24"> 24 words</label>
+      </div>
+
+      <div class="label">Numbered Words</div>
+      <div class="words-grid" id="wordsGrid"></div>
+
+      <div class="label">Passphrase</div>
+      <input id="passphrase" type="text" autocomplete="off" spellcheck="false" />
+
+      <div class="label">Coin</div>
+      <select id="coin">
+        <option selected>Bitcoin</option>
+        <option>Litecoin</option>
+        <option>Dogecoin</option>
+      </select>
+
+      <div class="label">Derivation Path</div>
+      <input id="derivation" type="text" value="m/0'" spellcheck="false" />
+
+      <div class="label">Script Type</div>
+      <select id="scriptType">
+        <option>Auto</option>
+        <option>P2PKH</option>
+        <option>P2WPKH-P2SH</option>
+        <option selected>P2WPKH</option>
+      </select>
+
+      <div class="label">Address Count</div>
+      <input id="count" type="number" min="1" step="1" value="5" />
+    </div>
+
+    <div class="buttons">
+      <button id="validateBtn">Validate Mnemonic</button>
+      <button id="deriveBtn" class="primary">Derive Keys + Addresses</button>
+      <button id="exportBtn">Export</button>
+    </div>
+
+    <div id="status">Ready</div>
+    <textarea id="output" spellcheck="false" readonly></textarea>
+    <div class="footer">Runs fully offline in your browser. Never share real seed phrases.</div>
+  </div>
+
+  <script>
+    const BIP39_WORDS = ['abandon','ability','able','about','above','absent','absorb','abstract','absurd','abuse','access','accident','account','accuse','achieve','acid','acoustic','acquire','across','act','action','actor','actress','actual','adapt','add','addict','address','adjust','admit','adult','advance','advice','aerobic','affair','afford','afraid','again','age','agent','agree','ahead','aim','air','airport','aisle','alarm','album','alcohol','alert','alien','all','alley','allow','almost','alone','alpha','already','also','alter','always','amateur','amazing','among','amount','amused','analyst','anchor','ancient','anger','angle','angry','animal','ankle','announce','annual','another','answer','antenna','antique','anxiety','any','apart','apology','appear','apple','approve','april','arch','arctic','area','arena','argue','arm','armed','armor','army','around','arrange','arrest','arrive','arrow','art','artefact','artist','artwork','ask','aspect','assault','asset','assist','assume','asthma','athlete','atom','attack','attend','attitude','attract','auction','audit','august','aunt','author','auto','autumn','average','avocado','avoid','awake','aware','away','awesome','awful','awkward','axis','baby','bachelor','bacon','badge','bag','balance','balcony','ball','bamboo','banana','banner','bar','barely','bargain','barrel','base','basic','basket','battle','beach','bean','beauty','because','become','beef','before','begin','behave','behind','believe','below','belt','bench','benefit','best','betray','better','between','beyond','bicycle','bid','bike','bind','biology','bird','birth','bitter','black','blade','blame','blanket','blast','bleak','bless','blind','blood','blossom','blouse','blue','blur','blush','board','boat','body','boil','bomb','bone','bonus','book','boost','border','boring','borrow','boss','bottom','bounce','box','boy','bracket','brain','brand','brass','brave','bread','breeze','brick','bridge','brief','bright','bring','brisk','broccoli','broken','bronze','broom','brother','brown','brush','bubble','buddy','budget','buffalo','build','bulb','bulk','bullet','bundle','bunker','burden','burger','burst','bus','business','busy','butter','buyer','buzz','cabbage','cabin','cable','cactus','cage','cake','call','calm','camera','camp','can','canal','cancel','candy','cannon','canoe','canvas','canyon','capable','capital','captain','car','carbon','card','cargo','carpet','carry','cart','case','cash','casino','castle','casual','cat','catalog','catch','category','cattle','caught','cause','caution','cave','ceiling','celery','cement','census','century','cereal','certain','chair','chalk','champion','change','chaos','chapter','charge','chase','chat','cheap','check','cheese','chef','cherry','chest','chicken','chief','child','chimney','choice','choose','chronic','chuckle','chunk','churn','cigar','cinnamon','circle','citizen','city','civil','claim','clap','clarify','claw','clay','clean','clerk','clever','click','client','cliff','climb','clinic','clip','clock','clog','close','cloth','cloud','clown','club','clump','cluster','clutch','coach','coast','coconut','code','coffee','coil','coin','collect','color','column','combine','come','comfort','comic','common','company','concert','conduct','confirm','congress','connect','consider','control','convince','cook','cool','copper','copy','coral','core','corn','correct','cost','cotton','couch','country','couple','course','cousin','cover','coyote','crack','cradle','craft','cram','crane','crash','crater','crawl','crazy','cream','credit','creek','crew','cricket','crime','crisp','critic','crop','cross','crouch','crowd','crucial','cruel','cruise','crumble','crunch','crush','cry','crystal','cube','culture','cup','cupboard','curious','current','curtain','curve','cushion','custom','cute','cycle','dad','damage','damp','dance','danger','daring','dash','daughter','dawn','day','deal','debate','debris','decade','december','decide','decline','decorate','decrease','deer','defense','define','defy','degree','delay','deliver','demand','demise','denial','dentist','deny','depart','depend','deposit','depth','deputy','derive','describe','desert','design','desk','despair','destroy','detail','detect','develop','device','devote','diagram','dial','diamond','diary','dice','diesel','diet','differ','digital','dignity','dilemma','dinner','dinosaur','direct','dirt','disagree','discover','disease','dish','dismiss','disorder','display','distance','divert','divide','divorce','dizzy','doctor','document','dog','doll','dolphin','domain','donate','donkey','donor','door','dose','double','dove','draft','dragon','drama','drastic','draw','dream','dress','drift','drill','drink','drip','drive','drop','drum','dry','duck','dumb','dune','during','dust','dutch','duty','dwarf','dynamic','eager','eagle','early','earn','earth','easily','east','easy','echo','ecology','economy','edge','edit','educate','effort','egg','eight','either','elbow','elder','electric','elegant','element','elephant','elevator','elite','else','embark','embody','embrace','emerge','emotion','employ','empower','empty','enable','enact','end','endless','endorse','enemy','energy','enforce','engage','engine','enhance','enjoy','enlist','enough','enrich','enroll','ensure','enter','entire','entry','envelope','episode','equal','equip','era','erase','erode','erosion','error','erupt','escape','essay','essence','estate','eternal','ethics','evidence','evil','evoke','evolve','exact','example','excess','exchange','excite','exclude','excuse','execute','exercise','exhaust','exhibit','exile','exist','exit','exotic','expand','expect','expire','explain','expose','express','extend','extra','eye','eyebrow','fabric','face','faculty','fade','faint','faith','fall','false','fame','family','famous','fan','fancy','fantasy','farm','fashion','fat','fatal','father','fatigue','fault','favorite','feature','february','federal','fee','feed','feel','female','fence','festival','fetch','fever','few','fiber','fiction','field','figure','file','film','filter','final','find','fine','finger','finish','fire','firm','first','fiscal','fish','fit','fitness','fix','flag','flame','flash','flat','flavor','flee','flight','flip','float','flock','floor','flower','fluid','flush','fly','foam','focus','fog','foil','fold','follow','food','foot','force','forest','forget','fork','fortune','forum','forward','fossil','foster','found','fox','fragile','frame','frequent','fresh','friend','fringe','frog','front','frost','frown','frozen','fruit','fuel','fun','funny','furnace','fury','future','gadget','gain','galaxy','gallery','game','gap','garage','garbage','garden','garlic','garment','gas','gasp','gate','gather','gauge','gaze','general','genius','genre','gentle','genuine','gesture','ghost','giant','gift','giggle','ginger','giraffe','girl','give','glad','glance','glare','glass','glide','glimpse','globe','gloom','glory','glove','glow','glue','goat','goddess','gold','good','goose','gorilla','gospel','gossip','govern','gown','grab','grace','grain','grant','grape','grass','gravity','great','green','grid','grief','grit','grocery','group','grow','grunt','guard','guess','guide','guilt','guitar','gun','gym','habit','hair','half','hammer','hamster','hand','happy','harbor','hard','harsh','harvest','hat','have','hawk','hazard','head','health','heart','heavy','hedgehog','height','hello','helmet','help','hen','hero','hidden','high','hill','hint','hip','hire','history','hobby','hockey','hold','hole','holiday','hollow','home','honey','hood','hope','horn','horror','horse','hospital','host','hotel','hour','hover','hub','huge','human','humble','humor','hundred','hungry','hunt','hurdle','hurry','hurt','husband','hybrid','ice','icon','idea','identify','idle','ignore','ill','illegal','illness','image','imitate','immense','immune','impact','impose','improve','impulse','inch','include','income','increase','index','indicate','indoor','industry','infant','inflict','inform','inhale','inherit','initial','inject','injury','inmate','inner','innocent','input','inquiry','insane','insect','inside','inspire','install','intact','interest','into','invest','invite','involve','iron','island','isolate','issue','item','ivory','jacket','jaguar','jar','jazz','jealous','jeans','jelly','jewel','job','join','joke','journey','joy','judge','juice','jump','jungle','junior','junk','just','kangaroo','keen','keep','ketchup','key','kick','kid','kidney','kind','kingdom','kiss','kit','kitchen','kite','kitten','kiwi','knee','knife','knock','know','lab','label','labor','ladder','lady','lake','lamp','language','laptop','large','later','latin','laugh','laundry','lava','law','lawn','lawsuit','layer','lazy','leader','leaf','learn','leave','lecture','left','leg','legal','legend','leisure','lemon','lend','length','lens','leopard','lesson','letter','level','liar','liberty','library','license','life','lift','light','like','limb','limit','link','lion','liquid','list','little','live','lizard','load','loan','lobster','local','lock','logic','lonely','long','loop','lottery','loud','lounge','love','loyal','lucky','luggage','lumber','lunar','lunch','luxury','lyrics','machine','mad','magic','magnet','maid','mail','main','major','make','mammal','man','manage','mandate','mango','mansion','manual','maple','marble','march','margin','marine','market','marriage','mask','mass','master','match','material','math','matrix','matter','maximum','maze','meadow','mean','measure','meat','mechanic','medal','media','melody','melt','member','memory','mention','menu','mercy','merge','merit','merry','mesh','message','metal','method','middle','midnight','milk','million','mimic','mind','minimum','minor','minute','miracle','mirror','misery','miss','mistake','mix','mixed','mixture','mobile','model','modify','mom','moment','monitor','monkey','monster','month','moon','moral','more','morning','mosquito','mother','motion','motor','mountain','mouse','move','movie','much','muffin','mule','multiply','muscle','museum','mushroom','music','must','mutual','myself','mystery','myth','naive','name','napkin','narrow','nasty','nation','nature','near','neck','need','negative','neglect','neither','nephew','nerve','nest','net','network','neutral','never','news','next','nice','night','noble','noise','nominee','noodle','normal','north','nose','notable','note','nothing','notice','novel','now','nuclear','number','nurse','nut','oak','obey','object','oblige','obscure','observe','obtain','obvious','occur','ocean','october','odor','off','offer','office','often','oil','okay','old','olive','olympic','omit','once','one','onion','online','only','open','opera','opinion','oppose','option','orange','orbit','orchard','order','ordinary','organ','orient','original','orphan','ostrich','other','outdoor','outer','output','outside','oval','oven','over','own','owner','oxygen','oyster','ozone','pact','paddle','page','pair','palace','palm','panda','panel','panic','panther','paper','parade','parent','park','parrot','party','pass','patch','path','patient','patrol','pattern','pause','pave','payment','peace','peanut','pear','peasant','pelican','pen','penalty','pencil','people','pepper','perfect','permit','person','pet','phone','photo','phrase','physical','piano','picnic','picture','piece','pig','pigeon','pill','pilot','pink','pioneer','pipe','pistol','pitch','pizza','place','planet','plastic','plate','play','please','pledge','pluck','plug','plunge','poem','poet','point','polar','pole','police','pond','pony','pool','popular','portion','position','possible','post','potato','pottery','poverty','powder','power','practice','praise','predict','prefer','prepare','present','pretty','prevent','price','pride','primary','print','priority','prison','private','prize','problem','process','produce','profit','program','project','promote','proof','property','prosper','protect','proud','provide','public','pudding','pull','pulp','pulse','pumpkin','punch','pupil','puppy','purchase','purity','purpose','purse','push','put','puzzle','pyramid','quality','quantum','quarter','question','quick','quit','quiz','quote','rabbit','raccoon','race','rack','radar','radio','rail','rain','raise','rally','ramp','ranch','random','range','rapid','rare','rate','rather','raven','raw','razor','ready','real','reason','rebel','rebuild','recall','receive','recipe','record','recycle','reduce','reflect','reform','refuse','region','regret','regular','reject','relax','release','relief','rely','remain','remember','remind','remove','render','renew','rent','reopen','repair','repeat','replace','report','require','rescue','resemble','resist','resource','response','result','retire','retreat','return','reunion','reveal','review','reward','rhythm','rib','ribbon','rice','rich','ride','ridge','rifle','right','rigid','ring','riot','ripple','risk','ritual','rival','river','road','roast','robot','robust','rocket','romance','roof','rookie','room','rose','rotate','rough','round','route','royal','rubber','rude','rug','rule','run','runway','rural','sad','saddle','sadness','safe','sail','salad','salmon','salon','salt','salute','same','sample','sand','satisfy','satoshi','sauce','sausage','save','say','scale','scan','scare','scatter','scene','scheme','school','science','scissors','scorpion','scout','scrap','screen','script','scrub','sea','search','season','seat','second','secret','section','security','seed','seek','segment','select','sell','seminar','senior','sense','sentence','series','service','session','settle','setup','seven','shadow','shaft','shallow','share','shed','shell','sheriff','shield','shift','shine','ship','shiver','shock','shoe','shoot','shop','short','shoulder','shove','shrimp','shrug','shuffle','shy','sibling','sick','side','siege','sight','sign','silent','silk','silly','silver','similar','simple','since','sing','siren','sister','situate','six','size','skate','sketch','ski','skill','skin','skirt','skull','slab','slam','sleep','slender','slice','slide','slight','slim','slogan','slot','slow','slush','small','smart','smile','smoke','smooth','snack','snake','snap','sniff','snow','soap','soccer','social','sock','soda','soft','solar','soldier','solid','solution','solve','someone','song','soon','sorry','sort','soul','sound','soup','source','south','space','spare','spatial','spawn','speak','special','speed','spell','spend','sphere','spice','spider','spike','spin','spirit','split','spoil','sponsor','spoon','sport','spot','spray','spread','spring','spy','square','squeeze','squirrel','stable','stadium','staff','stage','stairs','stamp','stand','start','state','stay','steak','steel','stem','step','stereo','stick','still','sting','stock','stomach','stone','stool','story','stove','strategy','street','strike','strong','struggle','student','stuff','stumble','style','subject','submit','subway','success','such','sudden','suffer','sugar','suggest','suit','summer','sun','sunny','sunset','super','supply','supreme','sure','surface','surge','surprise','surround','survey','suspect','sustain','swallow','swamp','swap','swarm','swear','sweet','swift','swim','swing','switch','sword','symbol','symptom','syrup','system','table','tackle','tag','tail','talent','talk','tank','tape','target','task','taste','tattoo','taxi','teach','team','tell','ten','tenant','tennis','tent','term','test','text','thank','that','theme','then','theory','there','they','thing','this','thought','three','thrive','throw','thumb','thunder','ticket','tide','tiger','tilt','timber','time','tiny','tip','tired','tissue','title','toast','tobacco','today','toddler','toe','together','toilet','token','tomato','tomorrow','tone','tongue','tonight','tool','tooth','top','topic','topple','torch','tornado','tortoise','toss','total','tourist','toward','tower','town','toy','track','trade','traffic','tragic','train','transfer','trap','trash','travel','tray','treat','tree','trend','trial','tribe','trick','trigger','trim','trip','trophy','trouble','truck','true','truly','trumpet','trust','truth','try','tube','tuition','tumble','tuna','tunnel','turkey','turn','turtle','twelve','twenty','twice','twin','twist','two','type','typical','ugly','umbrella','unable','unaware','uncle','uncover','under','undo','unfair','unfold','unhappy','uniform','unique','unit','universe','unknown','unlock','until','unusual','unveil','update','upgrade','uphold','upon','upper','upset','urban','urge','usage','use','used','useful','useless','usual','utility','vacant','vacuum','vague','valid','valley','valve','van','vanish','vapor','various','vast','vault','vehicle','velvet','vendor','venture','venue','verb','verify','version','very','vessel','veteran','viable','vibrant','vicious','victory','video','view','village','vintage','violin','virtual','virus','visa','visit','visual','vital','vivid','vocal','voice','void','volcano','volume','vote','voyage','wage','wagon','wait','walk','wall','walnut','want','warfare','warm','warrior','wash','wasp','waste','water','wave','way','wealth','weapon','wear','weasel','weather','web','wedding','weekend','weird','welcome','west','wet','whale','what','wheat','wheel','when','where','whip','whisper','wide','width','wife','wild','will','win','window','wine','wing','wink','winner','winter','wire','wisdom','wise','wish','witness','wolf','woman','wonder','wood','wool','word','work','world','worry','worth','wrap','wreck','wrestle','wrist','write','wrong','yard','year','yellow','you','young','youth','zebra','zero','zone','zoo'];
+    const BIP39_SET = new Set(BIP39_WORDS);
+    const BIP39_INDEX = Object.fromEntries(BIP39_WORDS.map((w, i) => [w, i]));
+
+    const HARDENED = 0x80000000;
+    const P = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F');
+    const N = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141');
+    const Gx = BigInt('55066263022277343669578718895168534326250603453777594175500187360389116729240');
+    const Gy = BigInt('32670510020758816978083085130507043184471273380659243275938904335757337482424');
+    const G = { x: Gx, y: Gy };
+
+    const NETS = {
+      bitcoin: {
+        p2pkh: { xprv: 0x0488ADE4, xpub: 0x0488B21E },
+        'p2wpkh-p2sh': { xprv: 0x049D7878, xpub: 0x049D7CB2 },
+        p2wpkh: { xprv: 0x04B2430C, xpub: 0x04B24746 },
+        wif: 0x80,
+        p2pkhPrefix: 0x00,
+        p2shPrefix: 0x05,
+        hrp: 'bc',
+        networkName: 'mainnet'
+      },
+      litecoin: {
+        p2pkh: { xprv: 0x019D9CFE, xpub: 0x019DA462 },
+        'p2wpkh-p2sh': { xprv: 0x01B26792, xpub: 0x01B26EF6 },
+        p2wpkh: { xprv: 0x04B2430C, xpub: 0x04B24746 },
+        wif: 0xB0,
+        p2pkhPrefix: 0x30,
+        p2shPrefix: 0x32,
+        hrp: 'ltc',
+        networkName: 'mainnet'
+      },
+      dogecoin: {
+        // Dogecoin BIP32 versions (dgpv/dgub). No common SLIP-0132 y/z versions.
+        p2pkh: { xprv: 0x02FAC398, xpub: 0x02FACAFD },
+        'p2wpkh-p2sh': { xprv: 0x02FAC398, xpub: 0x02FACAFD },
+        p2wpkh: { xprv: 0x02FAC398, xpub: 0x02FACAFD },
+        wif: 0x9E,
+        p2pkhPrefix: 0x1E,
+        p2shPrefix: 0x16,
+        hrp: 'doge',
+        networkName: 'mainnet'
+      }
+    };
+    const DEFAULT_ACCOUNT_DERIVATION = {
+      bitcoin: "m/0'",
+      litecoin: "m/84'/2'/0'",
+      dogecoin: "m/44'/3'/0'"
+    };
+
+    const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    const BECH32 = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+
+    const els = {
+      mnemonic: document.getElementById('mnemonic'),
+      wordsGrid: document.getElementById('wordsGrid'),
+      passphrase: document.getElementById('passphrase'),
+      coin: document.getElementById('coin'),
+      derivation: document.getElementById('derivation'),
+      scriptType: document.getElementById('scriptType'),
+      count: document.getElementById('count'),
+      status: document.getElementById('status'),
+      output: document.getElementById('output'),
+      validateBtn: document.getElementById('validateBtn'),
+      deriveBtn: document.getElementById('deriveBtn'),
+      exportBtn: document.getElementById('exportBtn')
+    };
+
+    const wordInputs = [];
+    let syncBusy = false;
+
+    function getSeedLen() {
+      return Number(document.querySelector('input[name="seedLen"]:checked').value);
+    }
+
+    function setSeedLen(v) {
+      const r = document.querySelector(`input[name="seedLen"][value="${v}"]`);
+      if (r) r.checked = true;
+      refreshWordEnabled();
+    }
+
+    function normalizeNFKD(s) {
+      return (s ?? '').normalize('NFKD');
+    }
+
+    // Match Python tool behavior exactly:
+    // normalize_nfkd(" ".join(mnemonic.strip().split())).split(" ")
+    function normalizeMnemonicWords(text) {
+      const normalized = normalizeNFKD((text ?? '').trim().split(/\s+/).filter(Boolean).join(' '));
+      return normalized === '' ? [] : normalized.split(' ');
+    }
+
+    function splitWords(text) {
+      return normalizeMnemonicWords(text);
+    }
+
+    function uiStatus(msg, cls = '') {
+      els.status.textContent = msg;
+      els.status.className = cls;
+    }
+
+    function styleWordInput(inp) {
+      const enabled = !inp.disabled;
+      inp.classList.remove('valid', 'invalid');
+      if (!enabled) return;
+      const w = normalizeNFKD(inp.value.trim());
+      if (!w) return;
+      if (BIP39_SET.has(w)) inp.classList.add('valid');
+      else inp.classList.add('invalid');
+    }
+
+    function styleMnemonicBox() {
+      const words = splitWords(els.mnemonic.value);
+      els.mnemonic.classList.remove('valid', 'invalid');
+      if (!words.length) return;
+      const allValid = words.every(w => BIP39_SET.has(w));
+      els.mnemonic.classList.add(allValid ? 'valid' : 'invalid');
+    }
+
+    function refreshWordEnabled() {
+      const max = getSeedLen();
+      for (let i = 0; i < 24; i++) {
+        wordInputs[i].disabled = i >= max;
+        styleWordInput(wordInputs[i]);
+      }
+    }
+
+    function setMnemonicFromWordBoxes() {
+      const max = getSeedLen();
+      const ordered = [];
+      for (let i = 0; i < max; i++) {
+        const w = normalizeNFKD(wordInputs[i].value.trim());
+        if (w) ordered.push(w);
+      }
+      els.mnemonic.value = ordered.join(' ');
+      styleMnemonicBox();
+    }
+
+    function setWordBoxesFromMnemonic() {
+      const words = splitWords(els.mnemonic.value);
+      const max = getSeedLen();
+      for (let i = 0; i < max; i++) wordInputs[i].value = words[i] || '';
+      for (let i = max; i < 24; i++) wordInputs[i].value = '';
+      for (const inp of wordInputs) styleWordInput(inp);
+    }
+
+    function handleMnemonicInput() {
+      if (syncBusy) return;
+      syncBusy = true;
+      try {
+        const words = splitWords(els.mnemonic.value);
+        if (document.activeElement === els.mnemonic) {
+          if (words.length > 12) setSeedLen(24);
+          else if (words.length > 0) setSeedLen(12);
+        }
+        styleMnemonicBox();
+        setWordBoxesFromMnemonic();
+      } finally {
+        syncBusy = false;
+      }
+    }
+
+    function handleWordInput() {
+      if (syncBusy) return;
+      syncBusy = true;
+      try {
+        for (const inp of wordInputs) styleWordInput(inp);
+        setMnemonicFromWordBoxes();
+      } finally {
+        syncBusy = false;
+      }
+    }
+
+    async function checkMnemonic(mnemonic) {
+      const words = normalizeMnemonicWords(mnemonic);
+      const wc = words.length;
+      if (wc !== 12 && wc !== 24) {
+        return { wordsOk: false, checksumOk: false, message: 'Only 12-word and 24-word mnemonics are supported.' };
+      }
+      for (const w of words) {
+        if (!BIP39_SET.has(w)) {
+          return { wordsOk: false, checksumOk: false, message: 'Mnemonic contains unknown words outside the BIP39 English list.' };
+        }
+      }
+
+      let acc = 0n;
+      for (const w of words) acc = (acc << 11n) | BigInt(BIP39_INDEX[w]);
+      const checksumBits = Math.floor(wc / 3);
+      const entropyBits = wc * 11 - checksumBits;
+      const entropyInt = acc >> BigInt(checksumBits);
+      const checksumInt = Number(acc & ((1n << BigInt(checksumBits)) - 1n));
+      const entropy = intToBytes(entropyInt, Math.floor(entropyBits / 8));
+      const hash = await sha256(entropy);
+      const expectedChecksum = Number(bytesToBigInt(hash) >> BigInt(256 - checksumBits));
+
+      if (checksumInt !== expectedChecksum) {
+        return { wordsOk: true, checksumOk: false, message: 'Mnemonic words are valid BIP39 words, but checksum is invalid.' };
+      }
+      return { wordsOk: true, checksumOk: true, message: 'Mnemonic is valid BIP39 (English word list + checksum).' };
+    }
+
+    async function textToBytes(s) {
+      return new TextEncoder().encode(s);
+    }
+
+    function concatBytes(...arrs) {
+      const len = arrs.reduce((a, b) => a + b.length, 0);
+      const out = new Uint8Array(len);
+      let o = 0;
+      for (const a of arrs) { out.set(a, o); o += a.length; }
+      return out;
+    }
+
+    async function sha256(bytes) {
+      const h = await crypto.subtle.digest('SHA-256', bytes);
+      return new Uint8Array(h);
+    }
+
+    async function hmacSha512(keyBytes, dataBytes) {
+      const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-512' }, false, ['sign']);
+      const sig = await crypto.subtle.sign('HMAC', key, dataBytes);
+      return new Uint8Array(sig);
+    }
+
+    async function pbkdf2Sha512(passwordBytes, saltBytes, iterations, dkLen) {
+      const key = await crypto.subtle.importKey('raw', passwordBytes, 'PBKDF2', false, ['deriveBits']);
+      const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-512', salt: saltBytes, iterations }, key, dkLen * 8);
+      return new Uint8Array(bits);
+    }
+
+    function bytesToHex(b) { return Array.from(b).map(x => x.toString(16).padStart(2, '0')).join(''); }
+    function bytesToBigInt(b) { return BigInt('0x' + bytesToHex(b)); }
+    function intToBytes(n, len) {
+      const out = new Uint8Array(len);
+      let x = BigInt(n);
+      for (let i = len - 1; i >= 0; i--) { out[i] = Number(x & 0xffn); x >>= 8n; }
+      return out;
+    }
+
+    function mod(a, m) { const r = a % m; return r >= 0n ? r : r + m; }
+    function modInv(a, m) {
+      let t = 0n, newT = 1n;
+      let r = m, newR = mod(a, m);
+      while (newR !== 0n) {
+        const q = r / newR;
+        [t, newT] = [newT, t - q * newT];
+        [r, newR] = [newR, r - q * newR];
+      }
+      if (r > 1n) throw new Error('Not invertible');
+      return t < 0n ? t + m : t;
+    }
+
+    function pointAdd(p1, p2) {
+      if (!p1) return p2;
+      if (!p2) return p1;
+      const { x: x1, y: y1 } = p1;
+      const { x: x2, y: y2 } = p2;
+      if (x1 === x2 && mod(y1 + y2, P) === 0n) return null;
+      let lam;
+      if (x1 === x2 && y1 === y2) lam = mod((3n * x1 * x1) * modInv(2n * y1, P), P);
+      else lam = mod((y2 - y1) * modInv(x2 - x1, P), P);
+      const x3 = mod(lam * lam - x1 - x2, P);
+      const y3 = mod(lam * (x1 - x3) - y1, P);
+      return { x: x3, y: y3 };
+    }
+
+    function pointMul(k, p = G) {
+      let n = mod(k, N);
+      if (n === 0n) return null;
+      let result = null;
+      let addend = p;
+      while (n > 0n) {
+        if (n & 1n) result = pointAdd(result, addend);
+        addend = pointAdd(addend, addend);
+        n >>= 1n;
+      }
+      return result;
+    }
+
+    function serPub(p) {
+      const prefix = (p.y & 1n) ? 0x03 : 0x02;
+      return concatBytes(Uint8Array.of(prefix), intToBytes(p.x, 32));
+    }
+
+    function ser32(i) { return intToBytes(BigInt(i >>> 0), 4); }
+    function ser256(i) { return intToBytes(BigInt(i), 32); }
+
+    function parsePath(path) {
+      const out = [];
+      const parts = path.trim().split('/');
+      const start = parts[0] === 'm' ? 1 : 0;
+      for (let i = start; i < parts.length; i++) {
+        let p = parts[i].trim();
+        if (!p) continue;
+        let hard = false;
+        if (/[hH']$/.test(p)) { hard = true; p = p.slice(0, -1); }
+        if (!/^\d+$/.test(p)) throw new Error(`Invalid derivation index: ${parts[i]}`);
+        let n = Number(p);
+        if (n < 0 || n >= HARDENED) throw new Error(`Invalid derivation index: ${parts[i]}`);
+        if (hard) n |= HARDENED;
+        out.push(n >>> 0);
+      }
+      return out;
+    }
+
+    function normalizePath(path) {
+      const ints = parsePath(path);
+      if (!ints.length) return 'm';
+      return 'm/' + ints.map(i => (i & HARDENED) ? `${i - HARDENED}'` : `${i}`).join('/');
+    }
+
+    function purposeToScript(path) {
+      const ints = parsePath(path);
+      if (!ints.length) return 'p2pkh';
+      const p = ints[0] & 0x7fffffff;
+      if (p === 84) return 'p2wpkh';
+      if (p === 49) return 'p2wpkh-p2sh';
+      return 'p2pkh';
+    }
+
+    function base58encode(bytes) {
+      let x = bytesToBigInt(bytes);
+      let out = '';
+      while (x > 0n) {
+        const mod = x % 58n;
+        x = x / 58n;
+        out = B58[Number(mod)] + out;
+      }
+      let pad = 0;
+      for (const b of bytes) { if (b === 0) pad++; else break; }
+      return '1'.repeat(pad) + out;
+    }
+
+    async function base58check(payload) {
+      const c1 = await sha256(payload);
+      const c2 = await sha256(c1);
+      return base58encode(concatBytes(payload, c2.slice(0, 4)));
+    }
+
+    function bech32Polymod(values) {
+      const gen = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+      let chk = 1;
+      for (const v of values) {
+        const top = chk >>> 25;
+        chk = ((chk & 0x1ffffff) << 5) ^ v;
+        for (let i = 0; i < 5; i++) if ((top >>> i) & 1) chk ^= gen[i];
+      }
+      return chk;
+    }
+
+    function bech32HrpExpand(hrp) {
+      const out = [];
+      for (const c of hrp) out.push(c.charCodeAt(0) >>> 5);
+      out.push(0);
+      for (const c of hrp) out.push(c.charCodeAt(0) & 31);
+      return out;
+    }
+
+    function bech32Encode(hrp, data) {
+      const values = bech32HrpExpand(hrp).concat(data).concat([0,0,0,0,0,0]);
+      const pm = bech32Polymod(values) ^ 1;
+      const checksum = [];
+      for (let i = 0; i < 6; i++) checksum.push((pm >>> (5 * (5 - i))) & 31);
+      return hrp + '1' + data.concat(checksum).map(v => BECH32[v]).join('');
+    }
+
+    function convertBits(data, fromBits, toBits, pad = true) {
+      let acc = 0, bits = 0;
+      const out = [];
+      const maxv = (1 << toBits) - 1;
+      for (const value of data) {
+        if (value < 0 || (value >> fromBits)) throw new Error('Invalid bits');
+        acc = (acc << fromBits) | value;
+        bits += fromBits;
+        while (bits >= toBits) {
+          bits -= toBits;
+          out.push((acc >> bits) & maxv);
+        }
+      }
+      if (pad && bits) out.push((acc << (toBits - bits)) & maxv);
+      return out;
+    }
+
+    function ripemd160(msg) {
+      const zl=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,7,4,13,1,10,6,15,3,12,0,9,5,2,14,11,8,3,10,14,4,9,15,8,1,2,7,0,6,13,11,5,12,1,9,11,10,0,8,12,4,13,3,7,15,14,5,6,2,4,0,5,9,7,12,2,10,14,1,3,8,11,6,15,13];
+      const zr=[5,14,7,0,9,2,11,4,13,6,15,8,1,10,3,12,6,11,3,7,0,13,5,10,14,15,8,12,4,9,1,2,15,5,1,3,7,14,6,9,11,8,12,2,10,0,4,13,8,6,4,1,3,11,15,0,5,12,2,13,9,7,10,14,12,15,10,4,1,5,8,7,6,2,13,14,0,3,9,11];
+      const sl=[11,14,15,12,5,8,7,9,11,13,14,15,6,7,9,8,7,6,8,13,11,9,7,15,7,12,15,9,11,7,13,12,11,13,6,7,14,9,13,15,14,8,13,6,5,12,7,5,11,12,14,15,14,15,9,8,9,14,5,6,8,6,5,12,9,15,5,11,6,8,13,12,5,12,13,14,11,8,5,6];
+      const sr=[8,9,9,11,13,15,15,5,7,7,8,11,14,14,12,6,9,13,15,7,12,8,9,11,7,7,12,7,6,15,13,11,9,7,15,11,8,6,6,14,12,13,5,14,13,13,7,5,15,5,8,11,14,14,6,14,6,9,12,9,12,5,15,8,8,5,12,9,12,5,14,6,8,13,6,5,15,13,11,11];
+      const hl=[0x00000000,0x5a827999,0x6ed9eba1,0x8f1bbcdc,0xa953fd4e];
+      const hr=[0x50a28be6,0x5c4dd124,0x6d703ef3,0x7a6d76e9,0x00000000];
+      function f(j,x,y,z){ if(j<16)return x^y^z; if(j<32)return (x&y)|(~x&z); if(j<48)return (x|~y)^z; if(j<64)return (x&z)|(y&~z); return x^(y|~z); }
+      function rol(x,n){ return (x<<n)|(x>>> (32-n)); }
+      const ml = Array.from(msg);
+      const bitLen = BigInt(ml.length) * 8n;
+      ml.push(0x80);
+      while ((ml.length % 64) !== 56) ml.push(0);
+      // 64-bit little-endian length field. Do not use JS bitwise shifts here:
+      // they are 32-bit and would corrupt bytes 4..7.
+      for (let i = 0n; i < 8n; i++) ml.push(Number((bitLen >> (8n * i)) & 0xffn));
+      let h0=0x67452301,h1=0xefcdab89,h2=0x98badcfe,h3=0x10325476,h4=0xc3d2e1f0;
+      for (let i=0;i<ml.length;i+=64){
+        const X = new Array(16);
+        for(let j=0;j<16;j++){
+          const k=i+j*4;
+          X[j]=(ml[k])|(ml[k+1]<<8)|(ml[k+2]<<16)|(ml[k+3]<<24);
+        }
+        let al=h0,bl=h1,cl=h2,dl=h3,el=h4;
+        let ar=h0,br=h1,cr=h2,dr=h3,er=h4;
+        for(let j=0;j<80;j++){
+          const tl=(rol((al + f(j,bl,cl,dl) + X[zl[j]] + hl[Math.floor(j/16)])|0, sl[j]) + el)|0;
+          al=el; el=dl; dl=rol(cl,10)|0; cl=bl; bl=tl;
+          const tr=(rol((ar + f(79-j,br,cr,dr) + X[zr[j]] + hr[Math.floor(j/16)])|0, sr[j]) + er)|0;
+          ar=er; er=dr; dr=rol(cr,10)|0; cr=br; br=tr;
+        }
+        const t=(h1 + cl + dr)|0;
+        h1=(h2 + dl + er)|0;
+        h2=(h3 + el + ar)|0;
+        h3=(h4 + al + br)|0;
+        h4=(h0 + bl + cr)|0;
+        h0=t;
+      }
+      const out = new Uint8Array(20);
+      const hs=[h0,h1,h2,h3,h4];
+      for(let i=0;i<5;i++){
+        out[i*4]=hs[i]&0xff; out[i*4+1]=(hs[i]>>>8)&0xff; out[i*4+2]=(hs[i]>>>16)&0xff; out[i*4+3]=(hs[i]>>>24)&0xff;
+      }
+      return out;
+    }
+
+    async function hash160(bytes) {
+      const s = await sha256(bytes);
+      return ripemd160(s);
+    }
+
+    async function bip39Seed(mnemonic, passphrase) {
+      // Match Python tool behavior exactly for seed derivation input.
+      const m = normalizeNFKD((mnemonic ?? '').trim().split(/\s+/).filter(Boolean).join(' '));
+      const p = normalizeNFKD(passphrase || '');
+      return pbkdf2Sha512(await textToBytes(m), await textToBytes('mnemonic' + p), 2048, 64);
+    }
+
+    async function masterFromSeed(seed) {
+      const I = await hmacSha512(await textToBytes('Bitcoin seed'), seed);
+      const IL = I.slice(0, 32), IR = I.slice(32);
+      const k = bytesToBigInt(IL);
+      if (k === 0n || k >= N) throw new Error('Invalid master key');
+      return { k, c: IR, depth: 0, parentFp: new Uint8Array([0,0,0,0]), childNum: 0 };
+    }
+
+    async function ckdPriv(node, index) {
+      const idx = index >>> 0;
+      const parentPub = pointMul(node.k, G);
+      const data = (idx & HARDENED)
+        ? concatBytes(Uint8Array.of(0), ser256(node.k), ser32(idx))
+        : concatBytes(serPub(parentPub), ser32(idx));
+      const I = await hmacSha512(node.c, data);
+      const IL = bytesToBigInt(I.slice(0, 32));
+      const IR = I.slice(32);
+      const childK = mod(IL + node.k, N);
+      if (childK === 0n) throw new Error('Invalid child key');
+      const fp = (await hash160(serPub(parentPub))).slice(0, 4);
+      return { k: childK, c: IR, depth: node.depth + 1, parentFp: fp, childNum: idx };
+    }
+
+    async function derive(node, path) {
+      let cur = node;
+      for (const i of parsePath(path)) cur = await ckdPriv(cur, i);
+      return cur;
+    }
+
+    async function xprv(node, version) {
+      const payload = concatBytes(
+        intToBytes(BigInt(version), 4),
+        Uint8Array.of(node.depth),
+        node.parentFp,
+        ser32(node.childNum),
+        node.c,
+        Uint8Array.of(0),
+        ser256(node.k)
+      );
+      return base58check(payload);
+    }
+
+    async function xpub(node, version) {
+      const payload = concatBytes(
+        intToBytes(BigInt(version), 4),
+        Uint8Array.of(node.depth),
+        node.parentFp,
+        ser32(node.childNum),
+        node.c,
+        serPub(pointMul(node.k, G))
+      );
+      return base58check(payload);
+    }
+
+    async function toWif(k, net) {
+      return base58check(concatBytes(Uint8Array.of(net.wif), ser256(k), Uint8Array.of(1)));
+    }
+
+    async function pubToAddress(pub, scriptType, net) {
+      const pkh = await hash160(pub);
+      if (scriptType === 'p2pkh') return base58check(concatBytes(Uint8Array.of(net.p2pkhPrefix), pkh));
+      if (scriptType === 'p2wpkh') {
+        const data = [0].concat(convertBits(Array.from(pkh), 8, 5, true));
+        return bech32Encode(net.hrp, data);
+      }
+      if (scriptType === 'p2wpkh-p2sh') {
+        const redeem = concatBytes(Uint8Array.of(0x00, 0x14), pkh);
+        const h = await hash160(redeem);
+        return base58check(concatBytes(Uint8Array.of(net.p2shPrefix), h));
+      }
+      throw new Error('Unsupported script type');
+    }
+
+    async function deriveOutput() {
+      const mnemonic = els.mnemonic.value.trim();
+      const passphrase = els.passphrase.value;
+      const count = Math.max(1, Number(els.count.value || 5));
+      const scriptMap = { Auto: 'auto', P2PKH: 'p2pkh', 'P2WPKH-P2SH': 'p2wpkh-p2sh', P2WPKH: 'p2wpkh' };
+      const requested = scriptMap[els.scriptType.value] || 'p2wpkh';
+      const coinMap = { Bitcoin: 'bitcoin', Litecoin: 'litecoin', Dogecoin: 'dogecoin' };
+      const coin = coinMap[els.coin.value] || 'bitcoin';
+      const net = NETS[coin];
+      const derivation = normalizePath((els.derivation.value || '').trim() || DEFAULT_ACCOUNT_DERIVATION[coin] || "m/0'");
+      if (!net) throw new Error(`Unsupported coin: ${coin}`);
+
+      const check = await checkMnemonic(mnemonic);
+      if (!(check.wordsOk && check.checksumOk)) throw new Error(check.message);
+
+      const seed = await bip39Seed(mnemonic, passphrase);
+      const root = await masterFromSeed(seed);
+      const account = await derive(root, derivation);
+      const st = requested === 'auto' ? purposeToScript(derivation) : requested;
+      const rootVers = net.p2pkh;
+      const xVers = net.p2pkh;
+      const yVers = net['p2wpkh-p2sh'];
+      const zVers = net.p2wpkh;
+      if (!net[st]) throw new Error('Unsupported script type');
+
+      const result = {
+        coin,
+        network: net.networkName,
+        word_count: normalizeMnemonicWords(mnemonic).length,
+        accounts: [{
+          derivation,
+          account_script_type_used: st,
+          root_xprv: await xprv(root, rootVers.xprv),
+          root_xpub: await xpub(root, rootVers.xpub)
+        }]
+      };
+      if (st === 'p2wpkh-p2sh') {
+        result.accounts[0].root_yprv = await xprv(root, yVers.xprv);
+        result.accounts[0].root_ypub = await xpub(root, yVers.xpub);
+      } else if (st === 'p2wpkh') {
+        result.accounts[0].root_zprv = await xprv(root, zVers.xprv);
+        result.accounts[0].root_zpub = await xpub(root, zVers.xpub);
+      }
+      result.accounts[0].account_xprv = await xprv(account, xVers.xprv);
+      result.accounts[0].account_xpub = await xpub(account, xVers.xpub);
+      if (st === 'p2wpkh-p2sh') {
+        result.accounts[0].account_yprv = await xprv(account, yVers.xprv);
+        result.accounts[0].account_ypub = await xpub(account, yVers.xpub);
+      } else if (st === 'p2wpkh') {
+        result.accounts[0].account_zprv = await xprv(account, zVers.xprv);
+        result.accounts[0].account_zpub = await xpub(account, zVers.xpub);
+      }
+      result.accounts[0].receiving = [];
+      result.accounts[0].change = [];
+
+      for (const [branch, key] of [[0, 'receiving'], [1, 'change']]) {
+        const branchNode = await ckdPriv(account, branch);
+        for (let i = 0; i < count; i++) {
+          const child = await ckdPriv(branchNode, i);
+          const pub = serPub(pointMul(child.k, G));
+          result.accounts[0][key].push({
+            path: `${derivation}/${branch}/${i}`,
+            address: await pubToAddress(pub, st, net),
+            public_key_hex: bytesToHex(pub),
+            private_key_hex: bytesToHex(ser256(child.k)),
+            private_key_wif: await toWif(child.k, net)
+          });
+        }
+      }
+
+      return result;
+    }
+
+    function exportOutput() {
+      const text = els.output.value.trim();
+      if (!text) { uiStatus('Nothing to export. Derive or validate first.'); return; }
+      const blob = new Blob([text + '\n'], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'Arculus_Recovery_Output.txt';
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(a.href);
+      a.remove();
+      uiStatus('Exported output file.');
+    }
+
+    function buildWordInputs() {
+      for (let i = 0; i < 24; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'word-cell';
+        const num = document.createElement('div');
+        num.className = 'word-num';
+        num.textContent = `${i + 1}.`;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.spellcheck = false;
+        input.autocomplete = 'off';
+        input.addEventListener('input', handleWordInput);
+        input.addEventListener('blur', handleWordInput);
+        cell.appendChild(num);
+        cell.appendChild(input);
+        els.wordsGrid.appendChild(cell);
+        wordInputs.push(input);
+      }
+    }
+
+    function bindUI() {
+      els.mnemonic.addEventListener('input', handleMnemonicInput);
+      document.querySelectorAll('input[name="seedLen"]').forEach(r => r.addEventListener('change', () => {
+        refreshWordEnabled();
+        handleWordInput();
+      }));
+      els.coin.addEventListener('change', () => {
+        const coinMap = { Bitcoin: 'bitcoin', Litecoin: 'litecoin', Dogecoin: 'dogecoin' };
+        const key = coinMap[els.coin.value] || 'bitcoin';
+        els.derivation.value = DEFAULT_ACCOUNT_DERIVATION[key];
+        if (key === 'dogecoin') {
+          els.scriptType.value = 'P2PKH';
+        } else {
+          els.scriptType.value = 'P2WPKH';
+        }
+      });
+
+      els.validateBtn.addEventListener('click', async () => {
+        try {
+          const res = await checkMnemonic(els.mnemonic.value);
+          uiStatus(res.message, res.wordsOk && res.checksumOk ? 'valid' : 'invalid');
+          els.output.value = JSON.stringify({ validation: res.wordsOk && res.checksumOk ? 'ok' : 'failed', message: res.message }, null, 2);
+        } catch (e) {
+          uiStatus(`Error: ${e.message}`, 'invalid');
+          els.output.value = JSON.stringify({ error: e.message }, null, 2);
+        }
+      });
+
+      els.deriveBtn.addEventListener('click', async () => {
+        try {
+          uiStatus('Deriving...');
+          const data = await deriveOutput();
+          els.output.value = JSON.stringify(data, null, 2);
+          uiStatus('Derivation complete.', 'valid');
+        } catch (e) {
+          uiStatus(`Error: ${e.message}`, 'invalid');
+          els.output.value = JSON.stringify({ error: e.message }, null, 2);
+        }
+      });
+
+      els.exportBtn.addEventListener('click', exportOutput);
+    }
+
+    (function init() {
+      buildWordInputs();
+      bindUI();
+      refreshWordEnabled();
+      styleMnemonicBox();
+      uiStatus('Ready');
+    })();
+  </script>
+</body>
+</html>
