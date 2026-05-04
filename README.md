@@ -7,6 +7,16 @@ Offline BIP39/BIP32 recovery and key-derivation tool with both:
 
 This project is designed to run fully offline and uses only local computation.
 
+## Screenshots
+
+Light mode:
+
+![Arculus Recovery light mode](docs/screenshots/arculus-light.png)
+
+Dark mode:
+
+![Arculus Recovery dark mode](docs/screenshots/arculus-dark.png)
+
 ## Features
 
 - BIP39 mnemonic validation for 12-word and 24-word seeds
@@ -40,9 +50,36 @@ This project is designed to run fully offline and uses only local computation.
   - Litecoin
   - Dogecoin
 - Encrypted seed export/import
+- Export derived keys/addresses as JSON or CSV
 - Hidden imported-seed workflow
 - Press-and-hold seed reveal
 - Inline root fingerprint display
+
+## Derivation Paths
+
+The tool derives account-level extended keys from the selected derivation path, then derives both receiving and change addresses:
+
+- Receiving addresses: `<account path>/0/index`
+- Change addresses: `<account path>/1/index`
+
+Common account paths:
+
+| Coin | Script type | Common account path | Address format | Notes |
+| --- | --- | --- | --- | --- |
+| Bitcoin | P2PKH | `m/44'/0'/0'` | `1...` | Legacy BIP44 |
+| Bitcoin | P2WPKH-P2SH | `m/49'/0'/0'` | `3...` | Wrapped SegWit |
+| Bitcoin | P2WPKH | `m/84'/0'/0'` | `bc1q...` | Native SegWit |
+| Bitcoin | P2TR | `m/86'/0'/0'` | `bc1p...` | Taproot / BIP86 |
+| Litecoin | P2PKH | `m/44'/2'/0'` | `L...` | Legacy BIP44 |
+| Litecoin | P2WPKH-P2SH | `m/49'/2'/0'` | `M...` | Wrapped SegWit |
+| Litecoin | P2WPKH | `m/84'/2'/0'` | `ltc1q...` | Native SegWit; default Litecoin path |
+| Litecoin | P2TR | `m/86'/2'/0'` | `ltc1p...` | Taproot-style output |
+| Dogecoin | P2PKH | `m/44'/3'/0'` | `D...` | Default Dogecoin path |
+| Dogecoin | P2WPKH-P2SH | `m/49'/3'/0'` | `9...` or `A...` | Supported by the tool, but wallet support may vary |
+| Dogecoin | P2WPKH | `m/84'/3'/0'` | `doge1q...` | Supported by the tool, but wallet support may vary |
+| Dogecoin | P2TR | `m/86'/3'/0'` | Not supported | Dogecoin Taproot is disabled in the tool |
+
+The browser and Python GUI default to `m/0'` for Bitcoin, `m/84'/2'/0'` for Litecoin, and `m/44'/3'/0'` for Dogecoin. Use `Auto` script type to infer the script from BIP44/49/84/86 purpose when using standard paths.
 
 ## Security Notes
 
@@ -54,6 +91,22 @@ Recommended usage:
 2. Open the HTML file locally or run the Python script on a trusted machine
 3. Never share your seed phrase, exported files, passwords, or derived private keys
 4. Treat encrypted seed exports as sensitive backups
+
+## Hash Verification
+
+Verify the SHA256 hashes before using the recovery tool:
+
+```bash
+shasum -a 256 Arculus_Recovery.html index.html Arculus_Recovery.py
+```
+
+Expected hashes:
+
+```text
+7ef68138e7c96298cc1398cc1a047bde2386ceb562aa2c5efbb116d51ff66682  Arculus_Recovery.html
+7ef68138e7c96298cc1398cc1a047bde2386ceb562aa2c5efbb116d51ff66682  index.html
+af4bb35ffda8d25e0f70c83dc2c3c7d2d894270b09044ef0e484d5c6976810b6  Arculus_Recovery.py
+```
 
 ## Encrypted Seed Files
 
@@ -74,6 +127,60 @@ New `.arc` exports are designed to work in both:
 - `Arculus_Recovery.html`
 - `Arculus_Recovery.py`
 
+### File Format
+
+`.arc` files are UTF-8 JSON documents. The current export format is:
+
+```json
+{
+  "magic": "ARCULUS-ARC",
+  "format": "arculus-encrypted-seed-v2",
+  "version": 2,
+  "created_at": "2026-05-03T23:59:59.000Z",
+  "kdf": {
+    "name": "PBKDF2",
+    "hash": "SHA-512",
+    "iterations": 600000,
+    "salt_b64": "..."
+  },
+  "cipher": {
+    "name": "HMAC-SHA512-CTR",
+    "nonce_b64": "..."
+  },
+  "ciphertext_b64": "...",
+  "mac_b64": "..."
+}
+```
+
+High-level behavior:
+
+- The password is normalized with Unicode NFKD before key derivation.
+- PBKDF2-HMAC-SHA512 derives a 64-byte master key from the password and a 32-byte random salt.
+- Encryption and authentication keys are separated with domain-specific HMAC-SHA512 labels.
+- The plaintext payload is JSON containing the normalized mnemonic, word count, and creation timestamp.
+- The plaintext is encrypted with an HMAC-SHA512 counter stream using a 24-byte random nonce.
+- `mac_b64` is HMAC-SHA512 over the versioned file metadata, salt, nonce, and ciphertext.
+- All binary fields are base64 encoded for JSON compatibility.
+
+Decrypted plaintext payload:
+
+```json
+{
+  "mnemonic": "abandon ... about",
+  "word_count": 12,
+  "created_at": "2026-05-03T23:59:59.000Z"
+}
+```
+
+Importers should ignore unknown plaintext fields for forward compatibility.
+
+Supported import formats:
+
+- Current `arculus-encrypted-seed-v2` files with `magic: "ARCULUS-ARC"` and `version: 2`
+- Legacy PBKDF2-SHA256 + XOR-HMAC files without the magic header
+- Legacy `arculus-encrypted-seed-python-v1` files
+- `arculus-encrypted-seed-v1` in the browser version only, for legacy AES-GCM exports
+
 ## Files
 
 - `Arculus_Recovery.html`  
@@ -81,6 +188,9 @@ New `.arc` exports are designed to work in both:
 
 - `Arculus_Recovery.py`  
   Python version with GUI and CLI support
+
+- `docs/screenshots/`  
+  README screenshots for light and dark mode
 
 - `test seed.txt`  
   Local test file in this workspace

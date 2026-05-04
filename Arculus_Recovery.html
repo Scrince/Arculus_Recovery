@@ -5,47 +5,70 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Arculus Recovery</title>
   <style>
-    :root {
-      --bg: #f7f8fa;
-      --card: #ffffff;
-      --text: #111827;
-      --muted: #6b7280;
-      --ok: #1b8f2f;
-      --bad: #b71c1c;
-      --border: #d1d5db;
-      --focus: #2563eb;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: "Segoe UI", Tahoma, Helvetica, Arial, sans-serif;
-      background: linear-gradient(180deg, #eef2ff 0%, var(--bg) 18%);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 20px;
-    }
+	    :root {
+	      --bg: #f7f8fa;
+	      --page-top: #eef2ff;
+	      --card: #ffffff;
+	      --field: #ffffff;
+	      --button: #ffffff;
+	      --primary: #111827;
+	      --primary-text: #ffffff;
+	      --text: #111827;
+	      --muted: #6b7280;
+	      --ok: #1b8f2f;
+	      --bad: #b71c1c;
+	      --border: #d1d5db;
+	      --focus: #2563eb;
+	      --shadow: rgba(17, 24, 39, 0.06);
+	    }
+	    body.dark-mode {
+	      --bg: #111827;
+	      --page-top: #0b1220;
+	      --card: #1f2937;
+	      --field: #111827;
+	      --button: #374151;
+	      --primary: #e5e7eb;
+	      --primary-text: #111827;
+	      --text: #f9fafb;
+	      --muted: #9ca3af;
+	      --ok: #4ade80;
+	      --bad: #f87171;
+	      --border: #4b5563;
+	      --focus: #60a5fa;
+	      --shadow: rgba(0, 0, 0, 0.35);
+	    }
+	    * { box-sizing: border-box; }
+	    body {
+	      margin: 0;
+	      font-family: "Segoe UI", Tahoma, Helvetica, Arial, sans-serif;
+	      background: linear-gradient(180deg, var(--page-top) 0%, var(--bg) 18%);
+	      color: var(--text);
+	      min-height: 100vh;
+	      padding: 20px;
+	    }
     .app {
       max-width: 1200px;
       margin: 0 auto;
       background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 10px 25px rgba(17, 24, 39, 0.06);
-    }
+	      border: 1px solid var(--border);
+	      border-radius: 12px;
+	      padding: 16px;
+	      box-shadow: 0 10px 25px var(--shadow);
+	    }
     h1 { margin: 0 0 14px; font-size: 24px; }
     .grid { display: grid; grid-template-columns: 260px 1fr; gap: 10px 12px; align-items: start; }
     .label { font-weight: 600; padding-top: 8px; }
     textarea, input, select {
       width: 100%;
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px;
-      font-size: 14px;
-      background: #fff;
-      color: var(--text);
-    }
-    textarea:focus, input:focus, select:focus { outline: 2px solid var(--focus); border-color: var(--focus); }
+	      border-radius: 8px;
+	      padding: 10px;
+	      font-size: 14px;
+	      background: var(--field);
+	      color: var(--text);
+	    }
+	    input[type="radio"], input[type="checkbox"] { width: auto; }
+	    textarea:focus, input:focus, select:focus { outline: 2px solid var(--focus); border-color: var(--focus); }
     #mnemonic { min-height: 96px; resize: vertical; font-family: inherit; }
     .seed-row { display: flex; gap: 14px; align-items: center; padding-top: 6px; }
     .words-grid {
@@ -60,25 +83,61 @@
     .muted { color: var(--muted); }
     .row-inline { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .buttons { display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
-    button {
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: #fff;
-      padding: 10px 14px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    button.primary { background: #111827; color: #fff; border-color: #111827; }
-    button:hover { filter: brightness(0.98); }
+	    button {
+	      border: 1px solid var(--border);
+	      border-radius: 8px;
+	      background: var(--button);
+	      color: var(--text);
+	      padding: 10px 14px;
+	      font-weight: 600;
+	      cursor: pointer;
+		    }
+		    button.primary { background: var(--primary); color: var(--primary-text); border-color: var(--primary); }
+	    button.copy-seed {
+	      background: #dc2626;
+	      color: #111827;
+	      border-color: #dc2626;
+	    }
+	    button.generate-seed {
+	      background: #22c55e;
+	      color: #111827;
+	      border-color: #22c55e;
+	    }
+	    .dark-mode-button {
+	      border: 1px solid #9ca3af;
+	      border-radius: 8px;
+	      background: #d1d5db;
+	      color: #111827;
+	      padding: 10px 14px;
+	      font-size: 14px;
+	      font-weight: 600;
+	      cursor: pointer;
+	      line-height: normal;
+	    }
+	    body.dark-mode .dark-mode-button {
+	      background: #4b5563;
+	      border-color: #6b7280;
+	      color: #ffffff;
+	    }
+	    .dark-mode-button input {
+	      position: absolute;
+	      opacity: 0;
+	      pointer-events: none;
+	    }
+	    button:hover { filter: brightness(0.98); }
+	    .dark-mode-button:hover { filter: brightness(0.98); }
     .button-field {
       width: 260px;
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 10px 14px;
-      font-size: 14px;
-      font-weight: 600;
-      background: #fff;
+	      padding: 10px 14px;
+	      font-size: 14px;
+	      font-weight: 600;
+      background: var(--field);
       color: var(--text);
+    }
+    .export-format {
+      width: 120px;
     }
     #status { margin: 6px 0; min-height: 20px; font-weight: 600; }
     #output { min-height: 280px; white-space: pre; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
@@ -99,10 +158,13 @@
 
       <div></div>
       <div class="seed-row">
-        <span class="muted">Seed length:</span>
-        <label><input type="radio" name="seedLen" value="12" checked> 12 words</label>
-        <label><input type="radio" name="seedLen" value="24"> 24 words</label>
-      </div>
+	        <span class="muted">Seed length:</span>
+	        <label><input type="radio" name="seedLen" value="12" checked> 12 words</label>
+	        <label><input type="radio" name="seedLen" value="24"> 24 words</label>
+	        <button id="copySeedBtn" type="button" class="copy-seed">Copy Seed</button>
+	        <button id="generateSeedBtn" type="button" class="generate-seed">Generate Random Seed</button>
+		        <label class="dark-mode-button"><input id="darkModeToggle" type="checkbox"> Dark Mode</label>
+	      </div>
 
       <div class="label">Numbered Words</div>
       <div class="words-grid" id="wordsGrid"></div>
@@ -137,6 +199,10 @@
       <button id="validateBtn">Validate Mnemonic</button>
       <button id="deriveBtn" class="primary">Derive Keys + Addresses</button>
       <button id="exportBtn">Export</button>
+      <select id="exportFormat" class="export-format" aria-label="Export format">
+        <option selected>JSON</option>
+        <option>CSV</option>
+      </select>
       <button id="encryptExportBtn">Encrypt/Export Seed</button>
       <button id="importSeedBtn">Import Seed</button>
       <button id="showSeedBtn" type="button">Show Seed</button>
@@ -208,9 +274,11 @@
 
     const els = {
       mnemonic: document.getElementById('mnemonic'),
-      wordsGrid: document.getElementById('wordsGrid'),
-      passphrase: document.getElementById('passphrase'),
-      coin: document.getElementById('coin'),
+	      wordsGrid: document.getElementById('wordsGrid'),
+	      passphrase: document.getElementById('passphrase'),
+	      copySeedBtn: document.getElementById('copySeedBtn'),
+	      generateSeedBtn: document.getElementById('generateSeedBtn'),
+	      coin: document.getElementById('coin'),
       derivation: document.getElementById('derivation'),
       scriptType: document.getElementById('scriptType'),
       count: document.getElementById('count'),
@@ -219,11 +287,13 @@
       validateBtn: document.getElementById('validateBtn'),
       deriveBtn: document.getElementById('deriveBtn'),
       exportBtn: document.getElementById('exportBtn'),
+      exportFormat: document.getElementById('exportFormat'),
       encryptExportBtn: document.getElementById('encryptExportBtn'),
       importSeedBtn: document.getElementById('importSeedBtn'),
       showSeedBtn: document.getElementById('showSeedBtn'),
       rootFingerprintDisplay: document.getElementById('rootFingerprintDisplay'),
-      importSeedFile: document.getElementById('importSeedFile')
+      importSeedFile: document.getElementById('importSeedFile'),
+      darkModeToggle: document.getElementById('darkModeToggle')
     };
 
     const wordInputs = [];
@@ -231,6 +301,12 @@
     let importedSeedState = null;
     let showingImportedSeed = false;
     let rootFingerprintRefreshToken = 0;
+    let lastDerivedOutput = null;
+    const ARC_MAGIC = 'ARCULUS-ARC';
+    const ARC_V2_FORMAT = 'arculus-encrypted-seed-v2';
+    const ARC_V2_KDF_ITERATIONS = 600000;
+    const ARC_V2_SALT_BYTES = 32;
+    const ARC_V2_NONCE_BYTES = 24;
 
     function getSeedLen() {
       return Number(document.querySelector('input[name="seedLen"]:checked').value);
@@ -260,6 +336,16 @@
     function uiStatus(msg, cls = '') {
       els.status.textContent = msg;
       els.status.className = cls;
+    }
+
+    function applyDarkMode(enabled) {
+      document.body.classList.toggle('dark-mode', enabled);
+      els.darkModeToggle.checked = enabled;
+      try {
+        localStorage.setItem('arculusDarkMode', enabled ? '1' : '0');
+      } catch {
+        // Local files may be opened in privacy-restricted contexts.
+      }
     }
 
     function setRootFingerprintDisplay(fingerprint = '') {
@@ -525,6 +611,27 @@
       return { wordsOk: analysis.wordsOk, checksumOk: analysis.checksumOk, message: analysis.message };
     }
 
+    async function generateRandomMnemonic(wordCount) {
+      if (wordCount !== 12 && wordCount !== 24) throw new Error('Only 12-word and 24-word mnemonics are supported.');
+      const checksumBits = Math.floor(wordCount / 3);
+      const entropyBits = wordCount * 11 - checksumBits;
+      const entropy = crypto.getRandomValues(new Uint8Array(entropyBits / 8));
+      const hash = await sha256(entropy);
+      const entropyInt = bytesToBigInt(entropy);
+      const checksum = bytesToBigInt(hash) >> BigInt(256 - checksumBits);
+      let bits = (entropyInt << BigInt(checksumBits)) | checksum;
+      const words = new Array(wordCount);
+      for (let i = wordCount - 1; i >= 0; i--) {
+        const idx = Number(bits & 0x7ffn);
+        words[i] = BIP39_WORDS[idx];
+        bits >>= 11n;
+      }
+      const mnemonic = words.join(' ');
+      const check = await checkMnemonic(mnemonic, '');
+      if (!(check.wordsOk && check.checksumOk)) throw new Error('Generated mnemonic failed validation.');
+      return mnemonic;
+    }
+
     async function textToBytes(s) {
       return new TextEncoder().encode(s);
     }
@@ -607,6 +714,76 @@
         counter += 1;
       }
       return out;
+    }
+
+    function b64DecodeRequired(value, fieldName, expectedLength = null) {
+      if (typeof value !== 'string' || !value) throw new Error(`Encrypted seed file is missing ${fieldName}.`);
+      let bytes;
+      try {
+        bytes = base64ToBytes(value);
+      } catch {
+        throw new Error(`Encrypted seed file has invalid ${fieldName}.`);
+      }
+      if (expectedLength !== null && bytes.length !== expectedLength) {
+        throw new Error(`Encrypted seed file has invalid ${fieldName} length.`);
+      }
+      return bytes;
+    }
+
+    async function arcV2StreamCrypt(data, keyBytes, nonceBytes) {
+      const out = new Uint8Array(data.length);
+      let offset = 0;
+      let counter = 0n;
+      while (offset < data.length) {
+        const label = await textToBytes('Arculus ARC v2 stream\u0000');
+        const block = await hmacSha512(keyBytes, concatBytes(label, nonceBytes, intToBytes(counter, 8)));
+        const take = Math.min(block.length, data.length - offset);
+        for (let i = 0; i < take; i++) out[offset + i] = data[offset + i] ^ block[i];
+        offset += take;
+        counter += 1n;
+      }
+      return out;
+    }
+
+    async function arcV2Keys(password, saltBytes, iterations) {
+      if (!Number.isInteger(iterations) || iterations < ARC_V2_KDF_ITERATIONS) {
+        throw new Error('Encrypted seed file uses too few KDF iterations.');
+      }
+      const passwordBytes = await textToBytes(normalizeNFKD(password));
+      const masterKey = await pbkdf2Sha512(passwordBytes, saltBytes, iterations, 64);
+      const encKey = await hmacSha512(masterKey, await textToBytes('Arculus ARC v2 encryption key'));
+      const macKey = await hmacSha512(masterKey, await textToBytes('Arculus ARC v2 authentication key'));
+      return { encKey, macKey };
+    }
+
+    async function arcV2MacData(bundle, saltBytes, nonceBytes, ciphertext) {
+      const kdf = bundle.kdf || {};
+      const cipher = bundle.cipher || {};
+      const sep = Uint8Array.of(0);
+      const textParts = [
+        'Arculus ARC v2 MAC',
+        String(bundle.magic || ''),
+        String(bundle.format || ''),
+        String(bundle.version || ''),
+        String(bundle.created_at || ''),
+        String(kdf.name || ''),
+        String(kdf.hash || ''),
+        String(kdf.iterations || ''),
+        String(cipher.name || '')
+      ];
+      const encoded = [];
+      for (const part of textParts) encoded.push(await textToBytes(part), sep);
+      return concatBytes(...encoded, saltBytes, sep, nonceBytes, sep, ciphertext);
+    }
+
+    function normalizeDecryptedMnemonic(payload) {
+      if (!payload || typeof payload !== 'object') throw new Error('Encrypted seed file contents are invalid.');
+      const mnemonic = normalizeMnemonicWords(payload.mnemonic || '').join(' ');
+      if (!mnemonic) throw new Error('Encrypted seed file did not contain a mnemonic.');
+      if (payload.word_count !== undefined && Number(payload.word_count) !== normalizeMnemonicWords(mnemonic).length) {
+        throw new Error('Encrypted seed file word count does not match mnemonic.');
+      }
+      return mnemonic;
     }
 
     function mod(a, m) { const r = a % m; return r >= 0n ? r : r + m; }
@@ -877,7 +1054,7 @@
       const IL = bytesToBigInt(I.slice(0, 32));
       const IR = I.slice(32);
       const childK = mod(IL + node.k, N);
-      if (childK === 0n) throw new Error('Invalid child key');
+      if (IL >= N || childK === 0n) throw new Error('Invalid child key');
       const fp = (await hash160(serPub(parentPub))).slice(0, 4);
       return { k: childK, c: IR, depth: node.depth + 1, parentFp: fp, childNum: idx };
     }
@@ -1024,47 +1201,116 @@
       return result;
     }
 
+    function flattenDerivedRows(data) {
+      const rows = [];
+      for (const account of data.accounts || []) {
+        const accountFields = {};
+        for (const [key, value] of Object.entries(account)) {
+          if (key !== 'receiving' && key !== 'change') accountFields[key] = value;
+        }
+        for (const branch of ['receiving', 'change']) {
+          for (const item of account[branch] || []) {
+            rows.push({
+              coin: data.coin,
+              network: data.network,
+              word_count: data.word_count,
+              branch,
+              ...accountFields,
+              ...item
+            });
+          }
+        }
+      }
+      return rows;
+    }
+
+    function csvEscape(value) {
+      const text = value === null || value === undefined ? '' : String(value);
+      return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    }
+
+    function derivedToCsv(data) {
+      const rows = flattenDerivedRows(data);
+      if (!rows.length) return '';
+      const headers = Array.from(rows.reduce((set, row) => {
+        Object.keys(row).forEach(key => set.add(key));
+        return set;
+      }, new Set()));
+      return [
+        headers.map(csvEscape).join(','),
+        ...rows.map(row => headers.map(header => csvEscape(row[header])).join(','))
+      ].join('\n') + '\n';
+    }
+
     function exportOutput() {
-      const text = els.output.value.trim();
-      if (!text) { uiStatus('Nothing to export. Derive or validate first.'); return; }
-      const blob = new Blob([text + '\n'], { type: 'text/plain;charset=utf-8' });
+      if (!lastDerivedOutput) {
+        uiStatus('Nothing to export. Derive keys and addresses first.');
+        return;
+      }
+      const format = els.exportFormat.value === 'CSV' ? 'csv' : 'json';
+      const text = format === 'csv' ? derivedToCsv(lastDerivedOutput) : JSON.stringify(lastDerivedOutput, null, 2) + '\n';
+      const blob = new Blob([text], { type: format === 'csv' ? 'text/csv;charset=utf-8' : 'application/json;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'Arculus_Recovery_Output.txt';
+      a.download = format === 'csv' ? 'Arculus_Derived_Keys_Addresses.csv' : 'Arculus_Derived_Keys_Addresses.json';
       document.body.appendChild(a);
       a.click();
       URL.revokeObjectURL(a.href);
       a.remove();
-      uiStatus('Exported output file.');
+      uiStatus(`Exported derived keys/addresses as ${format.toUpperCase()}.`);
     }
 
-    async function encryptSeedBundle(mnemonic, password) {
-      const salt = crypto.getRandomValues(new Uint8Array(16));
-      const nonce = crypto.getRandomValues(new Uint8Array(16));
-      const passwordBytes = await textToBytes(normalizeNFKD(password));
-      const derived = await pbkdf2Sha256(passwordBytes, salt, 250000, 64);
-      const encKey = derived.slice(0, 32);
-      const macKey = derived.slice(32);
+    async function encrypt_v2(mnemonic, password) {
       const words = normalizeMnemonicWords(mnemonic);
+      if (![12, 24].includes(words.length)) throw new Error('Only 12-word and 24-word mnemonics can be encrypted.');
+      const salt = crypto.getRandomValues(new Uint8Array(ARC_V2_SALT_BYTES));
+      const nonce = crypto.getRandomValues(new Uint8Array(ARC_V2_NONCE_BYTES));
+      const createdAt = new Date().toISOString();
+      const bundle = {
+        magic: ARC_MAGIC,
+        format: ARC_V2_FORMAT,
+        version: 2,
+        created_at: createdAt,
+        kdf: { name: 'PBKDF2', hash: 'SHA-512', iterations: ARC_V2_KDF_ITERATIONS, salt_b64: bytesToBase64(salt) },
+        cipher: { name: 'HMAC-SHA512-CTR', nonce_b64: bytesToBase64(nonce) }
+      };
       const payload = {
         mnemonic: words.join(' '),
-        exported_at: new Date().toISOString(),
-        word_count: words.length
+        word_count: words.length,
+        created_at: createdAt
       };
       const plaintext = await textToBytes(JSON.stringify(payload));
-      const ciphertext = await xorStreamCrypt(plaintext, encKey, nonce);
-      const mac = await hmacSha256(macKey, concatBytes(nonce, ciphertext));
-      return {
-        format: 'arculus-encrypted-seed-v2',
-        kdf: { name: 'PBKDF2', hash: 'SHA-256', iterations: 250000, salt_b64: bytesToBase64(salt) },
-        cipher: { name: 'XOR-HMAC-SHA256', nonce_b64: bytesToBase64(nonce) },
-        ciphertext_b64: bytesToBase64(ciphertext),
-        mac_b64: bytesToBase64(mac)
-      };
+      const { encKey, macKey } = await arcV2Keys(password, salt, ARC_V2_KDF_ITERATIONS);
+      const ciphertext = await arcV2StreamCrypt(plaintext, encKey, nonce);
+      bundle.ciphertext_b64 = bytesToBase64(ciphertext);
+      const mac = await hmacSha512(macKey, await arcV2MacData(bundle, salt, nonce, ciphertext));
+      bundle.mac_b64 = bytesToBase64(mac);
+      return bundle;
     }
 
-    async function decryptSeedBundle(bundle, password) {
-      if (!bundle) throw new Error('Unsupported encrypted seed file format.');
+    async function decryptV2(bundle, password) {
+      if (bundle.magic !== ARC_MAGIC || bundle.version !== 2 || bundle.format !== ARC_V2_FORMAT) {
+        throw new Error('Unsupported encrypted seed file format.');
+      }
+      if (!bundle.kdf || !bundle.cipher) throw new Error('Encrypted seed file is malformed.');
+      if (bundle.kdf.name !== 'PBKDF2' || bundle.kdf.hash !== 'SHA-512') throw new Error('Unsupported encrypted seed file KDF.');
+      if (bundle.cipher.name !== 'HMAC-SHA512-CTR') throw new Error('Unsupported encrypted seed file cipher.');
+      const iterations = Number(bundle.kdf.iterations);
+      const salt = b64DecodeRequired(bundle.kdf.salt_b64, 'salt_b64', ARC_V2_SALT_BYTES);
+      const nonce = b64DecodeRequired(bundle.cipher.nonce_b64, 'nonce_b64', ARC_V2_NONCE_BYTES);
+      const ciphertext = b64DecodeRequired(bundle.ciphertext_b64, 'ciphertext_b64');
+      const expectedMac = b64DecodeRequired(bundle.mac_b64, 'mac_b64', 64);
+      const { encKey, macKey } = await arcV2Keys(password, salt, iterations);
+      const actualMac = await hmacSha512(macKey, await arcV2MacData(bundle, salt, nonce, ciphertext));
+      if (!equalBytes(actualMac, expectedMac)) {
+        throw new Error('Unable to decrypt seed file. The password may be incorrect or the file may be corrupted.');
+      }
+      const decrypted = await arcV2StreamCrypt(ciphertext, encKey, nonce);
+      const payload = JSON.parse(new TextDecoder().decode(decrypted));
+      return normalizeDecryptedMnemonic(payload);
+    }
+
+    async function decryptV1(bundle, password) {
       if (bundle.format === 'arculus-encrypted-seed-v2' || bundle.format === 'arculus-encrypted-seed-python-v1') {
         const salt = base64ToBytes(bundle.kdf?.salt_b64 || '');
         const nonce = base64ToBytes(bundle.cipher?.nonce_b64 || '');
@@ -1081,9 +1327,7 @@
         }
         const decrypted = await xorStreamCrypt(ciphertext, encKey, nonce);
         const payload = JSON.parse(new TextDecoder().decode(decrypted));
-        const mnemonic = normalizeMnemonicWords(payload.mnemonic || '').join(' ');
-        if (!mnemonic) throw new Error('Encrypted seed file did not contain a mnemonic.');
-        return mnemonic;
+        return normalizeDecryptedMnemonic(payload);
       }
       if (bundle.format === 'arculus-encrypted-seed-v1') {
         const salt = base64ToBytes(bundle.kdf?.salt_b64 || '');
@@ -1106,11 +1350,23 @@
           throw new Error('Unable to decrypt seed file. The password may be incorrect or the file may be corrupted.');
         }
         const payload = JSON.parse(new TextDecoder().decode(decrypted));
-        const mnemonic = normalizeMnemonicWords(payload.mnemonic || '').join(' ');
-        if (!mnemonic) throw new Error('Encrypted seed file did not contain a mnemonic.');
-        return mnemonic;
+        return normalizeDecryptedMnemonic(payload);
       }
       throw new Error('Unsupported encrypted seed file format.');
+    }
+
+    async function decrypt(bundle, password) {
+      if (!bundle || typeof bundle !== 'object') throw new Error('Unsupported encrypted seed file format.');
+      if (bundle.magic === ARC_MAGIC || bundle.version === 2) return decryptV2(bundle, password);
+      return decryptV1(bundle, password);
+    }
+
+    async function encryptSeedBundle(mnemonic, password) {
+      return encrypt_v2(mnemonic, password);
+    }
+
+    async function decryptSeedBundle(bundle, password) {
+      return decrypt(bundle, password);
     }
 
     async function handleEncryptExportSeed() {
@@ -1153,6 +1409,52 @@
       applyImportedSeed(mnemonic, file.name);
     }
 
+    async function copyTextToClipboard(text) {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      const temp = document.createElement('textarea');
+      temp.value = text;
+      temp.setAttribute('readonly', '');
+      temp.style.position = 'fixed';
+      temp.style.opacity = '0';
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand('copy');
+      temp.remove();
+    }
+
+    async function handleCopySeed() {
+      const mnemonic = getActiveMnemonic();
+      const words = normalizeMnemonicWords(mnemonic);
+      if (!words.length) throw new Error('No seed phrase is currently loaded.');
+      const ok = window.confirm('Copying a seed phrase to the clipboard is not recommended because other apps or malware may be able to read it. Only continue if you understand the risk.');
+      if (!ok) {
+        uiStatus('Copy seed canceled.', '');
+        return;
+      }
+      await copyTextToClipboard(words.join(' '));
+      uiStatus('Seed phrase copied to clipboard.', 'valid');
+    }
+
+    async function handleGenerateSeed() {
+      clearImportedSeed({ silent: true });
+      const wordCount = getSeedLen();
+      const mnemonic = await generateRandomMnemonic(wordCount);
+      syncBusy = true;
+      try {
+        els.mnemonic.value = mnemonic;
+        setSeedLen(wordCount);
+        setWordBoxesFromMnemonic();
+        styleMnemonicBox();
+      } finally {
+        syncBusy = false;
+      }
+      scheduleRootFingerprintRefresh();
+      uiStatus(`Generated random ${wordCount}-word mnemonic.`, 'valid');
+    }
+
     function buildWordInputs() {
       for (let i = 0; i < 24; i++) {
         const cell = document.createElement('div');
@@ -1173,8 +1475,8 @@
       }
     }
 
-    function bindUI() {
-      els.mnemonic.addEventListener('input', handleMnemonicInput);
+	    function bindUI() {
+	      els.mnemonic.addEventListener('input', handleMnemonicInput);
       document.querySelectorAll('input[name="seedLen"]').forEach(r => r.addEventListener('change', () => {
         refreshWordEnabled();
         if (importedSeedState) return;
@@ -1190,9 +1492,10 @@
           els.scriptType.value = 'P2WPKH';
         }
       });
-      els.passphrase.addEventListener('input', scheduleRootFingerprintRefresh);
-
-      els.validateBtn.addEventListener('click', async () => {
+	      els.passphrase.addEventListener('input', scheduleRootFingerprintRefresh);
+	      els.darkModeToggle.addEventListener('change', () => applyDarkMode(els.darkModeToggle.checked));
+	
+	      els.validateBtn.addEventListener('click', async () => {
         try {
           const res = await analyzeMnemonic(getActiveMnemonic(), els.passphrase.value);
           setRootFingerprintDisplay(res.root_fingerprint || '');
@@ -1224,6 +1527,7 @@
         try {
           uiStatus('Deriving...');
           const data = await deriveOutput();
+          lastDerivedOutput = data;
           els.output.value = JSON.stringify(data, null, 2);
           uiStatus('Derivation complete.', 'valid');
         } catch (e) {
@@ -1241,11 +1545,27 @@
           els.output.value = JSON.stringify({ error: e.message }, null, 2);
         }
       });
-      els.importSeedBtn.addEventListener('click', () => {
-        els.importSeedFile.value = '';
-        els.importSeedFile.click();
-      });
-      els.importSeedFile.addEventListener('change', async () => {
+	      els.importSeedBtn.addEventListener('click', () => {
+	        els.importSeedFile.value = '';
+	        els.importSeedFile.click();
+	      });
+	      els.copySeedBtn.addEventListener('click', async () => {
+	        try {
+	          await handleCopySeed();
+	        } catch (e) {
+	          uiStatus(`Error: ${e.message}`, 'invalid');
+	          els.output.value = JSON.stringify({ error: e.message }, null, 2);
+	        }
+	      });
+	      els.generateSeedBtn.addEventListener('click', async () => {
+	        try {
+	          await handleGenerateSeed();
+	        } catch (e) {
+	          uiStatus(`Error: ${e.message}`, 'invalid');
+	          els.output.value = JSON.stringify({ error: e.message }, null, 2);
+	        }
+	      });
+	      els.importSeedFile.addEventListener('change', async () => {
         try {
           await handleImportSeedFile(els.importSeedFile.files?.[0]);
         } catch (e) {
@@ -1268,10 +1588,15 @@
       scheduleRootFingerprintRefresh();
     }
 
-    (function init() {
-      buildWordInputs();
-      bindUI();
-      refreshWordEnabled();
+	    (function init() {
+	      buildWordInputs();
+	      bindUI();
+	      try {
+	        applyDarkMode(localStorage.getItem('arculusDarkMode') === '1');
+	      } catch {
+	        applyDarkMode(false);
+	      }
+	      refreshWordEnabled();
       styleMnemonicBox();
       uiStatus('Ready');
     })();

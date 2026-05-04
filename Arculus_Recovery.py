@@ -6,14 +6,17 @@ No external dependencies (Python standard library only).
 
 import argparse
 import base64
+import csv
 import hashlib
 import hmac
+import io
 import json
 import os
 import re
 import sys
 import unicodedata
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Dict, List, Tuple
 
 
@@ -2344,6 +2347,25 @@ def bip39_validate(mnemonic: str) -> Tuple[bool, bool, str]:
     return True, True, "Mnemonic is valid BIP39 (English word list + checksum)."
 
 
+def generate_random_mnemonic(word_count: int) -> str:
+    if word_count not in (12, 24):
+        raise ValueError("Only 12-word and 24-word mnemonics are supported.")
+    checksum_bits = word_count // 3
+    entropy_bits = word_count * 11 - checksum_bits
+    entropy = os.urandom(entropy_bits // 8)
+    checksum = int.from_bytes(sha256(entropy), "big") >> (256 - checksum_bits)
+    bits = (int.from_bytes(entropy, "big") << checksum_bits) | checksum
+    words = [None] * word_count
+    for i in range(word_count - 1, -1, -1):
+        words[i] = BIP39_WORDS[bits & 0x7FF]
+        bits >>= 11
+    mnemonic = " ".join(words)
+    words_ok, checksum_ok, _ = bip39_validate(mnemonic)
+    if not (words_ok and checksum_ok):
+        raise ValueError("Generated mnemonic failed validation.")
+    return mnemonic
+
+
 def detect_seed_format(word_count: int, words_ok: bool, checksum_ok: bool) -> Tuple[str, str]:
     if word_count in (12, 24) and words_ok and checksum_ok:
         return "HD wallet mnemonic", "BIP-39 mnemonic (English)"
@@ -2429,7 +2451,197 @@ def xor_stream_crypt(data: bytes, key: bytes, nonce: bytes) -> bytes:
     return bytes(a ^ b for a, b in zip(data, out[: len(data)]))
 
 
+ARC_MAGIC = "ARCULUS-ARC"
+ARC_V2_FORMAT = "arculus-encrypted-seed-v2"
+ARC_V2_KDF_ITERATIONS = 600000
+ARC_V2_SALT_BYTES = 32
+ARC_V2_NONCE_BYTES = 24
+
+
+def b64encode_bytes(data: bytes) -> str:
+    return base64.b64encode(data).decode("ascii")
+
+
+def b64decode_required(value: object, field_name: str, expected_len: int | None = None) -> bytes:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"Encrypted seed file is missing {field_name}.")
+    try:
+        data = base64.b64decode(value, validate=True)
+    except Exception as e:
+        raise ValueError(f"Encrypted seed file has invalid {field_name}.") from e
+    if expected_len is not None and len(data) != expected_len:
+        raise ValueError(f"Encrypted seed file has invalid {field_name} length.")
+    return data
+
+
+def arc_v2_stream_crypt(data: bytes, key: bytes, nonce: bytes) -> bytes:
+    """Encrypt/decrypt with an HMAC-SHA512 counter stream.
+
+    Python stdlib has no AES-GCM or block cipher. This keeps the implementation
+    dependency-free while pairing the stream with a separate HMAC-SHA512 tag.
+    """
+    out = bytearray()
+    counter = 0
+    while len(out) < len(data):
+        msg = b"Arculus ARC v2 stream\x00" + nonce + counter.to_bytes(8, "big")
+        out.extend(hmac.new(key, msg, hashlib.sha512).digest())
+        counter += 1
+    return bytes(a ^ b for a, b in zip(data, out[: len(data)]))
+
+
+def arc_v2_keys(password: str, salt: bytes, iterations: int) -> Tuple[bytes, bytes]:
+    if iterations < ARC_V2_KDF_ITERATIONS:
+        raise ValueError("Encrypted seed file uses too few KDF iterations.")
+    password_bytes = normalize_nfkd(password).encode("utf-8")
+    master_key = hashlib.pbkdf2_hmac("sha512", password_bytes, salt, iterations, dklen=64)
+    enc_key = hmac.new(master_key, b"Arculus ARC v2 encryption key", hashlib.sha512).digest()
+    mac_key = hmac.new(master_key, b"Arculus ARC v2 authentication key", hashlib.sha512).digest()
+    return enc_key, mac_key
+
+
+def arc_v2_mac_data(bundle: Dict, salt: bytes, nonce: bytes, ciphertext: bytes) -> bytes:
+    kdf = bundle.get("kdf", {})
+    cipher = bundle.get("cipher", {})
+    parts = [
+        b"Arculus ARC v2 MAC",
+        str(bundle.get("magic", "")).encode("utf-8"),
+        str(bundle.get("format", "")).encode("utf-8"),
+        str(bundle.get("version", "")).encode("utf-8"),
+        str(bundle.get("created_at", "")).encode("utf-8"),
+        str(kdf.get("name", "")).encode("utf-8"),
+        str(kdf.get("hash", "")).encode("utf-8"),
+        str(kdf.get("iterations", "")).encode("utf-8"),
+        str(cipher.get("name", "")).encode("utf-8"),
+        salt,
+        nonce,
+        ciphertext,
+    ]
+    return b"\x00".join(parts)
+
+
+def normalize_decrypted_mnemonic(payload: Dict) -> str:
+    if not isinstance(payload, dict):
+        raise ValueError("Encrypted seed file contents are invalid.")
+    mnemonic = " ".join(normalize_mnemonic_words(str(payload.get("mnemonic", ""))))
+    if not mnemonic:
+        raise ValueError("Encrypted seed file did not contain a mnemonic.")
+    expected_count = payload.get("word_count")
+    if expected_count is not None and int(expected_count) != len(normalize_mnemonic_words(mnemonic)):
+        raise ValueError("Encrypted seed file word count does not match mnemonic.")
+    return mnemonic
+
+
+def encrypt_v2(mnemonic: str, password: str) -> Dict:
+    """Create a modern `.arc` bundle using PBKDF2-SHA512 and HMAC-SHA512 AE."""
+    words = normalize_mnemonic_words(mnemonic)
+    if len(words) not in (12, 24):
+        raise ValueError("Only 12-word and 24-word mnemonics can be encrypted.")
+    salt = os.urandom(ARC_V2_SALT_BYTES)
+    nonce = os.urandom(ARC_V2_NONCE_BYTES)
+    created_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    bundle = {
+        "magic": ARC_MAGIC,
+        "format": ARC_V2_FORMAT,
+        "version": 2,
+        "created_at": created_at,
+        "kdf": {
+            "name": "PBKDF2",
+            "hash": "SHA-512",
+            "iterations": ARC_V2_KDF_ITERATIONS,
+            "salt_b64": b64encode_bytes(salt),
+        },
+        "cipher": {
+            "name": "HMAC-SHA512-CTR",
+            "nonce_b64": b64encode_bytes(nonce),
+        },
+    }
+    payload = {
+        "mnemonic": " ".join(words),
+        "word_count": len(words),
+        "created_at": created_at,
+    }
+    plaintext = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    enc_key, mac_key = arc_v2_keys(password, salt, ARC_V2_KDF_ITERATIONS)
+    ciphertext = arc_v2_stream_crypt(plaintext, enc_key, nonce)
+    bundle["ciphertext_b64"] = b64encode_bytes(ciphertext)
+    mac = hmac.new(mac_key, arc_v2_mac_data(bundle, salt, nonce, ciphertext), hashlib.sha512).digest()
+    bundle["mac_b64"] = b64encode_bytes(mac)
+    return bundle
+
+
+def decrypt_v2(bundle: Dict, password: str) -> str:
+    if bundle.get("magic") != ARC_MAGIC or bundle.get("version") != 2 or bundle.get("format") != ARC_V2_FORMAT:
+        raise ValueError("Unsupported encrypted seed file format.")
+    kdf = bundle.get("kdf")
+    cipher = bundle.get("cipher")
+    if not isinstance(kdf, dict) or not isinstance(cipher, dict):
+        raise ValueError("Encrypted seed file is malformed.")
+    if kdf.get("name") != "PBKDF2" or kdf.get("hash") != "SHA-512":
+        raise ValueError("Unsupported encrypted seed file KDF.")
+    if cipher.get("name") != "HMAC-SHA512-CTR":
+        raise ValueError("Unsupported encrypted seed file cipher.")
+    try:
+        iterations = int(kdf.get("iterations"))
+    except Exception as e:
+        raise ValueError("Encrypted seed file has invalid KDF iterations.") from e
+    salt = b64decode_required(kdf.get("salt_b64"), "salt_b64", ARC_V2_SALT_BYTES)
+    nonce = b64decode_required(cipher.get("nonce_b64"), "nonce_b64", ARC_V2_NONCE_BYTES)
+    ciphertext = b64decode_required(bundle.get("ciphertext_b64"), "ciphertext_b64")
+    expected_mac = b64decode_required(bundle.get("mac_b64"), "mac_b64", 64)
+    enc_key, mac_key = arc_v2_keys(password, salt, iterations)
+    actual_mac = hmac.new(mac_key, arc_v2_mac_data(bundle, salt, nonce, ciphertext), hashlib.sha512).digest()
+    if not hmac.compare_digest(actual_mac, expected_mac):
+        raise ValueError("Unable to decrypt seed file. The password may be incorrect or the file may be corrupted.")
+    plaintext = arc_v2_stream_crypt(ciphertext, enc_key, nonce)
+    try:
+        payload = json.loads(plaintext.decode("utf-8"))
+    except Exception as e:
+        raise ValueError("Encrypted seed file contents are invalid.") from e
+    return normalize_decrypted_mnemonic(payload)
+
+
+def decrypt_v1(bundle: Dict, password: str) -> str:
+    if bundle.get("format") not in ("arculus-encrypted-seed-v2", "arculus-encrypted-seed-python-v1"):
+        raise ValueError("Unsupported encrypted seed file format.")
+    try:
+        iterations = int(bundle["kdf"]["iterations"])
+        salt = base64.b64decode(bundle["kdf"]["salt_b64"])
+        nonce = base64.b64decode(bundle["cipher"]["nonce_b64"])
+        ciphertext = base64.b64decode(bundle["ciphertext_b64"])
+        expected_mac = base64.b64decode(bundle["mac_b64"])
+    except Exception as e:
+        raise ValueError("Encrypted seed file is malformed.") from e
+    password_bytes = normalize_nfkd(password).encode("utf-8")
+    derived = hashlib.pbkdf2_hmac("sha256", password_bytes, salt, iterations, dklen=64)
+    enc_key, mac_key = derived[:32], derived[32:]
+    actual_mac = hmac.new(mac_key, nonce + ciphertext, hashlib.sha256).digest()
+    if not hmac.compare_digest(actual_mac, expected_mac):
+        raise ValueError("Unable to decrypt seed file. The password may be incorrect or the file may be corrupted.")
+    plaintext = xor_stream_crypt(ciphertext, enc_key, nonce)
+    try:
+        payload = json.loads(plaintext.decode("utf-8"))
+    except Exception as e:
+        raise ValueError("Encrypted seed file contents are invalid.") from e
+    return normalize_decrypted_mnemonic(payload)
+
+
 def encrypt_seed_bundle(mnemonic: str, password: str) -> Dict:
+    return encrypt_v2(mnemonic, password)
+
+
+def decrypt_seed_bundle(bundle: Dict, password: str) -> str:
+    return decrypt(bundle, password)
+
+
+def decrypt(bundle: Dict, password: str) -> str:
+    if not isinstance(bundle, dict):
+        raise ValueError("Unsupported encrypted seed file format.")
+    if bundle.get("magic") == ARC_MAGIC or bundle.get("version") == 2:
+        return decrypt_v2(bundle, password)
+    return decrypt_v1(bundle, password)
+
+
+def encrypt_seed_bundle_v1(mnemonic: str, password: str) -> Dict:
     salt = os.urandom(16)
     nonce = os.urandom(16)
     password_bytes = normalize_nfkd(password).encode("utf-8")
@@ -2458,34 +2670,6 @@ def encrypt_seed_bundle(mnemonic: str, password: str) -> Dict:
         "ciphertext_b64": base64.b64encode(ciphertext).decode("ascii"),
         "mac_b64": base64.b64encode(mac).decode("ascii"),
     }
-
-
-def decrypt_seed_bundle(bundle: Dict, password: str) -> str:
-    if bundle.get("format") not in ("arculus-encrypted-seed-v2", "arculus-encrypted-seed-python-v1"):
-        raise ValueError("Unsupported encrypted seed file format.")
-    try:
-        iterations = int(bundle["kdf"]["iterations"])
-        salt = base64.b64decode(bundle["kdf"]["salt_b64"])
-        nonce = base64.b64decode(bundle["cipher"]["nonce_b64"])
-        ciphertext = base64.b64decode(bundle["ciphertext_b64"])
-        expected_mac = base64.b64decode(bundle["mac_b64"])
-    except Exception as e:
-        raise ValueError("Encrypted seed file is malformed.") from e
-    password_bytes = normalize_nfkd(password).encode("utf-8")
-    derived = hashlib.pbkdf2_hmac("sha256", password_bytes, salt, iterations, dklen=64)
-    enc_key, mac_key = derived[:32], derived[32:]
-    actual_mac = hmac.new(mac_key, nonce + ciphertext, hashlib.sha256).digest()
-    if not hmac.compare_digest(actual_mac, expected_mac):
-        raise ValueError("Unable to decrypt seed file. The password may be incorrect or the file may be corrupted.")
-    plaintext = xor_stream_crypt(ciphertext, enc_key, nonce)
-    try:
-        payload = json.loads(plaintext.decode("utf-8"))
-    except Exception as e:
-        raise ValueError("Encrypted seed file contents are invalid.") from e
-    mnemonic = " ".join(normalize_mnemonic_words(payload.get("mnemonic", "")))
-    if not mnemonic:
-        raise ValueError("Encrypted seed file did not contain a mnemonic.")
-    return mnemonic
 
 
 def parse_path(path: str) -> List[int]:
@@ -2562,8 +2746,9 @@ def ckd_priv(node: ExtPrv, index: int) -> ExtPrv:
     data = (b"\x00" + ser256(node.k) if (index & HARDENED) else ser_pubkey(node.pub())) + ser32(index)
     I = hmac_sha512(node.c, data)
     IL, IR = I[:32], I[32:]
-    child_k = (int.from_bytes(IL, "big") + node.k) % N
-    if child_k == 0:
+    il_int = int.from_bytes(IL, "big")
+    child_k = (il_int + node.k) % N
+    if il_int >= N or child_k == 0:
         raise ValueError("invalid child key")
     fp = hash160(ser_pubkey(node.pub()))[:4]
     return ExtPrv(k=child_k, c=IR, depth=node.depth + 1, parent_fp=fp, child_num=index)
@@ -2658,6 +2843,8 @@ def derive_account(mnemonic: str, passphrase: str, derivation: str, script_type:
     y_versions = netcfg["p2wpkh-p2sh"]
     z_versions = netcfg["p2wpkh"]
     tr_versions = netcfg["p2tr"]
+    if st == "p2tr" and not tr_versions:
+        raise ValueError("taproot is not supported for this coin/network")
 
     result = {
         "derivation": derivation,
@@ -2765,7 +2952,7 @@ def run_derivation(
 def launch_gui() -> None:
     import tkinter as tk
     import tkinter.font as tkfont
-    from tkinter import filedialog, simpledialog
+    from tkinter import filedialog, messagebox, simpledialog
     from tkinter import ttk
     from tkinter.scrolledtext import ScrolledText
 
@@ -2783,6 +2970,18 @@ def launch_gui() -> None:
     bold_font.configure(weight="bold")
     valid_color = "#1b8f2f"
     invalid_color = "#b71c1c"
+    current_theme = {
+        "colors": {
+            "bg": "#f7f8fa",
+            "card": "#ffffff",
+            "field": "#ffffff",
+            "text": "#111827",
+            "muted": "#6b7280",
+            "button": "#ffffff",
+            "border": "#d1d5db",
+            "select": "#dbeafe",
+        }
+    }
 
     ttk.Label(frm, text="Mnemonic (12 or 24 words):").grid(row=0, column=0, sticky="w")
     mnemonic_txt = ScrolledText(frm, height=4, wrap=tk.WORD)
@@ -2796,6 +2995,26 @@ def launch_gui() -> None:
     ttk.Label(seed_len_row, text="Seed length:").pack(side=tk.LEFT)
     ttk.Radiobutton(seed_len_row, text="12 words", value=12, variable=seed_len_var).pack(side=tk.LEFT, padx=(8, 0))
     ttk.Radiobutton(seed_len_row, text="24 words", value=24, variable=seed_len_var).pack(side=tk.LEFT, padx=(8, 0))
+    dark_mode_var = tk.BooleanVar(value=False)
+    copy_seed_btn = tk.Button(seed_len_row, text="Copy Seed", bg="#dc2626", fg="#111827", activebackground="#b91c1c", activeforeground="#111827")
+    copy_seed_btn.pack(side=tk.LEFT, padx=(14, 0))
+    generate_seed_btn = tk.Button(seed_len_row, text="Generate Random Seed", bg="#22c55e", fg="#111827", activebackground="#16a34a", activeforeground="#111827")
+    generate_seed_btn.pack(side=tk.LEFT, padx=(8, 0))
+    dark_mode_btn = tk.Checkbutton(
+        seed_len_row,
+        text="Dark Mode",
+        variable=dark_mode_var,
+        indicatoron=False,
+        relief=tk.RAISED,
+        bg="#d1d5db",
+        fg="#111827",
+        activebackground="#c4c9d1",
+        activeforeground="#111827",
+        selectcolor="#d1d5db",
+        padx=10,
+        pady=6,
+    )
+    dark_mode_btn.pack(side=tk.LEFT, padx=(8, 0))
 
     ttk.Label(frm, text="Numbered Words:").grid(row=2, column=0, sticky="nw")
     words_frame = ttk.Frame(frm)
@@ -2865,6 +3084,8 @@ def launch_gui() -> None:
     imported_seed_state = {"mnemonic": None, "source_name": None}
     showing_imported_seed = {"active": False}
     root_fingerprint_var = tk.StringVar(value="Root Fingerprint:")
+    export_format_var = tk.StringVar(value="JSON")
+    last_derived_state = {"data": None}
 
     def install_clipboard_bindings(widget: tk.Widget, is_text_widget: bool) -> None:
         menu = tk.Menu(root, tearoff=0)
@@ -2909,6 +3130,39 @@ def launch_gui() -> None:
 
     def set_root_fingerprint_display(fingerprint: str = "") -> None:
         root_fingerprint_var.set(f"Root Fingerprint: {fingerprint}" if fingerprint else "Root Fingerprint:")
+
+    def flatten_derived_rows(data: Dict) -> List[Dict]:
+        rows = []
+        for account in data.get("accounts", []):
+            account_fields = {k: v for k, v in account.items() if k not in ("receiving", "change")}
+            for branch in ("receiving", "change"):
+                for item in account.get(branch, []):
+                    rows.append(
+                        {
+                            "coin": data.get("coin"),
+                            "network": data.get("network"),
+                            "word_count": data.get("word_count"),
+                            "branch": branch,
+                            **account_fields,
+                            **item,
+                        }
+                    )
+        return rows
+
+    def derived_to_csv(data: Dict) -> str:
+        rows = flatten_derived_rows(data)
+        if not rows:
+            return ""
+        headers = []
+        for row in rows:
+            for key in row:
+                if key not in headers:
+                    headers.append(key)
+        out = io.StringIO()
+        writer = csv.DictWriter(out, fieldnames=headers, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(rows)
+        return out.getvalue()
 
     def get_active_mnemonic() -> str:
         return imported_seed_state["mnemonic"] or mnemonic_txt.get("1.0", tk.END).strip()
@@ -3010,13 +3264,21 @@ def launch_gui() -> None:
     sync_state = {"last_main_words": []}
 
     def style_entry_for_word(entry: tk.Entry, raw_word: str, enabled: bool) -> None:
+        theme = current_theme["colors"]
         if not enabled:
-            entry.configure(state="disabled", fg="gray", font=normal_font)
+            entry.configure(
+                state="disabled",
+                fg=theme["muted"],
+                disabledforeground=theme["muted"],
+                bg=theme["field"],
+                font=normal_font,
+                insertbackground=theme["text"],
+            )
             return
-        entry.configure(state="normal")
+        entry.configure(state="normal", bg=theme["field"], insertbackground=theme["text"])
         word = normalize_nfkd(raw_word.strip().lower())
         if word == "":
-            entry.configure(fg="black", font=normal_font)
+            entry.configure(fg=theme["text"], font=normal_font)
         elif word in BIP39_WORD_INDEX:
             entry.configure(fg=valid_color, font=bold_font)
         else:
@@ -3175,6 +3437,7 @@ def launch_gui() -> None:
                 coin=coin_label_to_value.get(coin_var.get(), "bitcoin"),
                 testnet=False,
             )
+            last_derived_state["data"] = data
             status_var.set("Derivation complete.")
             set_output(json.dumps(data, indent=2))
         except Exception as e:
@@ -3190,22 +3453,33 @@ def launch_gui() -> None:
             script_var.set("P2WPKH")
 
     def on_export() -> None:
-        text = output.get("1.0", tk.END).strip()
-        if not text:
-            status_var.set("Nothing to export. Derive or validate first.")
+        data = last_derived_state["data"]
+        if not data:
+            status_var.set("Nothing to export. Derive keys and addresses first.")
             return
+        fmt = export_format_var.get().lower()
+        if fmt == "csv":
+            text = derived_to_csv(data)
+            defaultextension = ".csv"
+            filetypes = [("CSV files", "*.csv"), ("All files", "*.*")]
+            initialfile = "Arculus_Derived_Keys_Addresses.csv"
+        else:
+            text = json.dumps(data, indent=2) + "\n"
+            defaultextension = ".json"
+            filetypes = [("JSON files", "*.json"), ("All files", "*.*")]
+            initialfile = "Arculus_Derived_Keys_Addresses.json"
         path = filedialog.asksaveasfilename(
-            title="Export Output",
-            defaultextension=".txt",
-            filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
-            initialfile="Arculus_Recovery_Output.txt",
+            title="Export Derived Keys/Addresses",
+            defaultextension=defaultextension,
+            filetypes=filetypes,
+            initialfile=initialfile,
         )
         if not path:
             status_var.set("Export canceled.")
             return
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(text + "\n")
-        status_var.set(f"Exported to: {path}")
+        with open(path, "w", encoding="utf-8", newline="") as f:
+            f.write(text)
+        status_var.set(f"Exported derived keys/addresses as {fmt.upper()} to: {path}")
 
     def on_encrypt_export_seed() -> None:
         try:
@@ -3269,11 +3543,59 @@ def launch_gui() -> None:
             status_var.set(f"Error: {e}")
             set_output(json.dumps({"error": str(e)}, indent=2))
 
+    def on_copy_seed() -> None:
+        try:
+            mnemonic = get_active_mnemonic()
+            words = normalize_mnemonic_words(mnemonic)
+            if not words:
+                raise ValueError("No seed phrase is currently loaded.")
+            ok = messagebox.askokcancel(
+                "Copy Seed",
+                "Copying a seed phrase to the clipboard is not recommended because other apps or malware may be able to read it. "
+                "Only continue if you understand the risk.",
+            )
+            if not ok:
+                status_var.set("Copy seed canceled.")
+                return
+            root.clipboard_clear()
+            root.clipboard_append(" ".join(words))
+            root.update()
+            status_var.set("Seed phrase copied to clipboard.")
+        except Exception as e:
+            status_var.set(f"Error: {e}")
+            set_output(json.dumps({"error": str(e)}, indent=2))
+
+    def on_generate_seed() -> None:
+        try:
+            clear_imported_seed(silent=True)
+            word_count = seed_len_var.get()
+            mnemonic = generate_random_mnemonic(word_count)
+            sync_guard["busy"] = True
+            try:
+                mnemonic_txt.delete("1.0", tk.END)
+                mnemonic_txt.insert("1.0", mnemonic)
+                seed_len_var.set(word_count)
+                set_entries_from_main_text()
+                highlight_main_text_words()
+                mnemonic_txt.edit_modified(False)
+                sync_state["last_main_words"] = normalize_mnemonic_words(mnemonic)
+            finally:
+                sync_guard["busy"] = False
+            refresh_root_fingerprint_display()
+            status_var.set(f"Generated random {word_count}-word mnemonic.")
+        except Exception as e:
+            status_var.set(f"Error: {e}")
+            set_output(json.dumps({"error": str(e)}, indent=2))
+
+    copy_seed_btn.configure(command=on_copy_seed)
+    generate_seed_btn.configure(command=on_generate_seed)
+
     btns = ttk.Frame(frm)
     btns.grid(row=9, column=0, columnspan=2, sticky="w", pady=(8, 0))
     ttk.Button(btns, text="Validate Mnemonic", command=on_validate).pack(side=tk.LEFT)
     ttk.Button(btns, text="Derive Keys + Addresses", command=on_derive).pack(side=tk.LEFT, padx=(8, 0))
     ttk.Button(btns, text="Export", command=on_export).pack(side=tk.LEFT, padx=(8, 0))
+    ttk.Combobox(btns, textvariable=export_format_var, values=["JSON", "CSV"], state="readonly", width=6).pack(side=tk.LEFT, padx=(4, 0))
     ttk.Button(btns, text="Encrypt/Export Seed", command=on_encrypt_export_seed).pack(side=tk.LEFT, padx=(8, 0))
     ttk.Button(btns, text="Import Seed", command=on_import_seed).pack(side=tk.LEFT, padx=(8, 0))
     show_seed_btn = ttk.Button(btns, text="Show Seed")
@@ -3281,12 +3603,86 @@ def launch_gui() -> None:
     root_fingerprint_entry = ttk.Entry(btns, textvariable=root_fingerprint_var, width=28, state="readonly")
     root_fingerprint_entry.pack(side=tk.LEFT, padx=(8, 0))
 
+    def apply_dark_mode(*_args) -> None:
+        dark = dark_mode_var.get()
+        colors = (
+            {
+                "bg": "#111827",
+                "card": "#1f2937",
+                "field": "#111827",
+                "text": "#f9fafb",
+                "muted": "#9ca3af",
+                "button": "#374151",
+                "border": "#4b5563",
+                "select": "#1d4ed8",
+            }
+            if dark
+            else {
+                "bg": "#f7f8fa",
+                "card": "#ffffff",
+                "field": "#ffffff",
+                "text": "#111827",
+                "muted": "#6b7280",
+                "button": "#ffffff",
+                "border": "#d1d5db",
+                "select": "#dbeafe",
+            }
+        )
+        current_theme["colors"] = colors
+        style = ttk.Style(root)
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            pass
+        style.configure(".", background=colors["bg"], foreground=colors["text"])
+        style.configure("TFrame", background=colors["bg"])
+        style.configure("TLabel", background=colors["bg"], foreground=colors["text"])
+        style.configure("TButton", background=colors["button"], foreground=colors["text"])
+        style.configure("TCheckbutton", background=colors["bg"], foreground=colors["text"])
+        style.configure("TRadiobutton", background=colors["bg"], foreground=colors["text"])
+        style.configure("TEntry", fieldbackground=colors["field"], foreground=colors["text"])
+        style.configure("TCombobox", fieldbackground=colors["field"], foreground=colors["text"])
+        root.configure(bg=colors["bg"])
+        for widget in (frm, seed_len_row, words_frame, btns):
+            widget.configure(style="TFrame")
+        for text_widget in (mnemonic_txt, output):
+            text_widget.configure(
+                bg=colors["field"],
+                fg=colors["text"],
+                insertbackground=colors["text"],
+                selectbackground=colors["select"],
+            )
+        copy_seed_btn.configure(
+            bg="#dc2626",
+            fg="#111827",
+            activebackground="#b91c1c",
+            activeforeground="#111827",
+        )
+        generate_seed_btn.configure(
+            bg="#22c55e",
+            fg="#111827",
+            activebackground="#16a34a",
+            activeforeground="#111827",
+        )
+        dark_mode_btn.configure(
+            bg="#4b5563" if dark else "#d1d5db",
+            fg="#ffffff" if dark else "#111827",
+            activebackground="#374151" if dark else "#c4c9d1",
+            activeforeground="#ffffff" if dark else "#111827",
+            selectcolor="#4b5563" if dark else "#d1d5db",
+        )
+        mnemonic_txt.tag_configure("valid_word", foreground=valid_color, font=bold_font)
+        mnemonic_txt.tag_configure("invalid_word", foreground=invalid_color, font=bold_font)
+        refresh_numbered_entries_style()
+        highlight_main_text_words()
+
     mnemonic_txt.bind("<KeyRelease>", on_main_text_change)
     mnemonic_txt.bind("<<Modified>>", on_mnemonic_modified)
     for e in word_entries:
         e.bind("<KeyRelease>", on_entry_change)
         e.bind("<FocusOut>", on_entry_change)
     seed_len_var.trace_add("write", lambda *_: on_seed_length_change())
+    dark_mode_var.trace_add("write", apply_dark_mode)
     passphrase_var.trace_add("write", refresh_root_fingerprint_display)
     coin_combo.bind("<<ComboboxSelected>>", on_coin_change)
     show_seed_btn.bind("<ButtonPress-1>", reveal_imported_seed)
@@ -3302,6 +3698,7 @@ def launch_gui() -> None:
     install_clipboard_bindings(root_fingerprint_entry, is_text_widget=False)
 
     on_seed_length_change()
+    apply_dark_mode()
     highlight_main_text_words()
     sync_state["last_main_words"] = normalize_mnemonic_words(mnemonic_txt.get("1.0", tk.END).strip())
     mnemonic_txt.edit_modified(False)
