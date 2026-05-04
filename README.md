@@ -11,11 +11,11 @@ This project is designed to run fully offline and uses only local computation.
 
 Light mode:
 
-![Arculus Recovery light mode](docs/screenshots/arculus-light.png)
+![Arculus Recovery light mode](Documentation/screenshots/arculus-light.png)
 
 Dark mode:
 
-![Arculus Recovery dark mode](docs/screenshots/arculus-dark.png)
+![Arculus Recovery dark mode](Documentation/screenshots/arculus-dark.png)
 
 ## Features
 
