@@ -50,10 +50,13 @@ Dark mode:
   - Litecoin
   - Dogecoin
 - Encrypted seed export/import
-- Export derived keys/addresses as JSON or CSV
+- Export derived keys/addresses:
+  - HTML: JSON, CSV, or TXT
+  - Python GUI: JSON, CSV, or TXT
 - Hidden imported-seed workflow
 - Press-and-hold seed reveal
 - Inline root fingerprint display
+- Settings dialog with Dark Mode toggle
 
 ## Derivation Paths
 
@@ -103,9 +106,9 @@ shasum -a 256 Arculus_Recovery.html index.html Arculus_Recovery.py
 Expected hashes:
 
 ```text
-7ef68138e7c96298cc1398cc1a047bde2386ceb562aa2c5efbb116d51ff66682  Arculus_Recovery.html
-7ef68138e7c96298cc1398cc1a047bde2386ceb562aa2c5efbb116d51ff66682  index.html
-af4bb35ffda8d25e0f70c83dc2c3c7d2d894270b09044ef0e484d5c6976810b6  Arculus_Recovery.py
+4298d676d6216b861e788bad94efb49c711f62cc355fc2c50aed0cd6d0e7441f  Arculus_Recovery.html
+4298d676d6216b861e788bad94efb49c711f62cc355fc2c50aed0cd6d0e7441f  index.html
+77938bbe0d3e2c8959d03afa28d04dbd9e3b3e78e1a70bb5716aea4e507e0f4e  Arculus_Recovery.py
 ```
 
 ## Encrypted Seed Files
@@ -129,38 +132,26 @@ New `.arc` exports are designed to work in both:
 
 ### File Format
 
-`.arc` files are UTF-8 JSON documents. The current export format is:
+Current `.arc` exports are armored UTF-8 text. Opening the file shows an opaque envelope rather than readable JSON metadata:
 
-```json
-{
-  "magic": "ARCULUS-ARC",
-  "format": "arculus-encrypted-seed-v2",
-  "version": 2,
-  "created_at": "2026-05-03T23:59:59.000Z",
-  "kdf": {
-    "name": "PBKDF2",
-    "hash": "SHA-512",
-    "iterations": 600000,
-    "salt_b64": "..."
-  },
-  "cipher": {
-    "name": "HMAC-SHA512-CTR",
-    "nonce_b64": "..."
-  },
-  "ciphertext_b64": "...",
-  "mac_b64": "..."
-}
+```text
+ARCULUS-ARC-V2
+eyJjaXBoZXIiOnsibmFtZSI6IkhNQUMtU0hBNTEyLUNUUiIsIm5vbmNlX2I2NCI6Ii4uLiJ9LCIuLi4iOiIuLi4ifQ==
 ```
+
+The armored body contains a base64-encoded version 2 metadata bundle. This keeps the file format compact and less casually inspectable, while still requiring the password and MAC verification before the seed can be decrypted.
 
 High-level behavior:
 
 - The password is normalized with Unicode NFKD before key derivation.
 - PBKDF2-HMAC-SHA512 derives a 64-byte master key from the password and a 32-byte random salt.
+- New exports use 1,000,000 KDF iterations.
+- Existing version 2 imports with 600,000 or more iterations remain supported.
 - Encryption and authentication keys are separated with domain-specific HMAC-SHA512 labels.
 - The plaintext payload is JSON containing the normalized mnemonic, word count, and creation timestamp.
 - The plaintext is encrypted with an HMAC-SHA512 counter stream using a 24-byte random nonce.
 - `mac_b64` is HMAC-SHA512 over the versioned file metadata, salt, nonce, and ciphertext.
-- All binary fields are base64 encoded for JSON compatibility.
+- Binary fields inside the armored bundle are base64 encoded.
 
 Decrypted plaintext payload:
 
@@ -176,7 +167,8 @@ Importers should ignore unknown plaintext fields for forward compatibility.
 
 Supported import formats:
 
-- Current `arculus-encrypted-seed-v2` files with `magic: "ARCULUS-ARC"` and `version: 2`
+- Current armored `ARCULUS-ARC-V2` files
+- JSON `arculus-encrypted-seed-v2` files with `magic: "ARCULUS-ARC"` and `version: 2`
 - Legacy PBKDF2-SHA256 + XOR-HMAC files without the magic header
 - Legacy `arculus-encrypted-seed-python-v1` files
 - `arculus-encrypted-seed-v1` in the browser version only, for legacy AES-GCM exports
@@ -192,9 +184,6 @@ Supported import formats:
 - `docs/screenshots/`  
   README screenshots for light and dark mode
 
-- `test seed.txt`  
-  Local test file in this workspace
-
 ## HTML Version
 
 Open `Arculus_Recovery.html` directly in a browser.
@@ -203,17 +192,38 @@ Open `Arculus_Recovery.html` directly in a browser.
 
 - Offline mnemonic validation
 - Key and address derivation
-- Export output
+- Export derived keys and addresses as JSON, CSV, or TXT
 - Encrypt/export seed to `.arc`
 - Import encrypted seed from `.arc`
 - Hold-to-show hidden imported seed
-- Root fingerprint display beside the Show Seed control
+- Root fingerprint display in the action toolbar
+- Settings dialog beside the title with a Dark Mode toggle
 
 ## Python Version
 
-Run the Python script directly.
+Run the Python script directly. It has both a desktop GUI and a CLI mode.
 
 ### Launch GUI
 
 ```bash
 python Arculus_Recovery.py --gui
+```
+
+### Python GUI Features
+
+- Offline mnemonic validation
+- Key and address derivation
+- Export derived keys and addresses as JSON, CSV, or TXT
+- Encrypt/export seed to `.arc`
+- Import encrypted seed from `.arc`
+- Hold-to-show hidden imported seed
+- Root fingerprint display in the action toolbar
+- Settings popup with a Dark Mode toggle
+
+### CLI Example
+
+```bash
+python Arculus_Recovery.py --mnemonic "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about" --derivation "m/84'/0'/0'" --script-type p2wpkh --count 5 --output-format txt
+```
+
+CLI output formats are `json`, `csv`, and `txt`. JSON is the default.

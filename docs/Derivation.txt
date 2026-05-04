@@ -1,0 +1,652 @@
+Arculus Recovery Derivation Internals
+=====================================
+
+Purpose
+-------
+
+This document describes the derivation engine in this specific copy of Arculus
+Recovery. It is written as a technical map of the implementation: BIP39
+validation, BIP32 private derivation, network constants, script encodings,
+Taproot key tweaking, extended-key serialization, and export structure.
+
+This is a plain-text offline reference. Screenshots are not needed for the
+derivation process; the important information is the byte-level pipeline and the
+mathematics behind the generated outputs.
+
+
+System Overview
+---------------
+
+The derivation engine is deterministic:
+
+  mnemonic + optional BIP39 passphrase + coin + path + script type + count
+       |
+       v
+  BIP39 validation
+       |
+       v
+  BIP39 PBKDF2 seed
+       |
+       v
+  BIP32 master private key
+       |
+       v
+  BIP32 account private key
+       |
+       v
+  branch 0 receiving keys and branch 1 change keys
+       |
+       v
+  address encoders + WIF + extended keys + Taproot metadata
+
+No network lookup is performed. There is no address discovery, no blockchain
+scan, no balance check, and no wallet server. The program derives possible keys
+and addresses from the provided seed material.
+
+
+Cryptographic Domain
+--------------------
+
+The elliptic curve is secp256k1:
+
+  p  = FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
+  n  = FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+  Gx = 55066263022277343669578718895168534326250603453777594175500187360389116729240
+  Gy = 32670510020758816978083085130507043184471273380659243275938904335757337482424
+
+The group order n defines the valid private-key range:
+
+  1 <= private_key < n
+
+The implementation performs point addition, scalar multiplication, compressed
+public key serialization, x-only public key extraction, and Taproot point
+negation directly in local code.
+
+
+BIP39 Mnemonic Validation
+-------------------------
+
+The application embeds the BIP39 English word list. Each word maps to an
+11-bit index in the range 0..2047.
+
+This program accepts:
+
+  12 words -> ENT = 128 bits, CS = 4 bits
+  24 words -> ENT = 256 bits, CS = 8 bits
+
+Although BIP39 also defines other word counts, this recovery tool intentionally
+focuses on 12-word and 24-word seeds.
+
+Validation procedure:
+
+  words = normalize_mnemonic_words(input)
+  wc = len(words)
+  require wc in {12, 24}
+  require every word in BIP39_WORD_INDEX
+
+  bitstring = concat(11-bit-index(word_i) for word_i in words)
+
+  ENT = floor(wc * 11 * 32 / 33)
+  CS  = wc * 11 - ENT
+
+  entropy_bits = bitstring[0:ENT]
+  checksum_bits_supplied = bitstring[ENT:ENT+CS]
+
+  entropy = bits_to_bytes(entropy_bits)
+  checksum_source = SHA256(entropy)
+  checksum_bits_expected = first CS bits of checksum_source
+
+  valid iff checksum_bits_supplied == checksum_bits_expected
+
+For accepted word counts:
+
+  wc   total bits   entropy bits   checksum bits
+  --   ----------   ------------   -------------
+  12   132          128            4
+  24   264          256            8
+
+If all words exist in the word list but the checksum fails, the program reports
+a BIP39-like mnemonic with invalid checksum rather than pretending it is valid.
+
+
+BIP39 Seed Material
+-------------------
+
+After validation, the program computes the BIP39 seed:
+
+  password = NFKD(mnemonic_string).encode("utf-8")
+  salt     = NFKD("mnemonic" + passphrase).encode("utf-8")
+
+  seed = PBKDF2-HMAC-SHA512(
+      password = password,
+      salt = salt,
+      iterations = 2048,
+      dklen = 64
+  )
+
+The optional passphrase is a BIP39 wallet passphrase. It is not the same thing
+as the .arc encryption password. If a wallet originally used a BIP39 passphrase,
+the wrong or empty passphrase derives a different wallet tree.
+
+
+BIP32 Master Node
+-----------------
+
+The 64-byte BIP39 seed becomes a BIP32 master private node:
+
+  I  = HMAC-SHA512(key = "Bitcoin seed", msg = seed)
+  IL = I[0:32]
+  IR = I[32:64]
+
+  master_private_key = parse256(IL)
+  master_chain_code  = IR
+
+The implementation expects the private scalar to be valid modulo secp256k1
+order n. The chain code is 32 bytes used as the HMAC key for child derivation.
+
+The root fingerprint shown in the UI is:
+
+  root_pubkey = compressed_public_key(master_private_key * G)
+  root_fingerprint = HASH160(root_pubkey)[0:4]
+
+Rendered as lowercase hexadecimal.
+
+
+BIP32 Private Child Derivation
+------------------------------
+
+The program uses private child derivation, CKDpriv.
+
+Let parent node be:
+
+  k_par = parent private scalar
+  c_par = parent chain code
+  K_par = point(k_par)
+
+Let index i be a 32-bit unsigned integer.
+
+Hardened index:
+
+  i >= 0x80000000
+  data = 0x00 || ser256(k_par) || ser32(i)
+
+Non-hardened index:
+
+  i < 0x80000000
+  data = serP(K_par) || ser32(i)
+
+Then:
+
+  I  = HMAC-SHA512(key = c_par, msg = data)
+  IL = I[0:32]
+  IR = I[32:64]
+
+  child_private = (parse256(IL) + k_par) mod n
+  child_chain_code = IR
+
+Invalid child conditions:
+
+  parse256(IL) >= n
+  child_private == 0
+
+If either occurs, the function raises an error.
+
+Each child node stores:
+
+- private scalar
+- chain code
+- depth
+- parent fingerprint
+- child number
+
+
+Path Parser
+-----------
+
+The path parser accepts:
+
+  m/84'/0'/0'
+  m/84h/0h/0h
+  m/84H/0H/0H
+
+A hardened component adds:
+
+  HARDENED = 0x80000000
+
+Examples:
+
+  84' -> 84 + 0x80000000
+  0   -> 0
+
+normalize_path() emits canonical apostrophe notation:
+
+  m/84'/0'/0'
+
+
+Account and Branch Model
+------------------------
+
+The selected derivation is treated as an account path:
+
+  account = derive(root, account_path)
+
+Then the program derives two BIP44-style branches:
+
+  receiving branch: account_path / 0 / index
+  change branch:    account_path / 1 / index
+
+Example:
+
+  account path: m/84'/0'/0'
+
+  receiving #0: m/84'/0'/0'/0/0
+  receiving #1: m/84'/0'/0'/0/1
+  change    #0: m/84'/0'/0'/1/0
+  change    #1: m/84'/0'/0'/1/1
+
+The count field controls how many indexes are produced for each branch.
+
+
+Default Coin Paths
+------------------
+
+GUI/browser defaults:
+
+  bitcoin  -> m/0'
+  litecoin -> m/84'/2'/0'
+  dogecoin -> m/44'/3'/0'
+
+Coin types:
+
+  bitcoin  -> 0
+  litecoin -> 2
+  dogecoin -> 3
+
+Common account paths:
+
+  BIP44 legacy       m/44'/coin_type'/0'
+  BIP49 wrapped      m/49'/coin_type'/0'
+  BIP84 native       m/84'/coin_type'/0'
+  BIP86 Taproot      m/86'/coin_type'/0'
+
+CLI --all-common derives the four common purpose paths for the selected coin.
+
+
+Script Type Resolution
+----------------------
+
+The script type can be explicit or Auto.
+
+Explicit values:
+
+  p2pkh
+  p2wpkh-p2sh
+  p2wpkh
+  p2tr
+
+Auto maps the purpose field:
+
+  44' -> p2pkh
+  49' -> p2wpkh-p2sh
+  84' -> p2wpkh
+  86' -> p2tr
+
+If the selected network configuration has no version data for a script type,
+the program stops instead of fabricating an output.
+
+
+Network Constants
+-----------------
+
+Bitcoin mainnet:
+
+  p2pkh xprv/xpub        0488ADE4 / 0488B21E
+  p2wpkh-p2sh yprv/ypub  049D7878 / 049D7CB2
+  p2wpkh zprv/zpub       04B2430C / 04B24746
+  p2tr xprv/xpub         0488ADE4 / 0488B21E
+  WIF prefix             80
+  P2PKH prefix           00
+  P2SH prefix            05
+  HRP                    bc
+
+Bitcoin testnet:
+
+  p2pkh tprv/tpub        04358394 / 043587CF
+  p2wpkh-p2sh uprv/upub  044A4E28 / 044A5262
+  p2wpkh vprv/vpub       045F18BC / 045F1CF6
+  p2tr tprv/tpub         04358394 / 043587CF
+  WIF prefix             EF
+  P2PKH prefix           6F
+  P2SH prefix            C4
+  HRP                    tb
+
+Litecoin mainnet:
+
+  p2pkh                  019D9CFE / 019DA462
+  p2wpkh-p2sh            01B26792 / 01B26EF6
+  p2wpkh                 04B2430C / 04B24746
+  p2tr                   019D9CFE / 019DA462
+  WIF prefix             B0
+  P2PKH prefix           30
+  P2SH prefix            32
+  HRP                    ltc
+
+Dogecoin mainnet:
+
+  p2pkh                  02FAC398 / 02FACAFD
+  p2wpkh-p2sh            02FAC398 / 02FACAFD
+  p2wpkh                 02FAC398 / 02FACAFD
+  p2tr                   unsupported
+  WIF prefix             9E
+  P2PKH prefix           1E
+  P2SH prefix            16
+  HRP                    doge
+
+Dogecoin SegWit-style outputs are generated for recovery inspection, but wallet
+support may vary. Legacy P2PKH remains the conservative Dogecoin default.
+
+
+Address Construction
+--------------------
+
+P2PKH:
+
+  child_pub = serP(child_private * G)
+  pkh = HASH160(child_pub)
+  payload = p2pkh_prefix || pkh
+  address = Base58Check(payload)
+
+P2WPKH-P2SH:
+
+  child_pub = serP(child_private * G)
+  pkh = HASH160(child_pub)
+  redeem_script = 0x00 || 0x14 || pkh
+  script_hash = HASH160(redeem_script)
+  payload = p2sh_prefix || script_hash
+  address = Base58Check(payload)
+
+P2WPKH:
+
+  child_pub = serP(child_private * G)
+  pkh = HASH160(child_pub)
+  witness_version = 0
+  witness_program = pkh
+  address = Bech32(hrp, witness_version || convertbits(pkh, 8, 5))
+
+P2TR:
+
+  child private key enters Taproot key-material logic.
+  witness_version = 1
+  witness_program = x-only Taproot output public key
+  address = Bech32m(hrp, witness_version || convertbits(output_key, 8, 5))
+
+
+Base58Check
+-----------
+
+Base58Check payload encoding:
+
+  checksum = SHA256(SHA256(payload))[0:4]
+  encoded = Base58(payload || checksum)
+
+Used for:
+
+- P2PKH addresses
+- P2WPKH-P2SH addresses
+- WIF private keys
+- extended keys
+
+WIF for compressed public-key wallets:
+
+  payload = wif_prefix || ser256(private_key) || 0x01
+  wif = Base58Check(payload)
+
+
+Bech32 and Bech32m
+------------------
+
+For witness version 0:
+
+  address = bech32_encode(hrp, [0] + convertbits(witness_program, 8, 5))
+  checksum constant = 1
+
+For witness version 1:
+
+  address = bech32m_encode(hrp, [1] + convertbits(witness_program, 8, 5))
+  checksum constant = 0x2BC830A3
+
+The Bech32 alphabet is:
+
+  qpzry9x8gf2tvdw0s3jn54khce6mua7l
+
+
+Taproot Key Material
+--------------------
+
+Taproot output is generated from the child private key.
+
+Let:
+
+  d = child private scalar
+  P = d * G
+
+BIP340 x-only convention requires an even-Y internal public key. The program
+normalizes:
+
+  if y(P) is odd:
+      internal_private = n - d
+      internal_public  = -P
+  else:
+      internal_private = d
+      internal_public  = P
+
+Then:
+
+  internal_x = xonly(internal_public)
+  tweak = int(tagged_hash("TapTweak", internal_x))
+
+Reject if:
+
+  tweak >= n
+
+Compute:
+
+  output_public  = internal_public + tweak * G
+  output_private = (internal_private + tweak) mod n
+
+Reject if:
+
+  output_public is infinity
+  output_private == 0
+
+Exported Taproot metadata includes:
+
+- internal x-only public key
+- normalized internal private key
+- tweak
+- output x-only public key
+- output private key
+- output WIF
+- output key parity
+
+The Taproot private fields are funds-controlling secrets.
+
+
+Tagged Hash
+-----------
+
+Taproot uses tagged hashes:
+
+  tagged_hash(tag, msg) = SHA256(SHA256(tag) || SHA256(tag) || msg)
+
+For this tool's Taproot tweak:
+
+  tag = "TapTweak"
+  msg = xonly_internal_public_key
+
+No script tree is included; this is key-path style tweaking.
+
+
+Extended Key Serialization
+--------------------------
+
+Extended private key payload:
+
+  4 bytes  version
+  1 byte   depth
+  4 bytes  parent fingerprint
+  4 bytes  child number
+  32 bytes chain code
+  1 byte   0x00
+  32 bytes private key
+
+Extended public key payload:
+
+  4 bytes  version
+  1 byte   depth
+  4 bytes  parent fingerprint
+  4 bytes  child number
+  32 bytes chain code
+  33 bytes compressed public key
+
+Final encoding:
+
+  Base58Check(payload)
+
+The account object may include x/y/z/tr variants depending on script type and
+coin version configuration.
+
+
+Output Object Shape
+-------------------
+
+Top-level derivation output:
+
+  {
+    "coin": "bitcoin",
+    "network": "mainnet",
+    "word_count": 12,
+    "accounts": [...]
+  }
+
+Each account includes:
+
+- derivation
+- account_script_type_used
+- root extended private/public keys
+- account extended private/public keys
+- receiving list
+- change list
+
+Each receiving/change item includes:
+
+- path
+- address
+- public_key_hex
+- private_key_hex
+- private_key_wif
+- Taproot fields when applicable
+
+
+Export Formats
+--------------
+
+JSON:
+
+  Preserves the nested account -> receiving/change structure.
+
+CSV:
+
+  Flattens rows. Each receiving/change item becomes a row with account fields
+  repeated.
+
+TXT:
+
+  Writes labeled human-readable sections.
+
+None of these derived-output export formats are encrypted by default. They may
+contain raw private keys and extended private keys.
+
+
+Failure Modes
+-------------
+
+The derivation engine stops on:
+
+- unsupported mnemonic word count
+- word not in BIP39 list
+- invalid BIP39 checksum
+- unsupported coin
+- testnet request for a coin without testnet config
+- unsupported script type for the selected coin
+- invalid path index
+- invalid child key edge case
+- invalid Taproot tweak or output key edge case
+
+The program is intentionally strict. Producing an address for the wrong path or
+wrong script type is worse than refusing to derive.
+
+
+Practical Recovery Methodology
+------------------------------
+
+When trying to recover wallet paths:
+
+1. Validate the mnemonic.
+2. Confirm whether a BIP39 passphrase was used.
+3. Try the wallet's most likely coin.
+4. Try the wallet's likely purpose:
+   - 44 for legacy
+   - 49 for wrapped SegWit
+   - 84 for native SegWit
+   - 86 for Taproot
+5. Check receiving branch 0.
+6. Check change branch 1.
+7. Increase address count if the expected address is beyond the initial window.
+8. Treat every private export as sensitive.
+
+
+CLI Reference
+-------------
+
+Example:
+
+  python Arculus_Recovery.py --mnemonic "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about" --derivation "m/84'/0'/0'" --script-type p2wpkh --count 5 --output-format txt
+
+Common flags:
+
+  --mnemonic       BIP39 mnemonic
+  --passphrase     optional BIP39 passphrase
+  --derivation     account path
+  --all-common     derive 44/49/84/86 account paths for the coin
+  --script-type    auto, p2pkh, p2wpkh-p2sh, p2wpkh, p2tr
+  --count          indexes per receiving/change branch
+  --coin           bitcoin, litecoin, dogecoin
+  --testnet        bitcoin testnet mode
+  --output-format  json, csv, txt
+
+JSON is the default CLI output format.
+
+
+Implementation Hotspots
+-----------------------
+
+Important Python functions:
+
+- bip39_validate()
+- bip39_to_seed()
+- master_from_seed()
+- parse_path()
+- normalize_path()
+- ckd_priv()
+- derive()
+- derive_account()
+- taproot_key_material()
+- pubkey_to_address()
+- ext_prv_to_base58()
+- ext_pub_to_base58()
+- run_derivation()
+- format_derived_output()
+
+The HTML version mirrors the same logic in JavaScript so the browser tool can
+run completely offline without a Python runtime.

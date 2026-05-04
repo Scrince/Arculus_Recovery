@@ -2452,8 +2452,10 @@ def xor_stream_crypt(data: bytes, key: bytes, nonce: bytes) -> bytes:
 
 
 ARC_MAGIC = "ARCULUS-ARC"
+ARC_ARMOR_HEADER = "ARCULUS-ARC-V2"
 ARC_V2_FORMAT = "arculus-encrypted-seed-v2"
-ARC_V2_KDF_ITERATIONS = 600000
+ARC_V2_KDF_ITERATIONS = 1000000
+ARC_V2_MIN_KDF_ITERATIONS = 600000
 ARC_V2_SALT_BYTES = 32
 ARC_V2_NONCE_BYTES = 24
 
@@ -2490,7 +2492,7 @@ def arc_v2_stream_crypt(data: bytes, key: bytes, nonce: bytes) -> bytes:
 
 
 def arc_v2_keys(password: str, salt: bytes, iterations: int) -> Tuple[bytes, bytes]:
-    if iterations < ARC_V2_KDF_ITERATIONS:
+    if iterations < ARC_V2_MIN_KDF_ITERATIONS:
         raise ValueError("Encrypted seed file uses too few KDF iterations.")
     password_bytes = normalize_nfkd(password).encode("utf-8")
     master_key = hashlib.pbkdf2_hmac("sha512", password_bytes, salt, iterations, dklen=64)
@@ -2631,6 +2633,27 @@ def encrypt_seed_bundle(mnemonic: str, password: str) -> Dict:
 
 def decrypt_seed_bundle(bundle: Dict, password: str) -> str:
     return decrypt(bundle, password)
+
+
+def serialize_seed_bundle(bundle: Dict) -> str:
+    payload = json.dumps(bundle, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    encoded = base64.b64encode(payload).decode("ascii")
+    return f"{ARC_ARMOR_HEADER}\n{encoded}\n"
+
+
+def parse_seed_bundle(text: str) -> Dict:
+    stripped = text.strip()
+    if stripped.startswith(ARC_ARMOR_HEADER):
+        encoded = "".join(stripped.splitlines()[1:]).strip()
+        try:
+            decoded = base64.b64decode(encoded, validate=True)
+            return json.loads(decoded.decode("utf-8"))
+        except Exception as e:
+            raise ValueError("Selected encrypted seed file armor is invalid.") from e
+    try:
+        return json.loads(text)
+    except Exception as e:
+        raise ValueError("Selected file is not a supported encrypted seed file.") from e
 
 
 def decrypt(bundle: Dict, password: str) -> str:
@@ -2949,6 +2972,85 @@ def run_derivation(
     return out
 
 
+def flatten_derived_rows(data: Dict) -> List[Dict]:
+    rows = []
+    for account in data.get("accounts", []):
+        account_fields = {k: v for k, v in account.items() if k not in ("receiving", "change")}
+        for branch in ("receiving", "change"):
+            for item in account.get(branch, []):
+                rows.append(
+                    {
+                        "coin": data.get("coin"),
+                        "network": data.get("network"),
+                        "word_count": data.get("word_count"),
+                        "branch": branch,
+                        **account_fields,
+                        **item,
+                    }
+                )
+    return rows
+
+
+def derived_to_csv(data: Dict) -> str:
+    rows = flatten_derived_rows(data)
+    if not rows:
+        return ""
+    headers = []
+    for row in rows:
+        for key in row:
+            if key not in headers:
+                headers.append(key)
+    out = io.StringIO()
+    writer = csv.DictWriter(out, fieldnames=headers, extrasaction="ignore")
+    writer.writeheader()
+    writer.writerows(rows)
+    return out.getvalue()
+
+
+def text_label(key: str) -> str:
+    return key.replace("_", " ")
+
+
+def append_text_fields(lines: List[str], obj: Dict, exclude: Tuple[str, ...] = ()) -> None:
+    excluded = set(exclude)
+    for key, value in (obj or {}).items():
+        if key in excluded or value is None:
+            continue
+        lines.append(f"{text_label(key)}: {value}")
+
+
+def derived_to_text(data: Dict) -> str:
+    lines = [
+        "Arculus Derived Keys and Addresses",
+        "",
+        f"coin: {data.get('coin', '')}",
+        f"network: {data.get('network', '')}",
+        f"word count: {data.get('word_count', '')}",
+    ]
+    for account_index, account in enumerate(data.get("accounts", []), start=1):
+        lines.extend(["", f"Account {account_index}"])
+        append_text_fields(lines, account, ("receiving", "change"))
+        for branch in ("receiving", "change"):
+            lines.extend(["", f"{branch.capitalize()} Addresses"])
+            items = account.get(branch, [])
+            if not items:
+                lines.append("No addresses derived.")
+                continue
+            for item_index, item in enumerate(items):
+                lines.extend(["", f"{branch} #{item_index}"])
+                append_text_fields(lines, item)
+    return "\n".join(lines) + "\n"
+
+
+def format_derived_output(data: Dict, output_format: str) -> str:
+    fmt = output_format.lower()
+    if fmt == "csv":
+        return derived_to_csv(data)
+    if fmt == "txt":
+        return derived_to_text(data)
+    return json.dumps(data, indent=2) + "\n"
+
+
 def launch_gui() -> None:
     import tkinter as tk
     import tkinter.font as tkfont
@@ -2963,11 +3065,13 @@ def launch_gui() -> None:
     frm = ttk.Frame(root, padding=10)
     frm.pack(fill=tk.BOTH, expand=True)
     frm.columnconfigure(1, weight=1)
-    frm.rowconfigure(10, weight=1)
+    frm.rowconfigure(11, weight=1)
 
     normal_font = tkfont.nametofont("TkDefaultFont").copy()
     bold_font = tkfont.nametofont("TkDefaultFont").copy()
     bold_font.configure(weight="bold")
+    title_font = tkfont.nametofont("TkDefaultFont").copy()
+    title_font.configure(size=16, weight="bold")
     valid_color = "#1b8f2f"
     invalid_color = "#b71c1c"
     current_theme = {
@@ -2983,42 +3087,33 @@ def launch_gui() -> None:
         }
     }
 
-    ttk.Label(frm, text="Mnemonic (12 or 24 words):").grid(row=0, column=0, sticky="w")
+    title_row = ttk.Frame(frm)
+    title_row.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 12))
+    ttk.Label(title_row, text="Arculus Recovery", font=title_font).pack(side=tk.LEFT)
+    settings_btn = ttk.Button(title_row, text="Settings")
+    settings_btn.pack(side=tk.LEFT, padx=(10, 0))
+
+    ttk.Label(frm, text="Mnemonic (12 or 24 words):").grid(row=1, column=0, sticky="w")
     mnemonic_txt = ScrolledText(frm, height=4, wrap=tk.WORD)
-    mnemonic_txt.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+    mnemonic_txt.grid(row=1, column=1, sticky="nsew", padx=(8, 0))
     mnemonic_txt.tag_configure("valid_word", foreground=valid_color, font=bold_font)
     mnemonic_txt.tag_configure("invalid_word", foreground=invalid_color, font=bold_font)
 
     seed_len_var = tk.IntVar(value=12)
+    dark_mode_var = tk.BooleanVar(value=False)
     seed_len_row = ttk.Frame(frm)
-    seed_len_row.grid(row=1, column=1, sticky="w", padx=(8, 0), pady=(4, 0))
+    seed_len_row.grid(row=2, column=1, sticky="w", padx=(8, 0), pady=(4, 0))
     ttk.Label(seed_len_row, text="Seed length:").pack(side=tk.LEFT)
     ttk.Radiobutton(seed_len_row, text="12 words", value=12, variable=seed_len_var).pack(side=tk.LEFT, padx=(8, 0))
     ttk.Radiobutton(seed_len_row, text="24 words", value=24, variable=seed_len_var).pack(side=tk.LEFT, padx=(8, 0))
-    dark_mode_var = tk.BooleanVar(value=False)
     copy_seed_btn = tk.Button(seed_len_row, text="Copy Seed", bg="#dc2626", fg="#111827", activebackground="#b91c1c", activeforeground="#111827")
     copy_seed_btn.pack(side=tk.LEFT, padx=(14, 0))
     generate_seed_btn = tk.Button(seed_len_row, text="Generate Random Seed", bg="#22c55e", fg="#111827", activebackground="#16a34a", activeforeground="#111827")
     generate_seed_btn.pack(side=tk.LEFT, padx=(8, 0))
-    dark_mode_btn = tk.Checkbutton(
-        seed_len_row,
-        text="Dark Mode",
-        variable=dark_mode_var,
-        indicatoron=False,
-        relief=tk.RAISED,
-        bg="#d1d5db",
-        fg="#111827",
-        activebackground="#c4c9d1",
-        activeforeground="#111827",
-        selectcolor="#d1d5db",
-        padx=10,
-        pady=6,
-    )
-    dark_mode_btn.pack(side=tk.LEFT, padx=(8, 0))
 
-    ttk.Label(frm, text="Numbered Words:").grid(row=2, column=0, sticky="nw")
+    ttk.Label(frm, text="Numbered Words:").grid(row=3, column=0, sticky="nw")
     words_frame = ttk.Frame(frm)
-    words_frame.grid(row=2, column=1, sticky="ew", padx=(8, 0), pady=(2, 0))
+    words_frame.grid(row=3, column=1, sticky="ew", padx=(8, 0), pady=(2, 0))
     for c in range(4):
         words_frame.columnconfigure(c, weight=1)
 
@@ -3036,12 +3131,12 @@ def launch_gui() -> None:
         word_vars.append(v)
         word_entries.append(e)
 
-    ttk.Label(frm, text="Passphrase:").grid(row=3, column=0, sticky="w")
+    ttk.Label(frm, text="Passphrase:").grid(row=4, column=0, sticky="w")
     passphrase_var = tk.StringVar()
     passphrase_entry = ttk.Entry(frm, textvariable=passphrase_var, show="*")
-    passphrase_entry.grid(row=3, column=1, sticky="ew", padx=(8, 0))
+    passphrase_entry.grid(row=4, column=1, sticky="ew", padx=(8, 0))
 
-    ttk.Label(frm, text="Coin:").grid(row=4, column=0, sticky="w")
+    ttk.Label(frm, text="Coin:").grid(row=5, column=0, sticky="w")
     coin_label_to_value = {
         "Bitcoin": "bitcoin",
         "Litecoin": "litecoin",
@@ -3050,15 +3145,15 @@ def launch_gui() -> None:
     coin_var = tk.StringVar(value="Bitcoin")
     coin_combo = ttk.Combobox(frm, textvariable=coin_var, values=list(coin_label_to_value.keys()), state="readonly")
     coin_combo.grid(
-        row=4, column=1, sticky="w", padx=(8, 0)
+        row=5, column=1, sticky="w", padx=(8, 0)
     )
 
-    ttk.Label(frm, text="Derivation:").grid(row=5, column=0, sticky="w")
+    ttk.Label(frm, text="Derivation:").grid(row=6, column=0, sticky="w")
     derivation_var = tk.StringVar(value="m/0'")
     derivation_entry = ttk.Entry(frm, textvariable=derivation_var)
-    derivation_entry.grid(row=5, column=1, sticky="ew", padx=(8, 0))
+    derivation_entry.grid(row=6, column=1, sticky="ew", padx=(8, 0))
 
-    ttk.Label(frm, text="Script Type:").grid(row=6, column=0, sticky="w")
+    ttk.Label(frm, text="Script Type:").grid(row=7, column=0, sticky="w")
     script_label_to_value = {
         "Auto": "auto",
         "P2PKH": "p2pkh",
@@ -3068,24 +3163,25 @@ def launch_gui() -> None:
     }
     script_var = tk.StringVar(value="P2WPKH")
     ttk.Combobox(frm, textvariable=script_var, values=list(script_label_to_value.keys()), state="readonly").grid(
-        row=6, column=1, sticky="w", padx=(8, 0)
+        row=7, column=1, sticky="w", padx=(8, 0)
     )
 
-    ttk.Label(frm, text="Address Count:").grid(row=7, column=0, sticky="w")
+    ttk.Label(frm, text="Address Count:").grid(row=8, column=0, sticky="w")
     count_var = tk.StringVar(value="5")
     count_entry = ttk.Entry(frm, textvariable=count_var, width=8)
-    count_entry.grid(row=7, column=1, sticky="w", padx=(8, 0))
+    count_entry.grid(row=8, column=1, sticky="w", padx=(8, 0))
 
     status_var = tk.StringVar(value="Ready")
-    ttk.Label(frm, textvariable=status_var).grid(row=8, column=0, columnspan=2, sticky="w", pady=(6, 6))
+    ttk.Label(frm, textvariable=status_var).grid(row=9, column=0, columnspan=2, sticky="w", pady=(6, 6))
 
     output = ScrolledText(frm, height=20, wrap=tk.NONE)
-    output.grid(row=10, column=0, columnspan=2, sticky="nsew")
+    output.grid(row=11, column=0, columnspan=2, sticky="nsew")
     imported_seed_state = {"mnemonic": None, "source_name": None}
     showing_imported_seed = {"active": False}
     root_fingerprint_var = tk.StringVar(value="Root Fingerprint:")
     export_format_var = tk.StringVar(value="JSON")
     last_derived_state = {"data": None}
+    settings_window = {"window": None, "frame": None}
 
     def install_clipboard_bindings(widget: tk.Widget, is_text_widget: bool) -> None:
         menu = tk.Menu(root, tearoff=0)
@@ -3130,39 +3226,6 @@ def launch_gui() -> None:
 
     def set_root_fingerprint_display(fingerprint: str = "") -> None:
         root_fingerprint_var.set(f"Root Fingerprint: {fingerprint}" if fingerprint else "Root Fingerprint:")
-
-    def flatten_derived_rows(data: Dict) -> List[Dict]:
-        rows = []
-        for account in data.get("accounts", []):
-            account_fields = {k: v for k, v in account.items() if k not in ("receiving", "change")}
-            for branch in ("receiving", "change"):
-                for item in account.get(branch, []):
-                    rows.append(
-                        {
-                            "coin": data.get("coin"),
-                            "network": data.get("network"),
-                            "word_count": data.get("word_count"),
-                            "branch": branch,
-                            **account_fields,
-                            **item,
-                        }
-                    )
-        return rows
-
-    def derived_to_csv(data: Dict) -> str:
-        rows = flatten_derived_rows(data)
-        if not rows:
-            return ""
-        headers = []
-        for row in rows:
-            for key in row:
-                if key not in headers:
-                    headers.append(key)
-        out = io.StringIO()
-        writer = csv.DictWriter(out, fieldnames=headers, extrasaction="ignore")
-        writer.writeheader()
-        writer.writerows(rows)
-        return out.getvalue()
 
     def get_active_mnemonic() -> str:
         return imported_seed_state["mnemonic"] or mnemonic_txt.get("1.0", tk.END).strip()
@@ -3463,6 +3526,11 @@ def launch_gui() -> None:
             defaultextension = ".csv"
             filetypes = [("CSV files", "*.csv"), ("All files", "*.*")]
             initialfile = "Arculus_Derived_Keys_Addresses.csv"
+        elif fmt == "txt":
+            text = derived_to_text(data)
+            defaultextension = ".txt"
+            filetypes = [("Text files", "*.txt"), ("All files", "*.*")]
+            initialfile = "Arculus_Derived_Keys_Addresses.txt"
         else:
             text = json.dumps(data, indent=2) + "\n"
             defaultextension = ".json"
@@ -3510,8 +3578,7 @@ def launch_gui() -> None:
                 status_var.set("Encrypted seed export canceled.")
                 return
             with open(path, "w", encoding="utf-8") as f:
-                json.dump(bundle, f, indent=2)
-                f.write("\n")
+                f.write(serialize_seed_bundle(bundle))
             status_var.set(f"Encrypted seed exported to: {path}")
         except Exception as e:
             status_var.set(f"Error: {e}")
@@ -3533,7 +3600,7 @@ def launch_gui() -> None:
             if password == "":
                 raise ValueError("Import password cannot be empty.")
             with open(path, "r", encoding="utf-8") as f:
-                bundle = json.load(f)
+                bundle = parse_seed_bundle(f.read())
             mnemonic = decrypt_seed_bundle(bundle, password)
             words_ok, checksum_ok, msg = bip39_validate(mnemonic)
             if not (words_ok and checksum_ok):
@@ -3591,17 +3658,43 @@ def launch_gui() -> None:
     generate_seed_btn.configure(command=on_generate_seed)
 
     btns = ttk.Frame(frm)
-    btns.grid(row=9, column=0, columnspan=2, sticky="w", pady=(8, 0))
+    btns.grid(row=10, column=0, columnspan=2, sticky="w", pady=(8, 0))
     ttk.Button(btns, text="Validate Mnemonic", command=on_validate).pack(side=tk.LEFT)
     ttk.Button(btns, text="Derive Keys + Addresses", command=on_derive).pack(side=tk.LEFT, padx=(8, 0))
     ttk.Button(btns, text="Export", command=on_export).pack(side=tk.LEFT, padx=(8, 0))
-    ttk.Combobox(btns, textvariable=export_format_var, values=["JSON", "CSV"], state="readonly", width=6).pack(side=tk.LEFT, padx=(4, 0))
+    ttk.Combobox(btns, textvariable=export_format_var, values=["JSON", "CSV", "TXT"], state="readonly", width=6).pack(side=tk.LEFT, padx=(4, 0))
     ttk.Button(btns, text="Encrypt/Export Seed", command=on_encrypt_export_seed).pack(side=tk.LEFT, padx=(8, 0))
     ttk.Button(btns, text="Import Seed", command=on_import_seed).pack(side=tk.LEFT, padx=(8, 0))
     show_seed_btn = ttk.Button(btns, text="Show Seed")
     show_seed_btn.pack(side=tk.LEFT, padx=(8, 0))
     root_fingerprint_entry = ttk.Entry(btns, textvariable=root_fingerprint_var, width=28, state="readonly")
     root_fingerprint_entry.pack(side=tk.LEFT, padx=(8, 0))
+
+    def open_settings() -> None:
+        existing = settings_window.get("window")
+        if existing is not None and existing.winfo_exists():
+            existing.lift()
+            existing.focus_set()
+            return
+
+        win = tk.Toplevel(root)
+        win.title("Settings")
+        win.resizable(False, False)
+        win.transient(root)
+        win.protocol("WM_DELETE_WINDOW", win.destroy)
+
+        panel = ttk.Frame(win, padding=14)
+        panel.pack(fill=tk.BOTH, expand=True)
+        ttk.Label(panel, text="Settings", font=bold_font).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 12))
+        ttk.Label(panel, text="Dark Mode").grid(row=1, column=0, sticky="w", padx=(0, 28))
+        ttk.Checkbutton(panel, text="On", variable=dark_mode_var).grid(row=1, column=1, sticky="e")
+        ttk.Button(panel, text="Close", command=win.destroy).grid(row=2, column=0, columnspan=2, sticky="e", pady=(14, 0))
+
+        settings_window["window"] = win
+        settings_window["frame"] = panel
+        apply_dark_mode()
+        win.grab_set()
+        win.focus_set()
 
     def apply_dark_mode(*_args) -> None:
         dark = dark_mode_var.get()
@@ -3643,7 +3736,14 @@ def launch_gui() -> None:
         style.configure("TEntry", fieldbackground=colors["field"], foreground=colors["text"])
         style.configure("TCombobox", fieldbackground=colors["field"], foreground=colors["text"])
         root.configure(bg=colors["bg"])
-        for widget in (frm, seed_len_row, words_frame, btns):
+        settings_win = settings_window.get("window")
+        if settings_win is not None and settings_win.winfo_exists():
+            settings_win.configure(bg=colors["bg"])
+        themed_frames = [frm, title_row, seed_len_row, words_frame, btns]
+        settings_frame = settings_window.get("frame")
+        if settings_frame is not None and settings_frame.winfo_exists():
+            themed_frames.append(settings_frame)
+        for widget in themed_frames:
             widget.configure(style="TFrame")
         for text_widget in (mnemonic_txt, output):
             text_widget.configure(
@@ -3664,18 +3764,12 @@ def launch_gui() -> None:
             activebackground="#16a34a",
             activeforeground="#111827",
         )
-        dark_mode_btn.configure(
-            bg="#4b5563" if dark else "#d1d5db",
-            fg="#ffffff" if dark else "#111827",
-            activebackground="#374151" if dark else "#c4c9d1",
-            activeforeground="#ffffff" if dark else "#111827",
-            selectcolor="#4b5563" if dark else "#d1d5db",
-        )
         mnemonic_txt.tag_configure("valid_word", foreground=valid_color, font=bold_font)
         mnemonic_txt.tag_configure("invalid_word", foreground=invalid_color, font=bold_font)
         refresh_numbered_entries_style()
         highlight_main_text_words()
 
+    settings_btn.configure(command=open_settings)
     mnemonic_txt.bind("<KeyRelease>", on_main_text_change)
     mnemonic_txt.bind("<<Modified>>", on_mnemonic_modified)
     for e in word_entries:
@@ -3722,6 +3816,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--count", type=int, default=5)
     p.add_argument("--coin", choices=["bitcoin", "litecoin", "dogecoin"], default="bitcoin")
     p.add_argument("--testnet", action="store_true")
+    p.add_argument("--output-format", choices=["json", "csv", "txt"], default="json", help="CLI output format.")
     return p
 
 
@@ -3741,7 +3836,7 @@ def main() -> None:
         coin=args.coin,
         testnet=args.testnet,
     )
-    print(json.dumps(out, indent=2))
+    print(format_derived_output(out, args.output_format), end="")
 
 
 if __name__ == "__main__":
