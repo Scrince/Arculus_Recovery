@@ -135,13 +135,20 @@ The protected plaintext is intentionally small:
 Only the seed mnemonic is encrypted by this export. The file does not encrypt:
 
 - derived addresses
+- Ethereum / ERC-20 addresses
+- XRP classic addresses
+- XRP destination tags, which are not derived or stored by the tool
+- token contract metadata, balances, or ledger state
 - account xpubs
 - private keys
 - WIF keys
+- raw hex private keys for account-based coins
 - xprv/yprv/zprv/trprv values
 - the BIP39 passphrase used for wallet derivation
 
 The encryption password and the BIP39 wallet passphrase are separate concepts.
+Likewise, .arc files protect seed backup material only. They are not encrypted
+exports of derived key/address reports.
 
 
 Constants
@@ -416,6 +423,8 @@ Not protected:
 - Malware, keyloggers, browser extensions, or screen recorders.
 - Weak passwords against offline guessing.
 - Derived JSON/CSV/TXT exports, which are not encrypted by this feature.
+- Any Ethereum token metadata, XRP destination tags, balances, or transaction
+  history, because the tool does not fetch or store ledger data.
 
 
 Example Walkthrough

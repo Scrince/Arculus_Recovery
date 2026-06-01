@@ -7,7 +7,8 @@ Purpose
 This document describes the derivation engine in this specific copy of Arculus
 Recovery. It is written as a technical map of the implementation: BIP39
 validation, BIP32 private derivation, network constants, script encodings,
-Taproot key tweaking, extended-key serialization, and export structure.
+account-style address encodings, Taproot key tweaking, extended-key
+serialization, and export structure.
 
 This is a plain-text offline reference. Screenshots are not needed for the
 derivation process; the important information is the byte-level pipeline and the
@@ -37,11 +38,12 @@ The derivation engine is deterministic:
   branch 0 receiving keys and branch 1 change keys
        |
        v
-  address encoders + WIF + extended keys + Taproot metadata
+  address encoders + WIF where applicable + extended keys + optional metadata
 
 No network lookup is performed. There is no address discovery, no blockchain
-scan, no balance check, and no wallet server. The program derives possible keys
-and addresses from the provided seed material.
+scan, no balance check, token lookup, XRP destination-tag lookup, and no wallet
+server. The program derives possible keys and addresses from the provided seed
+material.
 
 
 Cryptographic Domain
@@ -252,15 +254,19 @@ Default Coin Paths
 
 GUI/browser defaults:
 
-  bitcoin  -> m/0'
-  litecoin -> m/84'/2'/0'
-  dogecoin -> m/44'/3'/0'
+  bitcoin           -> m/0'
+  litecoin          -> m/84'/2'/0'
+  dogecoin          -> m/44'/3'/0'
+  ethereum / ERC-20 -> m/44'/60'/0'
+  xrp               -> m/44'/144'/0'
 
 Coin types:
 
   bitcoin  -> 0
   litecoin -> 2
   dogecoin -> 3
+  ethereum -> 60
+  xrp      -> 144
 
 Common account paths:
 
@@ -269,7 +275,8 @@ Common account paths:
   BIP84 native       m/84'/coin_type'/0'
   BIP86 Taproot      m/86'/coin_type'/0'
 
-CLI --all-common derives the four common purpose paths for the selected coin.
+CLI --all-common derives the four common purpose paths for UTXO-style coins.
+For Ethereum and XRP, --all-common derives the BIP44 account path only.
 
 
 Script Type Resolution
@@ -293,6 +300,14 @@ Auto maps the purpose field:
 
 If the selected network configuration has no version data for a script type,
 the program stops instead of fabricating an output.
+
+Ethereum and XRP are account-style outputs. They ignore UTXO script type and
+set account_script_type_used to:
+
+  ethereum
+  xrp
+
+The Auto setting is the safest UI/CLI choice for these coins.
 
 
 Network Constants
@@ -345,6 +360,31 @@ Dogecoin mainnet:
 Dogecoin SegWit-style outputs are generated for recovery inspection, but wallet
 support may vary. Legacy P2PKH remains the conservative Dogecoin default.
 
+Ethereum mainnet:
+
+  coin type              60
+  account default        m/44'/60'/0'
+  address family         ethereum
+  address format         EIP-55 checksummed 0x...
+  extended keys          xprv/xpub serialization bytes 0488ADE4 / 0488B21E
+  WIF                    not defined
+
+ERC-20 tokens on Ethereum use the same Ethereum account address. The tool does
+not inspect token contracts, balances, allowances, or chain state.
+
+XRP Ledger mainnet:
+
+  coin type              144
+  account default        m/44'/144'/0'
+  address family         xrp
+  address format         XRPL classic r...
+  extended keys          xprv/xpub serialization bytes 0488ADE4 / 0488B21E
+  WIF                    not defined
+  XRPL base58 alphabet   rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz
+
+Destination tags are not derived from the seed. If an exchange or custodian
+requires a destination tag, it must be supplied by that service.
+
 
 Address Construction
 --------------------
@@ -380,6 +420,29 @@ P2TR:
   witness_program = x-only Taproot output public key
   address = Bech32m(hrp, witness_version || convertbits(output_key, 8, 5))
 
+Ethereum:
+
+  child_pub_uncompressed = x(child_private * G) || y(child_private * G)
+  account_id = Keccak256(child_pub_uncompressed)[12:32]
+  address_hex = lowercase_hex(account_id)
+  checksum = Keccak256(ascii(address_hex))
+  address = "0x" || EIP55_case(address_hex, checksum)
+
+Ethereum uses Keccak-256, not the finalized NIST SHA3-256 variant. The exported
+erc20_address field is the same address because ERC-20 balances are held by the
+Ethereum account, not by a separate seed-derived token address.
+
+XRP:
+
+  child_pub = serP(child_private * G)
+  account_id = RIPEMD160(SHA256(child_pub))
+  payload = 0x00 || account_id
+  checksum = SHA256(SHA256(payload))[0:4]
+  address = Base58(payload || checksum, XRPL alphabet)
+
+The XRP output is a classic address beginning with r. X-addresses and
+destination tags are intentionally not generated.
+
 
 Base58Check
 -----------
@@ -395,6 +458,9 @@ Used for:
 - P2WPKH-P2SH addresses
 - WIF private keys
 - extended keys
+
+XRP uses the same checksum structure, then encodes payload plus checksum with
+the XRPL base58 alphabet instead of the Bitcoin base58 alphabet.
 
 WIF for compressed public-key wallets:
 
@@ -516,6 +582,10 @@ Final encoding:
 The account object may include x/y/z/tr variants depending on script type and
 coin version configuration.
 
+Ethereum and XRP use standard xprv/xpub serialization in this tool. WIF is not
+defined for those account families, so exports include raw private_key_hex but
+not private_key_wif.
+
 
 Output Object Shape
 -------------------
@@ -544,8 +614,10 @@ Each receiving/change item includes:
 - address
 - public_key_hex
 - private_key_hex
-- private_key_wif
+- private_key_wif when WIF is defined for the selected coin
 - Taproot fields when applicable
+- ethereum_public_key_hex, erc20_address, and erc20_note for Ethereum
+- xrp_classic_address and xrp_note for XRP
 
 
 Export Formats
@@ -581,6 +653,7 @@ The derivation engine stops on:
 - unsupported script type for the selected coin
 - invalid path index
 - invalid child key edge case
+- invalid Ethereum or XRP address-family configuration
 - invalid Taproot tweak or output key edge case
 
 The program is intentionally strict. Producing an address for the wrong path or
@@ -600,6 +673,7 @@ When trying to recover wallet paths:
    - 49 for wrapped SegWit
    - 84 for native SegWit
    - 86 for Taproot
+   - 44 for Ethereum and XRP account-style paths
 5. Check receiving branch 0.
 6. Check change branch 1.
 7. Increase address count if the expected address is beyond the initial window.
@@ -618,10 +692,10 @@ Common flags:
   --mnemonic       BIP39 mnemonic
   --passphrase     optional BIP39 passphrase
   --derivation     account path
-  --all-common     derive 44/49/84/86 account paths for the coin
+  --all-common     derive 44/49/84/86 account paths for UTXO coins; 44 only for Ethereum/XRP
   --script-type    auto, p2pkh, p2wpkh-p2sh, p2wpkh, p2tr
   --count          indexes per receiving/change branch
-  --coin           bitcoin, litecoin, dogecoin
+  --coin           bitcoin, litecoin, dogecoin, ethereum, xrp
   --testnet        bitcoin testnet mode
   --output-format  json, csv, txt
 

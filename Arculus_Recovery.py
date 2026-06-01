@@ -2132,22 +2132,116 @@ DOGE_MAINNET = {
     "hrp": "doge",
 }
 
+ETH_MAINNET = {
+    "p2pkh": {"xprv": 0x0488ADE4, "xpub": 0x0488B21E},
+    "p2wpkh-p2sh": {"xprv": 0x0488ADE4, "xpub": 0x0488B21E},
+    "p2wpkh": {"xprv": 0x0488ADE4, "xpub": 0x0488B21E},
+    "p2tr": {"xprv": 0x0488ADE4, "xpub": 0x0488B21E},
+    "wif": None,
+    "address_family": "ethereum",
+}
+
+XRP_MAINNET = {
+    "p2pkh": {"xprv": 0x0488ADE4, "xpub": 0x0488B21E},
+    "p2wpkh-p2sh": {"xprv": 0x0488ADE4, "xpub": 0x0488B21E},
+    "p2wpkh": {"xprv": 0x0488ADE4, "xpub": 0x0488B21E},
+    "p2tr": {"xprv": 0x0488ADE4, "xpub": 0x0488B21E},
+    "wif": None,
+    "address_family": "xrp",
+}
+
 COINS = {
     "bitcoin": {"coin_type": 0, "mainnet": BTC_MAINNET, "testnet": BTC_TESTNET},
     "litecoin": {"coin_type": 2, "mainnet": LTC_MAINNET, "testnet": None},
     "dogecoin": {"coin_type": 3, "mainnet": DOGE_MAINNET, "testnet": None},
+    "ethereum": {"coin_type": 60, "mainnet": ETH_MAINNET, "testnet": None},
+    "xrp": {"coin_type": 144, "mainnet": XRP_MAINNET, "testnet": None},
 }
 
 DEFAULT_ACCOUNT_DERIVATION = {
     "bitcoin": "m/0'",
     "litecoin": "m/84'/2'/0'",
     "dogecoin": "m/44'/3'/0'",
+    "ethereum": "m/44'/60'/0'",
+    "xrp": "m/44'/144'/0'",
 }
 
 B58_ALPHABET = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+XRP_B58_ALPHABET = b"rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz"
 BECH32_ALPHABET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 def sha256(b: bytes) -> bytes:
     return hashlib.sha256(b).digest()
+
+
+def keccak256(data: bytes) -> bytes:
+    # Ethereum uses Keccak-256, not the finalized NIST SHA3-256 variant.
+    mask = (1 << 64) - 1
+    rate = 136
+    rot = [
+        [0, 36, 3, 41, 18],
+        [1, 44, 10, 45, 2],
+        [62, 6, 43, 15, 61],
+        [28, 55, 25, 21, 56],
+        [27, 20, 39, 8, 14],
+    ]
+    rc = [
+        0x0000000000000001,
+        0x0000000000008082,
+        0x800000000000808A,
+        0x8000000080008000,
+        0x000000000000808B,
+        0x0000000080000001,
+        0x8000000080008081,
+        0x8000000000008009,
+        0x000000000000008A,
+        0x0000000000000088,
+        0x0000000080008009,
+        0x000000008000000A,
+        0x000000008000808B,
+        0x800000000000008B,
+        0x8000000000008089,
+        0x8000000000008003,
+        0x8000000000008002,
+        0x8000000000000080,
+        0x000000000000800A,
+        0x800000008000000A,
+        0x8000000080008081,
+        0x8000000000008080,
+        0x0000000080000001,
+        0x8000000080008008,
+    ]
+
+    def rol(x: int, n: int) -> int:
+        return ((x << n) | (x >> (64 - n))) & mask if n else x & mask
+
+    def permute(state: List[int]) -> None:
+        for rnd in range(24):
+            c = [state[x] ^ state[x + 5] ^ state[x + 10] ^ state[x + 15] ^ state[x + 20] for x in range(5)]
+            d = [c[(x - 1) % 5] ^ rol(c[(x + 1) % 5], 1) for x in range(5)]
+            for x in range(5):
+                for y in range(5):
+                    state[x + 5 * y] = (state[x + 5 * y] ^ d[x]) & mask
+            b = [0] * 25
+            for x in range(5):
+                for y in range(5):
+                    b[y + 5 * ((2 * x + 3 * y) % 5)] = rol(state[x + 5 * y], rot[x][y])
+            for x in range(5):
+                for y in range(5):
+                    state[x + 5 * y] = (b[x + 5 * y] ^ ((~b[((x + 1) % 5) + 5 * y]) & b[((x + 2) % 5) + 5 * y])) & mask
+            state[0] = (state[0] ^ rc[rnd]) & mask
+
+    state = [0] * 25
+    padded = bytearray(data)
+    padded.append(0x01)
+    while len(padded) % rate != rate - 1:
+        padded.append(0)
+    padded.append(0x80)
+    for offset in range(0, len(padded), rate):
+        block = padded[offset : offset + rate]
+        for i in range(rate // 8):
+            state[i] ^= int.from_bytes(block[i * 8 : i * 8 + 8], "little")
+        permute(state)
+    return b"".join(x.to_bytes(8, "little") for x in state)[:32]
 
 
 def hash160(b: bytes) -> bytes:
@@ -2160,12 +2254,12 @@ def hmac_sha512(key: bytes, data: bytes) -> bytes:
     return hmac.new(key, data, hashlib.sha512).digest()
 
 
-def b58encode(raw: bytes) -> str:
+def b58encode(raw: bytes, alphabet: bytes = B58_ALPHABET) -> str:
     n = int.from_bytes(raw, "big")
     out = bytearray()
     while n > 0:
         n, r = divmod(n, 58)
-        out.append(B58_ALPHABET[r])
+        out.append(alphabet[r])
     out.reverse()
     pad = 0
     for c in raw:
@@ -2173,12 +2267,12 @@ def b58encode(raw: bytes) -> str:
             pad += 1
         else:
             break
-    return (B58_ALPHABET[0:1] * pad + out).decode("ascii")
+    return (alphabet[0:1] * pad + out).decode("ascii")
 
 
-def b58check(payload: bytes) -> str:
+def b58check(payload: bytes, alphabet: bytes = B58_ALPHABET) -> str:
     checksum = sha256(sha256(payload))[:4]
-    return b58encode(payload + checksum)
+    return b58encode(payload + checksum, alphabet)
 
 
 def bech32_polymod(values: List[int]) -> int:
@@ -2810,7 +2904,32 @@ def ext_pub_to_base58(node: ExtPrv, version: int) -> str:
 
 
 def to_wif(privkey: int, netcfg: dict) -> str:
+    if netcfg.get("wif") is None:
+        raise ValueError("WIF is not defined for this coin/network")
     return b58check(bytes([netcfg["wif"]]) + ser256(privkey) + b"\x01")
+
+
+def ser_pubkey_uncompressed(p) -> bytes:
+    x, y = p
+    return x.to_bytes(32, "big") + y.to_bytes(32, "big")
+
+
+def ethereum_checksum_address(address_bytes: bytes) -> str:
+    address_hex = address_bytes.hex()
+    hash_hex = keccak256(address_hex.encode("ascii")).hex()
+    checked = "".join(c.upper() if int(hash_hex[i], 16) >= 8 else c for i, c in enumerate(address_hex))
+    return "0x" + checked
+
+
+def ethereum_address_from_private_key(privkey: int) -> str:
+    pub = point_mul(privkey, G)
+    if pub is None:
+        raise ValueError("invalid Ethereum public key")
+    return ethereum_checksum_address(keccak256(ser_pubkey_uncompressed(pub))[-20:])
+
+
+def xrp_classic_address_from_public_key(pubkey: bytes) -> str:
+    return b58check(b"\x00" + hash160(pubkey), XRP_B58_ALPHABET)
 
 
 def taproot_key_material(privkey: int) -> Dict:
@@ -2860,7 +2979,10 @@ def derive_account(mnemonic: str, passphrase: str, derivation: str, script_type:
     seed = bip39_to_seed(mnemonic, passphrase)
     root = master_from_seed(seed)
     account = derive(root, derivation)
-    st = purpose_to_script_type(derivation) if script_type == "auto" else script_type
+    address_family = netcfg.get("address_family")
+    is_ethereum = address_family == "ethereum"
+    is_xrp = address_family == "xrp"
+    st = address_family if address_family in ("ethereum", "xrp") else (purpose_to_script_type(derivation) if script_type == "auto" else script_type)
     root_versions = netcfg["p2pkh"]
     x_versions = netcfg["p2pkh"]
     y_versions = netcfg["p2wpkh-p2sh"]
@@ -2905,11 +3027,21 @@ def derive_account(mnemonic: str, passphrase: str, derivation: str, script_type:
             pub = ser_pubkey(child.pub())
             item = {
                 "path": f"{derivation}/{branch}/{i}",
-                "address": None if st == "p2tr" else pubkey_to_address(pub, st, netcfg),
+                "address": None if st in ("p2tr", "ethereum", "xrp") else pubkey_to_address(pub, st, netcfg),
                 "public_key_hex": pub.hex(),
                 "private_key_hex": ser256(child.k).hex(),
-                "private_key_wif": to_wif(child.k, netcfg),
             }
+            if is_ethereum:
+                item["address"] = ethereum_address_from_private_key(child.k)
+                item["ethereum_public_key_hex"] = ser_pubkey_uncompressed(child.pub()).hex()
+                item["erc20_address"] = item["address"]
+                item["erc20_note"] = "ERC-20 tokens on Ethereum use this same account address."
+            elif is_xrp:
+                item["address"] = xrp_classic_address_from_public_key(pub)
+                item["xrp_classic_address"] = item["address"]
+                item["xrp_note"] = "XRP Ledger classic address. Destination tags, when required by an exchange or custodian, are not derived from the seed."
+            else:
+                item["private_key_wif"] = to_wif(child.k, netcfg)
             if st == "p2tr":
                 taproot = taproot_key_material(child.k)
                 item["address"] = segwit_addr_v1(netcfg["hrp"], taproot["output_public_key"])
@@ -2956,9 +3088,12 @@ def run_derivation(
 
     coin_type = coin_cfg["coin_type"]
     base_derivation = (derivation or "").strip() or DEFAULT_ACCOUNT_DERIVATION[coin_key]
-    derivations = (
-        [f"m/44'/{coin_type}'/0'", f"m/49'/{coin_type}'/0'", f"m/84'/{coin_type}'/0'", f"m/86'/{coin_type}'/0'"] if all_common else [base_derivation]
-    )
+    if all_common and coin_key in ("ethereum", "xrp"):
+        derivations = [f"m/44'/{coin_type}'/0'"]
+    else:
+        derivations = (
+            [f"m/44'/{coin_type}'/0'", f"m/49'/{coin_type}'/0'", f"m/84'/{coin_type}'/0'", f"m/86'/{coin_type}'/0'"] if all_common else [base_derivation]
+        )
     derivations = [normalize_path(d) for d in derivations]
 
     out = {
@@ -3141,6 +3276,8 @@ def launch_gui() -> None:
         "Bitcoin": "bitcoin",
         "Litecoin": "litecoin",
         "Dogecoin": "dogecoin",
+        "Ethereum / ERC-20": "ethereum",
+        "XRP": "xrp",
     }
     coin_var = tk.StringVar(value="Bitcoin")
     coin_combo = ttk.Combobox(frm, textvariable=coin_var, values=list(coin_label_to_value.keys()), state="readonly")
@@ -3512,6 +3649,8 @@ def launch_gui() -> None:
         derivation_var.set(DEFAULT_ACCOUNT_DERIVATION[selected_coin])
         if selected_coin == "dogecoin":
             script_var.set("P2PKH")
+        elif selected_coin in ("ethereum", "xrp"):
+            script_var.set("Auto")
         else:
             script_var.set("P2WPKH")
 
@@ -3811,10 +3950,10 @@ def build_parser() -> argparse.ArgumentParser:
         default="",
         help="Custom derivation path. Supports both ' and h. Defaults to coin standard (e.g. Litecoin m/84'/2'/0').",
     )
-    p.add_argument("--all-common", action="store_true", help="Derive m/44'/coin'/0', m/49'/coin'/0', m/84'/coin'/0', and m/86'/coin'/0'.")
+    p.add_argument("--all-common", action="store_true", help="Derive m/44'/coin'/0', m/49'/coin'/0', m/84'/coin'/0', and m/86'/coin'/0' where applicable.")
     p.add_argument("--script-type", choices=["auto", "p2pkh", "p2wpkh-p2sh", "p2wpkh", "p2tr"], default="p2wpkh")
     p.add_argument("--count", type=int, default=5)
-    p.add_argument("--coin", choices=["bitcoin", "litecoin", "dogecoin"], default="bitcoin")
+    p.add_argument("--coin", choices=["bitcoin", "litecoin", "dogecoin", "ethereum", "xrp"], default="bitcoin")
     p.add_argument("--testnet", action="store_true")
     p.add_argument("--output-format", choices=["json", "csv", "txt"], default="json", help="CLI output format.")
     return p

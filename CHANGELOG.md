@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Changes on `main` not yet tagged in a formal release.
 
+### Added
+
+- Ethereum / ERC-20 address derivation in the HTML tool, Python GUI, and Python CLI.
+- Offline Keccak-256 and EIP-55 checksum address support for Ethereum addresses.
+- ERC-20 export fields clarifying that Ethereum token balances use the same derived account address.
+- XRP classic address derivation in the HTML tool, Python GUI, and Python CLI.
+
+### Changed
+
+- Updated README, security guidance, contribution checklist, and threat model for Ethereum / ERC-20 and XRP support.
+
 ---
 
 ## [Arculus_Recovery] — 2026-04-24

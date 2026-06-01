@@ -1,7 +1,7 @@
 # Threat Model — Arculus Recovery
 
 **Version:** Current (`main` branch)
-**Last Updated:** 2026-05-06
+**Last Updated:** 2026-06-01
 **Scope:** `Arculus_Recovery.html`, `index.html`, `Arculus_Recovery.py`
 
 ---
@@ -9,6 +9,8 @@
 ## 1. Overview
 
 Arculus Recovery is an offline BIP39/BIP32 seed recovery and key-derivation utility. It is available as a self-contained HTML file opened directly in a browser and as a Python script with both a desktop GUI (Tkinter) and a CLI. The tool performs all computation locally. It requires no server, cloud API, network request, telemetry endpoint, or external package.
+
+The current derivation scope includes Bitcoin, Litecoin, Dogecoin, Ethereum / ERC-20, and XRP. Ethereum and XRP support are account-address derivation features; they do not query balances, inspect tokens, or fetch ledger data.
 
 The fundamental security promise is: **seed phrases, passphrases, private keys, and derived output never leave the user's machine through the application itself.**
 
@@ -28,7 +30,8 @@ The following assets are considered sensitive and are the primary targets of any
 | Extended private keys (xprv) | Serialized HD private keys | Critical |
 | `.arc` encrypted seed file | Password-protected mnemonic backup | High |
 | `.arc` encryption password | Password used to protect the `.arc` file | High |
-| Derived addresses | Public-facing addresses; less sensitive but linkable | Low–Medium |
+| Derived addresses | Public-facing addresses; less sensitive but linkable across transactions, tokens, and accounts | Low-Medium |
+| Destination tags / token metadata | Exchange or application routing metadata; not derived by the tool | Out of scope |
 | Derived extended public keys (xpub) | Watch-only wallet keys | Medium |
 | JSON/CSV/TXT derived-output exports | May contain private keys | Critical (if xprv included) |
 
@@ -140,6 +143,8 @@ The following assets are considered sensitive and are the primary targets of any
 | `.arc` authentication | HMAC-SHA512 | Covers versioned metadata, KDF params, nonce, and ciphertext |
 | Key separation | Domain-specific HMAC-SHA512 labels | Encryption key ≠ authentication key |
 | Password normalization | Unicode NFKD | Applied before KDF in both mnemonic and `.arc` contexts |
+| Ethereum address formatting | Keccak-256 + EIP-55 | Uses uncompressed secp256k1 public key material and checksum casing |
+| XRP classic address formatting | SHA256 + RIPEMD160 + XRPL base58check | Uses XRPL base58 alphabet and `0x00` account prefix |
 
 ---
 
@@ -152,6 +157,7 @@ The following are explicitly outside the threat model of this tool:
 - Physical access by an adversary to a machine after use
 - Side-channel attacks (timing, power, EM) against the cryptographic primitives
 - Attacks against the BIP39 or BIP32 standards themselves
+- Ledger-specific operational requirements outside derivation, such as XRP destination tags or ERC-20 contract selection
 - Social engineering of the user
 
 ---

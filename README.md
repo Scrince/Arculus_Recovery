@@ -49,6 +49,8 @@ Dark mode:
   - Bitcoin
   - Litecoin
   - Dogecoin
+  - Ethereum and ERC-20 tokens
+  - XRP
 - Encrypted seed export/import
 - Export derived keys/addresses:
   - HTML: JSON, CSV, or TXT
@@ -81,8 +83,10 @@ Common account paths:
 | Dogecoin | P2WPKH-P2SH | `m/49'/3'/0'` | `9...` or `A...` | Supported by the tool, but wallet support may vary |
 | Dogecoin | P2WPKH | `m/84'/3'/0'` | `doge1q...` | Supported by the tool, but wallet support may vary |
 | Dogecoin | P2TR | `m/86'/3'/0'` | Not supported | Dogecoin Taproot is disabled in the tool |
+| Ethereum / ERC-20 | Account | `m/44'/60'/0'` | `0x...` | Receiving paths derive as `m/44'/60'/0'/0/index`; ERC-20 tokens use the same Ethereum address |
+| XRP | Account | `m/44'/144'/0'` | `r...` | Receiving paths derive as `m/44'/144'/0'/0/index`; destination tags are not derived from the seed |
 
-The browser and Python GUI default to `m/0'` for Bitcoin, `m/84'/2'/0'` for Litecoin, and `m/44'/3'/0'` for Dogecoin. Use `Auto` script type to infer the script from BIP44/49/84/86 purpose when using standard paths.
+The browser and Python GUI default to `m/0'` for Bitcoin, `m/84'/2'/0'` for Litecoin, `m/44'/3'/0'` for Dogecoin, `m/44'/60'/0'` for Ethereum / ERC-20, and `m/44'/144'/0'` for XRP. Use `Auto` script type to infer the script from BIP44/49/84/86 purpose when using standard UTXO paths. Ethereum ignores UTXO script type and derives EIP-55 checksummed addresses. XRP ignores UTXO script type and derives XRPL classic addresses.
 
 ## Security Notes
 
@@ -106,9 +110,9 @@ shasum -a 256 Arculus_Recovery.html index.html Arculus_Recovery.py
 Expected hashes:
 
 ```text
-4298d676d6216b861e788bad94efb49c711f62cc355fc2c50aed0cd6d0e7441f  Arculus_Recovery.html
-4298d676d6216b861e788bad94efb49c711f62cc355fc2c50aed0cd6d0e7441f  index.html
-77938bbe0d3e2c8959d03afa28d04dbd9e3b3e78e1a70bb5716aea4e507e0f4e  Arculus_Recovery.py
+edae639ffbb6b5d3774ad92ccb7390084f3cbc1b708d6875b0786eb34c8f2fbf  Arculus_Recovery.html
+edae639ffbb6b5d3774ad92ccb7390084f3cbc1b708d6875b0786eb34c8f2fbf  index.html
+91aa99934d00947e53f06d5743c4bdc6abd4e28af7220de2d5b13e34f4511975  Arculus_Recovery.py
 ```
 
 ## Encrypted Seed Files

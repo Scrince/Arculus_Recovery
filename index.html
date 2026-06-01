@@ -263,6 +263,8 @@
         <option selected>Bitcoin</option>
         <option>Litecoin</option>
         <option>Dogecoin</option>
+        <option>Ethereum / ERC-20</option>
+        <option>XRP</option>
       </select>
 
       <div class="label">Derivation Path</div>
@@ -363,15 +365,34 @@
         p2shPrefix: 0x16,
         hrp: 'doge',
         networkName: 'mainnet'
+      },
+      ethereum: {
+        p2pkh: { xprv: 0x0488ADE4, xpub: 0x0488B21E },
+        'p2wpkh-p2sh': { xprv: 0x0488ADE4, xpub: 0x0488B21E },
+        p2wpkh: { xprv: 0x0488ADE4, xpub: 0x0488B21E },
+        p2tr: { xprv: 0x0488ADE4, xpub: 0x0488B21E },
+        addressFamily: 'ethereum',
+        networkName: 'mainnet'
+      },
+      xrp: {
+        p2pkh: { xprv: 0x0488ADE4, xpub: 0x0488B21E },
+        'p2wpkh-p2sh': { xprv: 0x0488ADE4, xpub: 0x0488B21E },
+        p2wpkh: { xprv: 0x0488ADE4, xpub: 0x0488B21E },
+        p2tr: { xprv: 0x0488ADE4, xpub: 0x0488B21E },
+        addressFamily: 'xrp',
+        networkName: 'mainnet'
       }
     };
     const DEFAULT_ACCOUNT_DERIVATION = {
       bitcoin: "m/0'",
       litecoin: "m/84'/2'/0'",
-      dogecoin: "m/44'/3'/0'"
+      dogecoin: "m/44'/3'/0'",
+      ethereum: "m/44'/60'/0'",
+      xrp: "m/44'/144'/0'"
     };
 
     const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    const XRP_B58 = 'rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz';
     const BECH32 = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
 
     const els = {
@@ -787,6 +808,57 @@
       return out;
     }
 
+    function keccak256(bytes) {
+      const mask = (1n << 64n) - 1n;
+      const rate = 136;
+      const rot = [
+        [0, 36, 3, 41, 18],
+        [1, 44, 10, 45, 2],
+        [62, 6, 43, 15, 61],
+        [28, 55, 25, 21, 56],
+        [27, 20, 39, 8, 14]
+      ];
+      const rc = [
+        0x0000000000000001n, 0x0000000000008082n, 0x800000000000808an,
+        0x8000000080008000n, 0x000000000000808bn, 0x0000000080000001n,
+        0x8000000080008081n, 0x8000000000008009n, 0x000000000000008an,
+        0x0000000000000088n, 0x0000000080008009n, 0x000000008000000an,
+        0x000000008000808bn, 0x800000000000008bn, 0x8000000000008089n,
+        0x8000000000008003n, 0x8000000000008002n, 0x8000000000000080n,
+        0x000000000000800an, 0x800000008000000an, 0x8000000080008081n,
+        0x8000000000008080n, 0x0000000080000001n, 0x8000000080008008n
+      ];
+      const rol64 = (x, n) => n === 0 ? (x & mask) : (((x << BigInt(n)) | (x >> BigInt(64 - n))) & mask);
+      const state = new Array(25).fill(0n);
+      const padded = Array.from(bytes);
+      padded.push(0x01);
+      while (padded.length % rate !== rate - 1) padded.push(0);
+      padded.push(0x80);
+      for (let offset = 0; offset < padded.length; offset += rate) {
+        for (let i = 0; i < rate / 8; i++) {
+          let lane = 0n;
+          for (let j = 0; j < 8; j++) lane |= BigInt(padded[offset + i * 8 + j]) << BigInt(8 * j);
+          state[i] ^= lane;
+        }
+        for (let round = 0; round < 24; round++) {
+          const c = new Array(5);
+          const d = new Array(5);
+          for (let x = 0; x < 5; x++) c[x] = state[x] ^ state[x + 5] ^ state[x + 10] ^ state[x + 15] ^ state[x + 20];
+          for (let x = 0; x < 5; x++) d[x] = c[(x + 4) % 5] ^ rol64(c[(x + 1) % 5], 1);
+          for (let x = 0; x < 5; x++) for (let y = 0; y < 5; y++) state[x + 5 * y] = (state[x + 5 * y] ^ d[x]) & mask;
+          const b = new Array(25).fill(0n);
+          for (let x = 0; x < 5; x++) for (let y = 0; y < 5; y++) b[y + 5 * ((2 * x + 3 * y) % 5)] = rol64(state[x + 5 * y], rot[x][y]);
+          for (let x = 0; x < 5; x++) {
+            for (let y = 0; y < 5; y++) state[x + 5 * y] = (b[x + 5 * y] ^ ((~b[((x + 1) % 5) + 5 * y]) & b[((x + 2) % 5) + 5 * y])) & mask;
+          }
+          state[0] = (state[0] ^ rc[round]) & mask;
+        }
+      }
+      const out = new Uint8Array(32);
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 8; j++) out[i * 8 + j] = Number((state[i] >> BigInt(8 * j)) & 0xffn);
+      return out;
+    }
+
     function bytesToBase64(bytes) {
       let binary = '';
       for (const b of bytes) binary += String.fromCharCode(b);
@@ -979,23 +1051,23 @@
       return 'p2pkh';
     }
 
-    function base58encode(bytes) {
+    function base58encode(bytes, alphabet = B58) {
       let x = bytesToBigInt(bytes);
       let out = '';
       while (x > 0n) {
         const mod = x % 58n;
         x = x / 58n;
-        out = B58[Number(mod)] + out;
+        out = alphabet[Number(mod)] + out;
       }
       let pad = 0;
       for (const b of bytes) { if (b === 0) pad++; else break; }
-      return '1'.repeat(pad) + out;
+      return alphabet[0].repeat(pad) + out;
     }
 
-    async function base58check(payload) {
+    async function base58check(payload, alphabet = B58) {
       const c1 = await sha256(payload);
       const c2 = await sha256(c1);
-      return base58encode(concatBytes(payload, c2.slice(0, 4)));
+      return base58encode(concatBytes(payload, c2.slice(0, 4)), alphabet);
     }
 
     function bech32Polymod(values) {
@@ -1202,7 +1274,31 @@
     }
 
     async function toWif(k, net) {
+      if (net.wif === undefined || net.wif === null) throw new Error('WIF is not defined for this coin/network');
       return base58check(concatBytes(Uint8Array.of(net.wif), ser256(k), Uint8Array.of(1)));
+    }
+
+    function serPubUncompressed(p) {
+      return concatBytes(intToBytes(p.x, 32), intToBytes(p.y, 32));
+    }
+
+    async function ethereumChecksumAddress(addressBytes) {
+      const addressHex = bytesToHex(addressBytes);
+      const hashHex = bytesToHex(keccak256(await textToBytes(addressHex)));
+      let checked = '';
+      for (let i = 0; i < addressHex.length; i++) checked += parseInt(hashHex[i], 16) >= 8 ? addressHex[i].toUpperCase() : addressHex[i];
+      return '0x' + checked;
+    }
+
+    async function ethereumAddressFromPrivateKey(privKey) {
+      const pub = pointMul(privKey, G);
+      const hash = keccak256(serPubUncompressed(pub));
+      return ethereumChecksumAddress(hash.slice(-20));
+    }
+
+    async function xrpClassicAddressFromPublicKey(pub) {
+      const accountId = await hash160(pub);
+      return base58check(concatBytes(Uint8Array.of(0), accountId), XRP_B58);
     }
 
     async function pubToAddress(pub, scriptType, net) {
@@ -1225,7 +1321,7 @@
       const count = Math.max(1, Number(els.count.value || 5));
       const scriptMap = { Auto: 'auto', P2PKH: 'p2pkh', 'P2WPKH-P2SH': 'p2wpkh-p2sh', P2WPKH: 'p2wpkh', P2TR: 'p2tr' };
       const requested = scriptMap[els.scriptType.value] || 'p2wpkh';
-      const coinMap = { Bitcoin: 'bitcoin', Litecoin: 'litecoin', Dogecoin: 'dogecoin' };
+      const coinMap = { Bitcoin: 'bitcoin', Litecoin: 'litecoin', Dogecoin: 'dogecoin', 'Ethereum / ERC-20': 'ethereum', XRP: 'xrp' };
       const coin = coinMap[els.coin.value] || 'bitcoin';
       const net = NETS[coin];
       const derivation = normalizePath((els.derivation.value || '').trim() || DEFAULT_ACCOUNT_DERIVATION[coin] || "m/0'");
@@ -1237,13 +1333,15 @@
       const seed = await bip39Seed(mnemonic, passphrase);
       const root = await masterFromSeed(seed);
       const account = await derive(root, derivation);
-      const st = requested === 'auto' ? purposeToScript(derivation) : requested;
+      const isEthereum = net.addressFamily === 'ethereum';
+      const isXrp = net.addressFamily === 'xrp';
+      const st = isEthereum || isXrp ? net.addressFamily : (requested === 'auto' ? purposeToScript(derivation) : requested);
       const rootVers = net.p2pkh;
       const xVers = net.p2pkh;
       const yVers = net['p2wpkh-p2sh'];
       const zVers = net.p2wpkh;
       const trVers = net.p2tr;
-      if (!net[st]) throw new Error('Unsupported script type');
+      if (!isEthereum && !isXrp && !net[st]) throw new Error('Unsupported script type');
 
       const result = {
         coin,
@@ -1288,11 +1386,22 @@
           const pub = serPub(pointMul(child.k, G));
           const item = {
             path: `${derivation}/${branch}/${i}`,
-            address: st === 'p2tr' ? null : await pubToAddress(pub, st, net),
+            address: st === 'p2tr' || isEthereum || isXrp ? null : await pubToAddress(pub, st, net),
             public_key_hex: bytesToHex(pub),
-            private_key_hex: bytesToHex(ser256(child.k)),
-            private_key_wif: await toWif(child.k, net)
+            private_key_hex: bytesToHex(ser256(child.k))
           };
+          if (isEthereum) {
+            item.address = await ethereumAddressFromPrivateKey(child.k);
+            item.ethereum_public_key_hex = bytesToHex(serPubUncompressed(pointMul(child.k, G)));
+            item.erc20_address = item.address;
+            item.erc20_note = 'ERC-20 tokens on Ethereum use this same account address.';
+          } else if (isXrp) {
+            item.address = await xrpClassicAddressFromPublicKey(pub);
+            item.xrp_classic_address = item.address;
+            item.xrp_note = 'XRP Ledger classic address. Destination tags, when required by an exchange or custodian, are not derived from the seed.';
+          } else {
+            item.private_key_wif = await toWif(child.k, net);
+          }
           if (st === 'p2tr') {
             const taproot = await taprootKeyData(child.k);
             item.address = segwitAddress(net.hrp, 1, taproot.outputPublicKey);
@@ -1672,11 +1781,13 @@
         handleWordInput();
       }));
       els.coin.addEventListener('change', () => {
-        const coinMap = { Bitcoin: 'bitcoin', Litecoin: 'litecoin', Dogecoin: 'dogecoin' };
+        const coinMap = { Bitcoin: 'bitcoin', Litecoin: 'litecoin', Dogecoin: 'dogecoin', 'Ethereum / ERC-20': 'ethereum', XRP: 'xrp' };
         const key = coinMap[els.coin.value] || 'bitcoin';
         els.derivation.value = DEFAULT_ACCOUNT_DERIVATION[key];
         if (key === 'dogecoin') {
           els.scriptType.value = 'P2PKH';
+        } else if (key === 'ethereum' || key === 'xrp') {
+          els.scriptType.value = 'Auto';
         } else {
           els.scriptType.value = 'P2WPKH';
         }

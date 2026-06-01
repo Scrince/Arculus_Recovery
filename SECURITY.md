@@ -9,6 +9,8 @@ Arculus Recovery is an offline BIP39/BIP32 recovery and key-derivation tool. It 
 
 The core security expectation is simple: seed phrases, passphrases, private keys, exported files, and derived addresses should stay on a trusted machine that you control. The application does not require a server, account, cloud service, telemetry endpoint, or network API.
 
+The current derivation surface includes UTXO-style outputs for Bitcoin, Litecoin, and Dogecoin; Ethereum account addresses for ETH and ERC-20 tokens; and XRP Ledger classic addresses.
+
 ## Supported Versions
 
 | Version | Supported |
@@ -28,6 +30,7 @@ The project is built for users who need to inspect or recover wallet data withou
 - BIP39 seed generation from mnemonic plus optional passphrase
 - BIP32 private key derivation
 - Address and extended key formatting
+- UTXO script address formatting, Ethereum EIP-55 address formatting, and XRP Ledger classic-address formatting
 - Encrypted `.arc` seed export/import
 - JSON, CSV, and TXT derived-output exports
 - Browser and Python GUI handling of hidden imported seeds
@@ -112,6 +115,8 @@ Supported script outputs include:
 
 Taproot support includes BIP86-style output derivation, Bech32m encoding, internal key data, tweak data, output key data, and parity metadata.
 
+Ethereum and XRP are account-style outputs rather than UTXO script outputs. Ethereum derivation returns EIP-55 checksummed `0x...` account addresses; ERC-20 tokens on Ethereum use the same account address. XRP derivation returns XRPL classic `r...` addresses. XRP destination tags, when required by an exchange or custodian, are operational routing metadata and are not derived from the seed.
+
 ## Export Formats
 
 Derived key/address exports can contain highly sensitive data, including private keys and extended private keys. Treat every derived export as secret material.
@@ -168,6 +173,7 @@ The app warns before copying a seed phrase. Even with that warning, the safest p
 - BIP39 passphrases
 - Private keys
 - WIF keys
+- Raw hex private keys for account-based coins
 - Extended private keys
 - Encrypted seed backup passwords
 

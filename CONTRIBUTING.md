@@ -1,6 +1,6 @@
 # Contributing to Arculus_Recovery
 
-Arculus_Recovery is an offline, deterministic recovery tool for BIP39/BIP32/BIP86 workflows with both HTML/JS and Python implementations. Because this project handles sensitive cryptographic material, contributions must meet strict security, correctness, and reproducibility standards. This document defines the requirements for contributing code, documentation, or tests.
+Arculus_Recovery is an offline, deterministic recovery tool for BIP39/BIP32/BIP86 and account-address workflows with both HTML/JS and Python implementations. Because this project handles sensitive cryptographic material, contributions must meet strict security, correctness, and reproducibility standards. This document defines the requirements for contributing code, documentation, or tests.
 
 ## 1. Project Scope
 
@@ -9,7 +9,7 @@ Arculus_Recovery supports:
 - Offline mnemonic validation
 - BIP39 seed generation
 - BIP32 and BIP86 key derivation
-- Multi‑coin derivation (BTC, LTC, DOGE)
+- Multi-coin derivation (BTC, LTC, DOGE, ETH / ERC-20, XRP)
 - Taproot (BIP86) support
 - Encrypted seed export/import using the .arc format
 - Browser‑based and Python‑based offline workflows
@@ -93,7 +93,7 @@ Before submitting a PR:
 
 - Test both HTML and Python versions
 - Validate 12‑word and 24‑word mnemonics
-- Verify derivation for BTC, LTC, and DOGE
+- Verify derivation for BTC, LTC, DOGE, ETH / ERC-20, and XRP
 - Confirm BIP86 behavior
 - Test .arc export and import
 - Confirm offline operation
@@ -148,6 +148,7 @@ Any PR that modifies cryptographic behavior, key handling, or .arc file logic mu
 - [ ] BIP39 seed generation matches reference vectors
 - [ ] BIP32 derivation matches reference vectors
 - [ ] BIP86 derivation matches reference vectors
+- [ ] Account-family address encoders match reference vectors, including EIP-55 for Ethereum and XRPL classic-address base58 for XRP when touched
 - [ ] Hardened vs. non‑hardened paths are handled correctly
 
 ### 8.6 Implementation Parity
