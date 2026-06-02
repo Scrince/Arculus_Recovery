@@ -15,10 +15,10 @@ The current derivation surface includes UTXO-style outputs for Bitcoin, Litecoin
 
 | Version | Supported |
 | --- | --- |
-| Latest | Active |
+| 1.1.0-production (latest) | Active |
 | Older copies | Not supported |
 
-Use the latest checked-in `Arculus_Recovery.html`, `index.html`, and `Arculus_Recovery.py` files together. The README includes SHA256 hashes so users can verify the exact files they are running.
+Use the latest `Arculus_Recovery.html`, `index.html`, and `Arculus_Recovery.py` files together. The README includes SHA256 hashes so users can verify the exact files they are running.
 
 ## Threat Model
 
@@ -26,6 +26,7 @@ The project is built for users who need to inspect or recover wallet data withou
 
 ### In Scope
 
+- Cryptographically random mnemonic generation (12 or 24 words)
 - Local mnemonic parsing and BIP39 checksum validation
 - BIP39 seed generation from mnemonic plus optional passphrase
 - BIP32 private key derivation
@@ -33,7 +34,7 @@ The project is built for users who need to inspect or recover wallet data withou
 - UTXO script address formatting, Ethereum EIP-55 address formatting, and XRP Ledger classic-address formatting
 - Encrypted `.arc` seed export/import
 - JSON, CSV, and TXT derived-output exports
-- Browser and Python GUI handling of hidden imported seeds
+- Browser and Python GUI handling of hidden imported and generated seeds
 
 ### Out of Scope
 
@@ -53,10 +54,11 @@ The HTML version is a single-file browser app. It embeds the BIP39 word list, cr
 Security properties:
 
 - No backend service is required.
-- No network request is needed for validation, derivation, import, or export.
+- No network request is needed for validation, derivation, import, export, or random mnemonic generation.
+- Random mnemonic generation uses `crypto.getRandomValues`, the browser's CSPRNG, with no network involvement.
 - Browser storage is used only for the dark-mode preference.
 - Generated downloads are created locally with `Blob` object URLs.
-- The hidden imported-seed workflow keeps an imported mnemonic out of the visible text box until the user holds `Show Seed`.
+- Generated and imported mnemonics are handled through the same hidden-seed workflow: the phrase is kept out of the visible word grid until the user holds `Show Seed`.
 
 Recommended browser posture:
 
@@ -73,6 +75,7 @@ Security properties:
 
 - No external Python packages are required.
 - No network APIs are used.
+- Random mnemonic generation uses `os.urandom`, the OS CSPRNG.
 - File import/export happens through local filesystem dialogs or CLI output.
 - GUI dark mode and settings are local UI state only.
 
@@ -84,9 +87,9 @@ Recommended Python posture:
 
 ## Mnemonic and Key Derivation Details
 
-The tool validates 12-word and 24-word BIP39 English mnemonics.
+The tool validates and generates 12-word and 24-word BIP39 English mnemonics.
 
-Validation checks include:
+**Validation** checks include:
 
 - Word count
 - Wordlist membership
@@ -97,7 +100,9 @@ Validation checks include:
 - Keystore or seed format detection
 - Root fingerprint
 
-Derivation flow:
+**Generation** uses the browser's `crypto.getRandomValues` or Python's `os.urandom` to produce the required entropy bytes, computes the BIP39 checksum, maps the result to word indices, and verifies the output against the same validation pipeline before presenting the mnemonic. A generated mnemonic that fails its own validation is rejected and never surfaced to the user.
+
+**Derivation** flow:
 
 1. Normalize mnemonic and passphrase with Unicode NFKD where applicable.
 2. Use BIP39 PBKDF2-HMAC-SHA512 to produce the 512-bit seed.
@@ -162,6 +167,7 @@ Important limitations:
 - The armored envelope hides casual JSON metadata, but it is not a substitute for encryption. The password-derived keys and MAC are the security boundary.
 - A weak password can still be guessed offline by an attacker who obtains the `.arc` file.
 - The browser and Python app must decrypt the mnemonic into memory to validate or derive from it.
+- A newly generated mnemonic also resides in memory; the same memory-exposure caveats apply.
 
 ## Clipboard and Display Risks
 
@@ -169,7 +175,7 @@ Clipboard use is convenient but risky. Other applications, browser extensions, c
 
 The app warns before copying a seed phrase. Even with that warning, the safest practice is to avoid copying:
 
-- Seed phrases
+- Seed phrases (whether typed, imported, or generated)
 - BIP39 passphrases
 - Private keys
 - WIF keys
@@ -177,7 +183,7 @@ The app warns before copying a seed phrase. Even with that warning, the safest p
 - Extended private keys
 - Encrypted seed backup passwords
 
-The hidden imported-seed workflow reduces accidental display, but it does not protect against software that can inspect process memory or capture the screen.
+The hidden-seed workflow (covering both imported `.arc` seeds and newly generated mnemonics) reduces accidental display, but it does not protect against software that can inspect process memory or capture the screen.
 
 ## Recommended Offline Workflow
 
@@ -185,7 +191,7 @@ The hidden imported-seed workflow reduces accidental display, but it does not pr
 2. Verify SHA256 hashes from the README.
 3. Move the files to a trusted offline machine.
 4. Disconnect networking before opening the app.
-5. Run validation or derivation.
+5. Run validation, generation, or derivation.
 6. Export only what you need.
 7. Store exports on encrypted media.
 8. Clear browser downloads, clipboard history, terminal history, and temporary files if applicable.

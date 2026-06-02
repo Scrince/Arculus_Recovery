@@ -1,726 +1,1030 @@
-Arculus Recovery Derivation Internals
-=====================================
+Arculus Recovery v1.1.0-production — Derivation Engine Internals
+=================================================================
 
-Purpose
--------
+Scope
+-----
 
-This document describes the derivation engine in this specific copy of Arculus
-Recovery. It is written as a technical map of the implementation: BIP39
-validation, BIP32 private derivation, network constants, script encodings,
-account-style address encodings, Taproot key tweaking, extended-key
-serialization, and export structure.
+This document is the authoritative byte-level specification of the deterministic
+key derivation engine as implemented in Arculus Recovery v1.1.0-production. It
+defines the complete computational pipeline from raw CSPRNG entropy through
+BIP39 mnemonic generation and validation, Unicode normalization, PBKDF2 seed
+stretching, BIP32 hierarchical deterministic master node construction, recursive
+CKDpriv child key derivation, script-type resolution, per-coin address
+construction across five supported asset families, Taproot key-material
+processing under BIP340/BIP341/BIP86, extended key serialization, and
+structured multi-format output.
 
-This is a plain-text offline reference. Screenshots are not needed for the
-derivation process; the important information is the byte-level pipeline and the
-mathematics behind the generated outputs.
+Version 1.1.0-production introduces two new input surfaces relative to earlier
+builds: a cryptographically random mnemonic generation subsystem
+(generateRandomMnemonic / generate_random_mnemonic) and an individual word-entry
+grid that replaces the previous single-textarea mnemonic input. Both surfaces
+feed identical downstream validation and derivation pipelines with no behavioral
+divergence. This document covers all three entry points: typed word-grid input,
+paste-distributed input, and CSPRNG-generated input.
+
+This is an offline reference. All constructions are defined entirely by their
+mathematical specification and byte-level behavior. No external service,
+network oracle, balance query, or chain-state lookup of any kind is required or
+performed at any stage.
 
 
-System Overview
----------------
+Architectural Invariants
+------------------------
 
-The derivation engine is deterministic:
+The engine is stateless and purely deterministic. Given identical inputs —
+mnemonic, BIP39 passphrase, coin identifier, derivation path, script type, and
+address count — it produces byte-for-byte identical output on every invocation,
+on every conformant platform, with zero dependency on external state.
 
-  mnemonic + optional BIP39 passphrase + coin + path + script type + count
+The following operations are explicitly outside the engine's domain and are
+never performed:
+
+  - Address discovery or balance queries against any blockchain
+  - UTXO set scanning or wallet gap-limit heuristics
+  - Ethereum account state or ERC-20 token enumeration
+  - XRP ledger queries, destination-tag resolution, or sequence number lookup
+  - Fee estimation, mempool inspection, or chain-tip awareness of any kind
+  - Network I/O of any form
+
+The derivation graph has the following invariant computational structure:
+
+  CSPRNG entropy (optional, for generation) OR word-grid / paste input
+       |
+       | BIP39 word index mapping + checksum verification
+       v
+  normalized mnemonic string
+       |
+       | Unicode NFKD normalization of mnemonic and passphrase
+       v
+  PBKDF2-HMAC-SHA512 (2048 iterations, 64-byte output)
+       |
+       | 512-bit seed
+       v
+  HMAC-SHA512 keyed on b"Bitcoin seed"
+       |
+       | split at byte boundary 32
+       v
+  master private scalar (IL[0:32]) || master chain code (IR[32:64])
+       |
+       | CKDpriv traversal over each hardened and non-hardened path component
+       v
+  account private node at configured path depth
+       |
+       +---> branch index 0 (receiving): CKDpriv(account, 0) -> CKDpriv(node, i)
+       +---> branch index 1 (change):    CKDpriv(account, 1) -> CKDpriv(node, i)
        |
        v
-  BIP39 validation
-       |
-       v
-  BIP39 PBKDF2 seed
-       |
-       v
-  BIP32 master private key
-       |
-       v
-  BIP32 account private key
-       |
-       v
-  branch 0 receiving keys and branch 1 change keys
-       |
-       v
-  address encoders + WIF where applicable + extended keys + optional metadata
+  per-index child private scalar -> address encoder -> structured output record
 
-No network lookup is performed. There is no address discovery, no blockchain
-scan, no balance check, token lookup, XRP destination-tag lookup, and no wallet
-server. The program derives possible keys and addresses from the provided seed
-material.
+The HTML implementation executes this pipeline asynchronously via the Web Crypto
+API (SubtleCrypto.deriveBits, SubtleCrypto.sign) and pure-JavaScript big-integer
+arithmetic. The Python implementation executes the identical pipeline
+synchronously using hashlib, hmac, and native arbitrary-precision integers.
+Both implementations produce byte-identical derivation output for all inputs.
 
 
-Cryptographic Domain
---------------------
+Elliptic Curve Domain Parameters
+---------------------------------
 
-The elliptic curve is secp256k1:
+All public-key operations are performed over the secp256k1 prime-field elliptic
+curve as specified in SEC 2, version 2.0, section 2.4.1. The curve has a
+Koblitz-form short Weierstrass equation over a prime field:
 
-  p  = FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
-  n  = FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
-  Gx = 55066263022277343669578718895168534326250603453777594175500187360389116729240
-  Gy = 32670510020758816978083085130507043184471273380659243275938904335757337482424
+  y^2 ≡ x^3 + 7  (mod p)
 
-The group order n defines the valid private-key range:
+Curve parameters in full hexadecimal:
 
-  1 <= private_key < n
+  Field prime:
+    p  = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
 
-The implementation performs point addition, scalar multiplication, compressed
-public key serialization, x-only public key extraction, and Taproot point
-negation directly in local code.
+  Group order:
+    n  = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+
+  Generator x-coordinate:
+    Gx = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798
+
+  Generator y-coordinate:
+    Gy = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8
+
+  Cofactor: h = 1
+
+The valid private key domain is the open interval (0, n). Any scalar equal to
+zero or greater than or equal to n is cryptographically undefined and is rejected
+by the engine at every point where a private scalar is produced or consumed.
+
+secp256k1 has prime group order, making every non-identity point a valid
+generator of the full group. The cofactor of 1 means there are no small-subgroup
+attack vectors from points on the curve.
+
+The engine implements the following primitives natively without delegating to
+external elliptic curve libraries:
+
+  - Affine-coordinate point addition with lambda computation
+  - Double-and-add scalar multiplication (left-to-right binary method)
+  - Compressed public key serialization: 0x02 prefix if y is even, 0x03 if odd,
+    followed by the 32-byte big-endian x-coordinate
+  - X-only (BIP340) public key extraction: the lower 32 bytes of a compressed
+    key after Y-parity normalization
+  - Field arithmetic modulo p
+  - Scalar arithmetic modulo n
+
+All arithmetic is performed in the native integer domain. No floating-point
+operations are involved at any stage.
 
 
-BIP39 Mnemonic Validation
--------------------------
+CSPRNG-Based Mnemonic Generation (v1.1.0-production)
+------------------------------------------------------
 
-The application embeds the BIP39 English word list. Each word maps to an
-11-bit index in the range 0..2047.
+Version 1.1.0-production adds a deterministic-output mnemonic generation
+function that derives its entropy exclusively from the platform cryptographic
+random number generator. This function is invoked when the user activates the
+Generate Random Seed control.
 
-This program accepts:
+The generation algorithm for a target word count wc ∈ {12, 24}:
 
-  12 words -> ENT = 128 bits, CS = 4 bits
-  24 words -> ENT = 256 bits, CS = 8 bits
+  CS          = wc / 3                             -- checksum bits (integer division)
+  ENT         = wc * 11 - CS                       -- entropy bits: 128 for 12w, 256 for 24w
+  entropy     = CSPRNG(ENT / 8)                    -- ENT/8 raw random bytes
 
-Although BIP39 also defines other word counts, this recovery tool intentionally
-focuses on 12-word and 24-word seeds.
+  hash        = SHA256(entropy)                    -- 32-byte digest
+  checksum    = MSB(hash, CS)                      -- first CS bits of the digest
 
-Validation procedure:
+  bit_string  = entropy_bits || checksum_bits      -- ENT + CS = wc * 11 total bits
+  words[i]    = BIP39_WORDS[ bit_string[i*11 : i*11+11] ]  for i in 0..wc-1
 
-  words = normalize_mnemonic_words(input)
-  wc = len(words)
-  require wc in {12, 24}
-  require every word in BIP39_WORD_INDEX
+  mnemonic    = words.join(' ')
 
-  bitstring = concat(11-bit-index(word_i) for word_i in words)
+  -- Mandatory self-validation:
+  assert checkMnemonic(mnemonic).wordsOk && checkMnemonic(mnemonic).checksumOk
 
-  ENT = floor(wc * 11 * 32 / 33)
-  CS  = wc * 11 - ENT
+The entropy source:
+  HTML:   crypto.getRandomValues(new Uint8Array(ENT / 8))
+  Python: os.urandom(ENT / 8)
 
-  entropy_bits = bitstring[0:ENT]
-  checksum_bits_supplied = bitstring[ENT:ENT+CS]
+Both delegates are OS-level CSPRNGs. The Web Crypto API requirement for
+crypto.getRandomValues ensures the browser cannot substitute a non-cryptographic
+PRNG. The Python os.urandom call maps to the same kernel-level entropy pool as
+/dev/urandom on POSIX systems and CryptGenRandom on Windows.
 
-  entropy = bits_to_bytes(entropy_bits)
+The self-validation step is non-optional. A generated mnemonic that fails its
+own BIP39 checksum verification is discarded entirely and never surfaced to the
+user. This guards against any integer truncation or bit-packing error in the
+generation implementation.
+
+After successful generation, the mnemonic is routed through the hidden-seed
+workflow: it is stored in importedSeedState with kind='generated', the word grid
+is populated with obfuscated placeholders, and the mnemonic is not accessible
+without an explicit press-and-hold of Show Seed. The root fingerprint display
+updates immediately after generation using an asynchronous fingerprint refresh
+triggered by applyGeneratedSeed.
+
+
+Individual Word-Entry Grid (v1.1.0-production)
+-----------------------------------------------
+
+Version 1.1.0-production replaces the single-textarea mnemonic input with a
+numbered word-entry grid built dynamically by buildWordInputs(). The grid
+always renders 24 individual input cells; the active word count is controlled
+by the 12/24-word radio selector (getSeedLen / setSeedLen).
+
+Grid behavioral specification:
+
+  Active cells:  indices 0..(getSeedLen()-1)
+  Inactive cells: indices getSeedLen()..23; disabled and cleared on selector change
+
+  Paste behavior: pasting a space-separated string into any cell triggers
+    distributeWords(), which tokenizes the input on whitespace, normalizes each
+    token via normalizeNFKD, and distributes words sequentially into active
+    cells starting at index 0. Distributing more than 12 words auto-promotes
+    the selector to 24; distributing more than 0 words that sum to 12 sets the
+    selector to 12. This allows a full mnemonic string to be pasted into any
+    cell in the grid.
+
+  Input normalization: each cell applies normalizeNFKD() on input and blur
+    events via handleWordInput, which also triggers styleWordInput() to apply
+    inline per-word validation feedback.
+
+  Word extraction: getMnemonicFromGrid() iterates indices 0..(getSeedLen()-1),
+    normalizes each cell value, and joins with single spaces to produce the
+    canonical mnemonic string that is passed downstream.
+
+  Selector change behavior: switching from 24 to 12 clears and disables cells
+    12..23. Switching from 12 to 24 re-enables cells 12..23. If an importedSeed
+    State is active and not being revealed, selector changes have no effect on
+    the word grid display.
+
+  Sync with legacy textarea: the hidden mnemonic textarea (id="mnemonic") is
+    kept in sync with the word grid via handleMnemonicInput and handleWordInput
+    event handlers through the syncBusy guard to prevent re-entrancy. The
+    textarea remains the canonical internal mnemonic store for non-grid input
+    paths (e.g., direct paste into the textarea).
+
+  Hidden-seed overlay: when importedSeedState is set and showingImportedSeed is
+    false, refreshWordEnabled() disables all word cells. The cells display
+    obfuscated placeholders set by setObfuscatedSeedInputs(). No word from the
+    hidden mnemonic is readable from the DOM.
+
+
+BIP39 Validation
+----------------
+
+The engine embeds the canonical BIP39 English word list in full (2048 entries,
+indices 0x000..0x7FF). Word lookup is O(1) via a pre-constructed reverse index
+map. The engine accepts exclusively 12-word and 24-word inputs; all other word
+counts are rejected with an explicit error rather than silently mishandled.
+
+Validation procedure in formal notation:
+
+  words   = normalize_mnemonic_words(raw_input)
+  wc      = |words|
+  require wc ∈ {12, 24}
+  require ∀ w ∈ words: w ∈ BIP39_WORD_INDEX
+
+  B       = concat( index_11bit(words[i]) for i in 0..wc-1 )
+  ENT     = floor(wc × 11 × 32 / 33)
+  CS      = wc × 11 − ENT
+
+  B_ent   = B[0 : ENT]
+  B_cs    = B[ENT : ENT + CS]
+
+  entropy         = bits_to_bytes(B_ent)           -- ENT/8 bytes
   checksum_source = SHA256(entropy)
-  checksum_bits_expected = first CS bits of checksum_source
+  B_cs_expected   = msb(checksum_source, CS)        -- first CS bits of hash
 
-  valid iff checksum_bits_supplied == checksum_bits_expected
+  valid iff B_cs == B_cs_expected
 
-For accepted word counts:
+Word count parameters:
 
-  wc   total bits   entropy bits   checksum bits
-  --   ----------   ------------   -------------
-  12   132          128            4
-  24   264          256            8
+  wc    total_bits   ENT    CS
+  12    132           128     4
+  24    264           256     8
 
-If all words exist in the word list but the checksum fails, the program reports
-a BIP39-like mnemonic with invalid checksum rather than pretending it is valid.
+A mnemonic whose words are all valid BIP39 entries but whose checksum fails is
+classified as BIP39-like with invalid checksum. This distinction is operationally
+critical during recovery: a single transposed or misremembered word produces a
+structurally valid-looking derivation from a completely incorrect seed. The
+checksum failure is a mandatory recovery signal.
 
 
-BIP39 Seed Material
--------------------
+BIP39 Seed Derivation
+---------------------
 
-After validation, the program computes the BIP39 seed:
+Both the mnemonic and the optional BIP39 passphrase undergo Unicode NFKD
+normalization before byte-encoding. NFKD decomposition is specified in BIP39
+and is mandatory — it ensures that visually or semantically equivalent Unicode
+strings produce identical byte sequences regardless of composition form or
+platform input method. The implementation uses normalizeNFKD() in the HTML
+version and unicodedata.normalize('NFKD', ...) in Python.
 
-  password = NFKD(mnemonic_string).encode("utf-8")
-  salt     = NFKD("mnemonic" + passphrase).encode("utf-8")
+  mnemonic_str     = " ".join(normalized_words)
+  passphrase_str   = NFKD(user_passphrase)   -- empty string if not supplied
+
+  password_bytes   = mnemonic_str.encode("utf-8")
+  salt_bytes       = ("mnemonic" + passphrase_str).encode("utf-8")
 
   seed = PBKDF2-HMAC-SHA512(
-      password = password,
-      salt = salt,
+      password   = password_bytes,
+      salt       = salt_bytes,
       iterations = 2048,
-      dklen = 64
+      dklen      = 64
   )
 
-The optional passphrase is a BIP39 wallet passphrase. It is not the same thing
-as the .arc encryption password. If a wallet originally used a BIP39 passphrase,
-the wrong or empty passphrase derives a different wallet tree.
+The output is a 512-bit (64-byte) deterministic seed. The BIP39 passphrase
+functions as a second-factor wallet derivation parameter. An empty passphrase
+and any non-empty passphrase each derive a completely disjoint key tree from the
+same mnemonic, with no error, no warning, and no computational distinguisher
+between them. There is no mechanism to identify which passphrase produced a
+given tree without already knowing it.
+
+The .arc encryption password is operationally and cryptographically independent
+of the BIP39 passphrase. They may coincidentally share the same string value by
+user choice, but the engine never conflates them. They operate on separate key
+schedules with unrelated KDF parameters.
 
 
-BIP32 Master Node
------------------
+BIP32 Master Node Construction
+-------------------------------
 
-The 64-byte BIP39 seed becomes a BIP32 master private node:
+The 64-byte seed is processed through a single HMAC-SHA512 invocation:
 
-  I  = HMAC-SHA512(key = "Bitcoin seed", msg = seed)
-  IL = I[0:32]
-  IR = I[32:64]
+  I   = HMAC-SHA512(key = b"Bitcoin seed", msg = seed)
+  IL  = I[0:32]       -- 256-bit candidate private scalar
+  IR  = I[32:64]      -- 256-bit master chain code
 
   master_private_key = parse256(IL)
   master_chain_code  = IR
 
-The implementation expects the private scalar to be valid modulo secp256k1
-order n. The chain code is 32 bytes used as the HMAC key for child derivation.
+The private scalar is valid if and only if parse256(IL) ∈ (0, n). The
+probability of failure on a uniformly random seed is approximately 1/2^128,
+which is negligible for any practical purpose. The engine raises a hard error
+on this edge case rather than silently yielding an invalid or zero key.
 
-The root fingerprint shown in the UI is:
+The root fingerprint displayed in the UI toolbar and updated immediately after
+mnemonic generation or import is computed as:
 
-  root_pubkey = compressed_public_key(master_private_key * G)
-  root_fingerprint = HASH160(root_pubkey)[0:4]
+  root_pubkey       = serP(master_private_key × G)   -- compressed, 33 bytes
+  root_fingerprint  = HASH160(root_pubkey)[0:4]
 
-Rendered as lowercase hexadecimal.
+Where HASH160 is the standard Bitcoin double-hash function:
 
+  HASH160(x) = RIPEMD160(SHA256(x))
 
-BIP32 Private Child Derivation
-------------------------------
-
-The program uses private child derivation, CKDpriv.
-
-Let parent node be:
-
-  k_par = parent private scalar
-  c_par = parent chain code
-  K_par = point(k_par)
-
-Let index i be a 32-bit unsigned integer.
-
-Hardened index:
-
-  i >= 0x80000000
-  data = 0x00 || ser256(k_par) || ser32(i)
-
-Non-hardened index:
-
-  i < 0x80000000
-  data = serP(K_par) || ser32(i)
-
-Then:
-
-  I  = HMAC-SHA512(key = c_par, msg = data)
-  IL = I[0:32]
-  IR = I[32:64]
-
-  child_private = (parse256(IL) + k_par) mod n
-  child_chain_code = IR
-
-Invalid child conditions:
-
-  parse256(IL) >= n
-  child_private == 0
-
-If either occurs, the function raises an error.
-
-Each child node stores:
-
-- private scalar
-- chain code
-- depth
-- parent fingerprint
-- child number
+The fingerprint is serialized as 4 bytes of lowercase hexadecimal. It provides
+a reproducible, non-secret short identifier for the root key without exposing
+any recoverable key material. The fingerprint is recomputed asynchronously after
+every mnemonic state change (typed input, paste, import, or generation) using a
+cancellation token (rootFingerprintRefreshToken) to discard stale results from
+superseded inputs.
 
 
-Path Parser
------------
+CKDpriv: Private Child Key Derivation
+---------------------------------------
 
-The path parser accepts:
+Child derivation follows BIP32 CKDpriv exactly. Let the parent node be defined
+by private scalar k_par, chain code c_par, and derived public key K_par = k_par × G.
 
-  m/84'/0'/0'
-  m/84h/0h/0h
-  m/84H/0H/0H
+For a child at index i (0-indexed, 32-bit unsigned integer):
 
-A hardened component adds:
+  Hardened child (i ≥ 0x80000000):
+    data = 0x00 || ser256(k_par) || ser32(i)
+
+  Normal child (i < 0x80000000):
+    data = serP(K_par) || ser32(i)
+
+  I   = HMAC-SHA512(key = c_par, msg = data)
+  IL  = I[0:32]
+  IR  = I[32:64]
+
+  child_private_key   = (parse256(IL) + k_par) mod n
+  child_chain_code    = IR
+
+Hard invalidity conditions, both of which require skipping to child index i+1
+per the BIP32 specification (this engine raises an explicit error instead):
+
+  parse256(IL) ≥ n
+  child_private_key == 0
+
+Hardened derivation folds the raw private scalar into the HMAC input, making
+child keys non-derivable from the parent public key alone. All account-level
+path components — purpose', coin_type', account' — use hardened indices.
+Branch indices (0, 1) and address indices (0..count-1) are non-hardened.
+
+Each derived node carries the following fields:
+
+  private_scalar       32-byte big-endian integer
+  chain_code           32 bytes
+  depth                1 byte (path depth from master node)
+  parent_fingerprint   4 bytes (HASH160(parent_pubkey)[0:4])
+  child_number         4 bytes (ser32(i))
+
+
+Derivation Path Parser
+-----------------------
+
+The path parser accepts all three conventional notations for hardened
+path components:
+
+  Apostrophe:   m/84'/0'/0'
+  Lowercase h:  m/84h/0h/0h
+  Uppercase H:  m/84H/0H/0H
+
+Hardening applies the BIP32 hardening offset:
 
   HARDENED = 0x80000000
 
-Examples:
+Purpose field 84' is stored internally as index 0x80000054 (decimal 2147483732).
 
-  84' -> 84 + 0x80000000
-  0   -> 0
-
-normalize_path() emits canonical apostrophe notation:
+The canonical output form uses apostrophe notation exclusively:
 
   m/84'/0'/0'
 
+All path strings are emitted in this canonical form regardless of input notation.
+The parser rejects non-numeric path components, indices exceeding the 32-bit
+unsigned maximum, and malformed separator sequences as hard errors.
+
 
 Account and Branch Model
-------------------------
+-------------------------
 
-The selected derivation is treated as an account path:
+The configured derivation path is treated as an account-level node. The engine
+derives the account node and then generates two standard BIP44-style branches:
 
-  account = derive(root, account_path)
+  Receiving branch:   <account_path>/0/<index>
+  Change branch:      <account_path>/1/<index>
 
-Then the program derives two BIP44-style branches:
+Both the branch index (0 or 1) and the address index (0..count-1) are
+non-hardened derivations. The count parameter controls how many address indices
+are generated per branch.
 
-  receiving branch: account_path / 0 / index
-  change branch:    account_path / 1 / index
+Example for m/84'/0'/0' with count = 3:
 
-Example:
+  Account:            m/84'/0'/0'
+  Receiving index 0:  m/84'/0'/0'/0/0
+  Receiving index 1:  m/84'/0'/0'/0/1
+  Receiving index 2:  m/84'/0'/0'/0/2
+  Change index 0:     m/84'/0'/0'/1/0
+  Change index 1:     m/84'/0'/0'/1/1
+  Change index 2:     m/84'/0'/0'/1/2
 
-  account path: m/84'/0'/0'
-
-  receiving #0: m/84'/0'/0'/0/0
-  receiving #1: m/84'/0'/0'/0/1
-  change    #0: m/84'/0'/0'/1/0
-  change    #1: m/84'/0'/0'/1/1
-
-The count field controls how many indexes are produced for each branch.
+This branching structure is mandatory for BIP44/49/84/86 compliant derivation.
+The change branch is always generated in the output; the caller is responsible
+for selecting which branch is relevant to their use case.
 
 
-Default Coin Paths
-------------------
+SLIP44 Coin Type Registry and Default Paths
+--------------------------------------------
 
-GUI/browser defaults:
+SLIP44 coin type assignments used by this engine:
 
-  bitcoin           -> m/0'
-  litecoin          -> m/84'/2'/0'
-  dogecoin          -> m/44'/3'/0'
-  ethereum / ERC-20 -> m/44'/60'/0'
-  xrp               -> m/44'/144'/0'
+  bitcoin    coin_type = 0
+  litecoin   coin_type = 2
+  dogecoin   coin_type = 3
+  ethereum   coin_type = 60
+  xrp        coin_type = 144
 
-Coin types:
+Default account paths surfaced in the UI and GUI:
 
-  bitcoin  -> 0
-  litecoin -> 2
-  dogecoin -> 3
-  ethereum -> 60
-  xrp      -> 144
+  bitcoin     m/0'               (simplified recovery default)
+  litecoin    m/84'/2'/0'
+  dogecoin    m/44'/3'/0'
+  ethereum    m/44'/60'/0'
+  xrp         m/44'/144'/0'
 
-Common account paths:
+Standard BIP purpose path matrix for UTXO coins:
 
-  BIP44 legacy       m/44'/coin_type'/0'
-  BIP49 wrapped      m/49'/coin_type'/0'
-  BIP84 native       m/84'/coin_type'/0'
-  BIP86 Taproot      m/86'/coin_type'/0'
+  BIP44 (P2PKH legacy)        m/44'/coin_type'/0'
+  BIP49 (P2WPKH-P2SH)         m/49'/coin_type'/0'
+  BIP84 (P2WPKH native SegWit) m/84'/coin_type'/0'
+  BIP86 (P2TR Taproot)        m/86'/coin_type'/0'
 
-CLI --all-common derives the four common purpose paths for UTXO-style coins.
-For Ethereum and XRP, --all-common derives the BIP44 account path only.
+The --all-common CLI flag (Python, v1.1.0-production) invokes all four purpose
+paths for UTXO coins in a single derivation pass. For Ethereum and XRP,
+--all-common degenerates to the single canonical BIP44 path, as those coins have
+no defined SegWit or Taproot analogues under SLIP44 and operate exclusively as
+account-address families.
 
 
 Script Type Resolution
-----------------------
+-----------------------
 
-The script type can be explicit or Auto.
+Script type is either explicitly specified or inferred from the path via Auto
+mode.
 
-Explicit values:
+Explicit values accepted:
 
   p2pkh
   p2wpkh-p2sh
   p2wpkh
   p2tr
 
-Auto maps the purpose field:
+Auto mode reads the purpose field (first path component) and maps it:
 
-  44' -> p2pkh
-  49' -> p2wpkh-p2sh
-  84' -> p2wpkh
-  86' -> p2tr
+  purpose 44'  ->  p2pkh
+  purpose 49'  ->  p2wpkh-p2sh
+  purpose 84'  ->  p2wpkh
+  purpose 86'  ->  p2tr
 
-If the selected network configuration has no version data for a script type,
-the program stops instead of fabricating an output.
+If the resolved script type has no corresponding version byte entry in the
+active network configuration object, the engine halts with a hard error rather
+than generating a malformed address. Producing an address for an undefined
+script type is treated as an unrecoverable configuration fault.
 
-Ethereum and XRP are account-style outputs. They ignore UTXO script type and
-set account_script_type_used to:
-
-  ethereum
-  xrp
-
-The Auto setting is the safest UI/CLI choice for these coins.
+Ethereum and XRP bypass the UTXO script-type resolution system entirely. Their
+address families are set to 'ethereum' and 'xrp' respectively, and all UTXO
+script-type parameters are ignored. Auto is the correct and safe selection for
+both account-family coins.
 
 
-Network Constants
------------------
+Network Version Byte Constants
+--------------------------------
+
+All values are hexadecimal. Extended key version bytes are 4-byte prefixes
+for Base58Check serialization.
 
 Bitcoin mainnet:
 
-  p2pkh xprv/xpub        0488ADE4 / 0488B21E
-  p2wpkh-p2sh yprv/ypub  049D7878 / 049D7CB2
-  p2wpkh zprv/zpub       04B2430C / 04B24746
-  p2tr xprv/xpub         0488ADE4 / 0488B21E
-  WIF prefix             80
-  P2PKH prefix           00
-  P2SH prefix            05
-  HRP                    bc
+  Script type    xprv version    xpub version    WIF prefix
+  p2pkh          0488ADE4        0488B21E         80
+  p2wpkh-p2sh    049D7878        049D7CB2         80
+  p2wpkh         04B2430C        04B24746         80
+  p2tr           0488ADE4        0488B21E         80
+  P2PKH version byte: 00
+  P2SH version byte:  05
+  Bech32 HRP:         bc
 
-Bitcoin testnet:
+Bitcoin testnet (--testnet flag, Python CLI):
 
-  p2pkh tprv/tpub        04358394 / 043587CF
-  p2wpkh-p2sh uprv/upub  044A4E28 / 044A5262
-  p2wpkh vprv/vpub       045F18BC / 045F1CF6
-  p2tr tprv/tpub         04358394 / 043587CF
-  WIF prefix             EF
-  P2PKH prefix           6F
-  P2SH prefix            C4
-  HRP                    tb
+  Script type    xprv version    xpub version    WIF prefix
+  p2pkh          04358394        043587CF         EF
+  p2wpkh-p2sh    044A4E28        044A5262         EF
+  p2wpkh         045F18BC        045F1CF6         EF
+  p2tr           04358394        043587CF         EF
+  P2PKH version byte: 6F
+  P2SH version byte:  C4
+  Bech32 HRP:         tb
 
 Litecoin mainnet:
 
-  p2pkh                  019D9CFE / 019DA462
-  p2wpkh-p2sh            01B26792 / 01B26EF6
-  p2wpkh                 04B2430C / 04B24746
-  p2tr                   019D9CFE / 019DA462
-  WIF prefix             B0
-  P2PKH prefix           30
-  P2SH prefix            32
-  HRP                    ltc
+  Script type    xprv version    xpub version    WIF prefix
+  p2pkh          019D9CFE        019DA462         B0
+  p2wpkh-p2sh    01B26792        01B26EF6         B0
+  p2wpkh         04B2430C        04B24746         B0
+  p2tr           019D9CFE        019DA462         B0
+  P2PKH version byte: 30
+  P2SH version byte:  32
+  Bech32 HRP:         ltc
 
 Dogecoin mainnet:
 
-  p2pkh                  02FAC398 / 02FACAFD
-  p2wpkh-p2sh            02FAC398 / 02FACAFD
-  p2wpkh                 02FAC398 / 02FACAFD
-  p2tr                   unsupported
-  WIF prefix             9E
-  P2PKH prefix           1E
-  P2SH prefix            16
-  HRP                    doge
+  Script type    xprv version    xpub version    WIF prefix
+  p2pkh          02FAC398        02FACAFD         9E
+  p2wpkh-p2sh    02FAC398        02FACAFD         9E  (recovery inspection only)
+  p2wpkh         02FAC398        02FACAFD         9E  (recovery inspection only)
+  p2tr           UNSUPPORTED (explicitly disabled in the engine)
+  P2PKH version byte: 1E
+  P2SH version byte:  16
+  Bech32 HRP:         doge
 
-Dogecoin SegWit-style outputs are generated for recovery inspection, but wallet
-support may vary. Legacy P2PKH remains the conservative Dogecoin default.
+Dogecoin SegWit-style script outputs are generated for recovery inspection
+purposes only. Production wallet support for Dogecoin SegWit is not standardized;
+m/44'/3'/0' P2PKH remains the only safe Dogecoin default.
 
 Ethereum mainnet:
 
-  coin type              60
-  account default        m/44'/60'/0'
-  address family         ethereum
-  address format         EIP-55 checksummed 0x...
-  extended keys          xprv/xpub serialization bytes 0488ADE4 / 0488B21E
-  WIF                    not defined
+  SLIP44 coin_type:    60
+  Canonical path:      m/44'/60'/0'
+  Address family:      ethereum
+  Address format:      EIP-55 checksummed 0x<40 hex chars>
+  xprv/xpub versions:  0488ADE4 / 0488B21E
+  WIF:                 undefined; private key exported as raw 32-byte hex
 
-ERC-20 tokens on Ethereum use the same Ethereum account address. The tool does
-not inspect token contracts, balances, allowances, or chain state.
+ERC-20 tokens operate on the same Ethereum account address. The engine does not
+query token contracts, read allowances, enumerate on-chain token balances, or
+interact with any chain state. The ERC-20 output field is the identical Ethereum
+address, annotated to clarify token compatibility.
 
 XRP Ledger mainnet:
 
-  coin type              144
-  account default        m/44'/144'/0'
-  address family         xrp
-  address format         XRPL classic r...
-  extended keys          xprv/xpub serialization bytes 0488ADE4 / 0488B21E
-  WIF                    not defined
-  XRPL base58 alphabet   rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz
+  SLIP44 coin_type:    144
+  Canonical path:      m/44'/144'/0'
+  Address family:      xrp
+  Address format:      XRPL classic r<base58check>
+  xprv/xpub versions:  0488ADE4 / 0488B21E
+  WIF:                 undefined; private key exported as raw 32-byte hex
+  XRPL base58 alphabet:
+    rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz
 
-Destination tags are not derived from the seed. If an exchange or custodian
-requires a destination tag, it must be supplied by that service.
+XRP destination tags are exchange-assigned routing metadata that are not derived
+from the seed and are not produced by this engine under any circumstance. If a
+custodian requires a destination tag, that value must be sourced from the
+custodian directly.
 
 
-Address Construction
---------------------
+Address Construction — Per Script Type
+----------------------------------------
 
-P2PKH:
+All UTXO address construction uses the 33-byte compressed public key of the
+derived child node:
 
-  child_pub = serP(child_private * G)
-  pkh = HASH160(child_pub)
-  payload = p2pkh_prefix || pkh
+  child_pub = serP(child_private × G)   -- parity byte (0x02/0x03) || x-coordinate
+
+Let pkh = HASH160(child_pub) = RIPEMD160(SHA256(child_pub))  -- 20 bytes
+
+P2PKH (Pay-to-Public-Key-Hash):
+
+  payload = p2pkh_version_byte || pkh
   address = Base58Check(payload)
 
-P2WPKH-P2SH:
+P2WPKH-P2SH (Wrapped SegWit, P2SH-encapsulated witness program):
 
-  child_pub = serP(child_private * G)
-  pkh = HASH160(child_pub)
-  redeem_script = 0x00 || 0x14 || pkh
-  script_hash = HASH160(redeem_script)
-  payload = p2sh_prefix || script_hash
-  address = Base58Check(payload)
+  redeem_script = 0x00 || 0x14 || pkh    -- OP_0 PUSH20 <pkh>; 22 bytes total
+  script_hash   = HASH160(redeem_script)  -- 20 bytes
+  payload       = p2sh_version_byte || script_hash
+  address       = Base58Check(payload)
 
-P2WPKH:
+  The opcode 0x14 is the minimal-push encoding for a 20-byte push (decimal 20 =
+  hex 0x14). This wraps the native SegWit witness program in a P2SH envelope for
+  backward compatibility with pre-SegWit infrastructure.
 
-  child_pub = serP(child_private * G)
-  pkh = HASH160(child_pub)
-  witness_version = 0
-  witness_program = pkh
-  address = Bech32(hrp, witness_version || convertbits(pkh, 8, 5))
+P2WPKH (Native SegWit, Bech32, BIP173):
 
-P2TR:
+  witness_program  = convertbits(pkh, 8, 5)    -- 5-bit regrouping
+  address          = Bech32Encode(hrp, [0] || witness_program)
 
-  child private key enters Taproot key-material logic.
-  witness_version = 1
-  witness_program = x-only Taproot output public key
-  address = Bech32m(hrp, witness_version || convertbits(output_key, 8, 5))
+P2TR (Taproot, Bech32m, BIP341/BIP350): see Taproot Key Material section below.
 
-Ethereum:
+Ethereum (EIP-55 checksummed account address):
 
-  child_pub_uncompressed = x(child_private * G) || y(child_private * G)
-  account_id = Keccak256(child_pub_uncompressed)[12:32]
-  address_hex = lowercase_hex(account_id)
-  checksum = Keccak256(ascii(address_hex))
-  address = "0x" || EIP55_case(address_hex, checksum)
+  uncompressed = x(P) || y(P)          -- 64 bytes, no prefix byte
+  account_id   = Keccak256(uncompressed)[12:32]   -- rightmost 20 bytes
+  address_hex  = lowercase_hex(account_id)         -- 40 hexadecimal characters
 
-Ethereum uses Keccak-256, not the finalized NIST SHA3-256 variant. The exported
-erc20_address field is the same address because ERC-20 balances are held by the
-Ethereum account, not by a separate seed-derived token address.
+  checksum     = Keccak256(ascii(address_hex))
 
-XRP:
+  For each hex character at position i in address_hex:
+    if bit (4*i) of checksum == 1: uppercase the character
+    else: lowercase the character
 
-  child_pub = serP(child_private * G)
-  account_id = RIPEMD160(SHA256(child_pub))
-  payload = 0x00 || account_id
-  checksum = SHA256(SHA256(payload))[0:4]
-  address = Base58(payload || checksum, XRPL alphabet)
+  address = "0x" || EIP55_cased(address_hex)
 
-The XRP output is a classic address beginning with r. X-addresses and
-destination tags are intentionally not generated.
+  NOTE: Ethereum uses Keccak-256, the pre-standardization Keccak variant, not
+  the NIST FIPS 202 SHA3-256 standard. These two functions produce different
+  output for the same input. The implementation uses the pre-standard Keccak
+  function throughout; substituting SHA3-256 produces incorrect addresses.
 
+XRP (XRPL classic address via secp256k1):
 
-Base58Check
------------
+  account_id   = RIPEMD160(SHA256(child_pub))    -- child_pub is 33-byte compressed
+  payload      = 0x00 || account_id              -- account type prefix byte
+  checksum     = SHA256(SHA256(payload))[0:4]
+  address      = Base58Encode(payload || checksum, XRPL_ALPHABET)
 
-Base58Check payload encoding:
-
-  checksum = SHA256(SHA256(payload))[0:4]
-  encoded = Base58(payload || checksum)
-
-Used for:
-
-- P2PKH addresses
-- P2WPKH-P2SH addresses
-- WIF private keys
-- extended keys
-
-XRP uses the same checksum structure, then encodes payload plus checksum with
-the XRPL base58 alphabet instead of the Bitcoin base58 alphabet.
-
-WIF for compressed public-key wallets:
-
-  payload = wif_prefix || ser256(private_key) || 0x01
-  wif = Base58Check(payload)
+  The XRPL base58 alphabet is distinct from Bitcoin's. The encoding algorithm is
+  structurally identical to Bitcoin Base58Check but uses the XRPL character set.
+  Version byte 0x00 maps to the leading 'r' character in the XRPL alphabet,
+  producing the canonical r... classic address format.
 
 
-Bech32 and Bech32m
-------------------
+Base58Check Encoding
+---------------------
 
-For witness version 0:
+Base58Check is used for P2PKH addresses, P2WPKH-P2SH addresses, WIF private
+keys, and extended keys across all applicable coins. The encoding procedure:
 
-  address = bech32_encode(hrp, [0] + convertbits(witness_program, 8, 5))
-  checksum constant = 1
+  checksum   = SHA256(SHA256(payload))[0:4]
+  full_data  = payload || checksum
+  address    = Base58Encode(full_data)
 
-For witness version 1:
+Bitcoin Base58 alphabet (58 characters, no 0, O, I, l):
 
-  address = bech32m_encode(hrp, [1] + convertbits(witness_program, 8, 5))
-  checksum constant = 0x2BC830A3
+  123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz
 
-The Bech32 alphabet is:
+Leading zero bytes in the payload are encoded as leading '1' characters; this
+property is essential for correct P2PKH address construction on certain address
+prefixes.
+
+WIF (Wallet Import Format) for compressed-public-key wallets:
+
+  wif_payload = wif_prefix || ser256(private_scalar) || 0x01
+  wif         = Base58Check(wif_payload)
+
+The 0x01 compression flag byte is mandatory. A WIF key without this suffix
+encodes an uncompressed public key association, which produces a different
+address and is not compatible with any address type generated by this engine.
+
+
+Bech32 and Bech32m Encoding
+-----------------------------
+
+Bech32 (BIP173) is used for P2WPKH native SegWit addresses (witness version 0).
+Bech32m (BIP350) is used for P2TR Taproot addresses (witness version 1).
+
+The two encodings are identical except for the checksum polynomial constant:
+
+  Bech32:   generator constant = 1
+  Bech32m:  generator constant = 0x2BC830A3
+
+Both use the same 32-character 5-bit data alphabet:
 
   qpzry9x8gf2tvdw0s3jn54khce6mua7l
 
+Witness program encoding procedure:
 
-Taproot Key Material
---------------------
+  P2WPKH (witness version 0):
+    data    = convertbits(pkh, 8, 5)           -- regroup 20-byte pkh into 5-bit groups
+    payload = [0] || data                       -- prepend witness version byte
+    address = bech32_encode(hrp, payload)
 
-Taproot output is generated from the child private key.
+  P2TR (witness version 1):
+    data    = convertbits(output_x_only, 8, 5) -- regroup 32-byte x-only key
+    payload = [1] || data
+    address = bech32m_encode(hrp, payload)
 
-Let:
+The convertbits function (defined in BIP173) performs strict bit-group
+regrouping with end-padding. It does not reverse byte order.
 
-  d = child private scalar
-  P = d * G
 
-BIP340 x-only convention requires an even-Y internal public key. The program
-normalizes:
+Taproot Key Material (BIP340 / BIP341 / BIP86)
+------------------------------------------------
+
+Taproot address derivation begins with the child private scalar at the derived
+path. The construction follows BIP340 x-only public key semantics, BIP341
+key-path spending with a TapTweak commitment, and BIP86 empty-script-tree
+enforcement. All key-path-only Taproot outputs use an empty Merkle root, meaning
+the tweak commits solely to the internal key with no script alternatives.
+
+Let d = child private scalar, P = d × G (affine point on secp256k1).
+
+Step 1 — Y-parity normalization to produce the BIP340 internal key pair:
+
+  BIP340 requires the internal public key to have an even Y coordinate.
 
   if y(P) is odd:
-      internal_private = n - d
-      internal_public  = -P
+      internal_private = n - d        -- scalar negation: (n - d) mod n
+      internal_public  = -P           -- point negation: (x, p - y)
   else:
       internal_private = d
       internal_public  = P
 
-Then:
+  internal_x = x(internal_public)    -- 32-byte x-only representation (big-endian)
 
-  internal_x = xonly(internal_public)
-  tweak = int(tagged_hash("TapTweak", internal_x))
+Step 2 — TapTweak tagged hash computation:
 
-Reject if:
+  tagged_hash(tag, msg) = SHA256(SHA256(tag_bytes) || SHA256(tag_bytes) || msg)
 
-  tweak >= n
+  For BIP86 key-path-only (empty script tree, no Merkle root):
 
-Compute:
+    t = int(tagged_hash("TapTweak", internal_x)) mod n
 
-  output_public  = internal_public + tweak * G
-  output_private = (internal_private + tweak) mod n
+  Reject if t ≥ n (probability approximately 2^-128; treated as derivation error).
 
-Reject if:
+  The double-SHA256 tag prefix is a BIP340 convention that domain-separates the
+  hash from all other SHA256 applications in the protocol, preventing cross-
+  context hash collisions.
 
-  output_public is infinity
-  output_private == 0
+Step 3 — Output key derivation:
 
-Exported Taproot metadata includes:
+  output_public  = internal_public + t × G
+  output_private = (internal_private + t) mod n
 
-- internal x-only public key
-- normalized internal private key
-- tweak
-- output x-only public key
-- output private key
-- output WIF
-- output key parity
+  Reject if output_public is the point at infinity (negligible probability).
+  Reject if output_private == 0 (negligible probability).
 
-The Taproot private fields are funds-controlling secrets.
+Step 4 — X-only output key extraction and parity recording:
 
+  output_x      = x(output_public)             -- 32 bytes; used as witness program
+  output_parity = y(output_public) mod 2       -- 0 = even Y, 1 = odd Y
 
-Tagged Hash
------------
+Step 5 — Bech32m address construction:
 
-Taproot uses tagged hashes:
+  address = Bech32m(hrp, [1] || convertbits(output_x, 8, 5))
 
-  tagged_hash(tag, msg) = SHA256(SHA256(tag) || SHA256(tag) || msg)
+Exported Taproot fields per derived address:
 
-For this tool's Taproot tweak:
+  internal_public_key_hex    x-only internal key, 32 bytes hex
+  internal_private_key_hex   internal private scalar, 32 bytes hex
+  tweak_hex                  t as 32 bytes hex
+  output_public_key_hex      x-only output key, 32 bytes hex
+  output_private_key_hex     output private scalar, 32 bytes hex
+  output_private_key_wif     WIF encoding of output_private using coin WIF prefix
+  output_key_parity          integer 0 or 1
+  address                    Bech32m-encoded Taproot address
 
-  tag = "TapTweak"
-  msg = xonly_internal_public_key
-
-No script tree is included; this is key-path style tweaking.
+The output_private_key is the operative signing scalar for the Taproot output.
+The internal_private_key is an intermediate derivation value. Both are
+funds-controlling secrets and must be treated with the same operational security
+as the mnemonic itself.
 
 
 Extended Key Serialization
---------------------------
+---------------------------
 
-Extended private key payload:
+Extended keys are serialized as 78-byte structures and then Base58Check-encoded.
 
-  4 bytes  version
-  1 byte   depth
-  4 bytes  parent fingerprint
-  4 bytes  child number
-  32 bytes chain code
-  1 byte   0x00
-  32 bytes private key
+Extended private key (xprv / yprv / zprv / tprv variants):
 
-Extended public key payload:
+  Offset   Length   Field
+  ------   ------   -----
+  0        4        version bytes (script-type and network dependent)
+  4        1        depth (0 at master; increments by 1 per derivation step)
+  5        4        parent fingerprint (HASH160(parent_pubkey)[0:4]; 0x00000000 at master)
+  9        4        child number (ser32(i); 0x00000000 at master)
+  13       32       chain code
+  45       1        0x00 (private key marker prefix)
+  46       32       private scalar (ser256(k))
+  ------
+  Total:   78 bytes before Base58Check double-SHA256 checksum
 
-  4 bytes  version
-  1 byte   depth
-  4 bytes  parent fingerprint
-  4 bytes  child number
-  32 bytes chain code
-  33 bytes compressed public key
+Extended public key (xpub / ypub / zpub / tpub variants):
 
-Final encoding:
+  Offset   Length   Field
+  ------   ------   -----
+  0        4        version bytes
+  4        1        depth
+  5        4        parent fingerprint
+  9        4        child number
+  13       32       chain code
+  45       33       compressed public key (serP(K))
+  ------
+  Total:   78 bytes before Base58Check double-SHA256 checksum
 
-  Base58Check(payload)
-
-The account object may include x/y/z/tr variants depending on script type and
-coin version configuration.
-
-Ethereum and XRP use standard xprv/xpub serialization in this tool. WIF is not
-defined for those account families, so exports include raw private_key_hex but
-not private_key_wif.
+Ethereum and XRP use the standard xprv/xpub version bytes (0488ADE4 / 0488B21E)
+as no coin-specific extended key version byte allocations for those coins exist
+in SLIP132. WIF is undefined for account-family coins; their private key exports
+carry private_key_hex as a raw 32-byte hexadecimal string.
 
 
-Output Object Shape
--------------------
+Output Record Schema
+---------------------
 
-Top-level derivation output:
+Top-level derivation result object:
 
   {
-    "coin": "bitcoin",
-    "network": "mainnet",
-    "word_count": 12,
-    "accounts": [...]
+    "coin":       <string>,
+    "network":    <string>,
+    "word_count": <integer>,
+    "accounts":   [ <account>, ... ]
   }
 
-Each account includes:
+Account object:
 
-- derivation
-- account_script_type_used
-- root extended private/public keys
-- account extended private/public keys
-- receiving list
-- change list
+  {
+    "derivation":                   <path string>,
+    "account_script_type_used":     <string>,
+    "account_extended_private_key": <xprv/yprv/zprv string>,
+    "account_extended_public_key":  <xpub/ypub/zpub string>,
+    "root_extended_private_key":    <xprv string>,
+    "root_extended_public_key":     <xpub string>,
+    "receiving":                    [ <address_record>, ... ],
+    "change":                       [ <address_record>, ... ]
+  }
 
-Each receiving/change item includes:
+Address record (UTXO coins, non-Taproot):
 
-- path
-- address
-- public_key_hex
-- private_key_hex
-- private_key_wif when WIF is defined for the selected coin
-- Taproot fields when applicable
-- ethereum_public_key_hex, erc20_address, and erc20_note for Ethereum
-- xrp_classic_address and xrp_note for XRP
+  {
+    "path":             <full BIP32 path string>,
+    "address":          <encoded address>,
+    "public_key_hex":   <33-byte compressed hex>,
+    "private_key_hex":  <32-byte hex>,
+    "private_key_wif":  <WIF string>
+  }
+
+Address record (P2TR Taproot, augmented):
+
+  As above, plus:
+    "internal_public_key_hex":   <32-byte x-only hex>,
+    "internal_private_key_hex":  <32-byte hex>,
+    "tweak_hex":                 <32-byte hex>,
+    "output_public_key_hex":     <32-byte x-only hex>,
+    "output_private_key_hex":    <32-byte hex>,
+    "output_private_key_wif":    <WIF string>,
+    "output_key_parity":         <integer 0 or 1>
+
+Address record (Ethereum):
+
+  {
+    "path":                    <path string>,
+    "address":                 <EIP-55 checksummed 0x... string>,
+    "ethereum_public_key_hex": <33-byte compressed hex>,
+    "private_key_hex":         <32-byte hex>,
+    "erc20_address":           <same as address>,
+    "erc20_note":              <token compatibility advisory string>
+  }
+
+Address record (XRP):
+
+  {
+    "path":               <path string>,
+    "xrp_classic_address": <r... classic address>,
+    "public_key_hex":     <33-byte compressed hex>,
+    "private_key_hex":    <32-byte hex>,
+    "xrp_note":           <destination tag advisory string>
+  }
 
 
-Export Formats
---------------
+Export Format Behavior
+-----------------------
 
 JSON:
-
-  Preserves the nested account -> receiving/change structure.
+  Preserves the full nested object hierarchy: top-level result -> accounts array
+  -> per-account receiving and change arrays -> per-address records. All schema
+  fields are present and ordered according to the internal schema definition.
+  Suitable for programmatic inspection and cross-tool compatibility.
 
 CSV:
-
-  Flattens rows. Each receiving/change item becomes a row with account fields
-  repeated.
+  Flattened row-per-address representation. Account-level fields (derivation
+  path, script type, account xpub/xprv) are repeated on every row belonging to
+  that account. The first row is a typed header. Receiving and change branch
+  entries are distinguished by a branch column value.
 
 TXT:
+  Human-readable labeled sections with consistent field-label alignment.
+  Intended for offline visual inspection on paper or screen. Accounts are
+  top-level sections; receiving and change branches are subsections separated
+  by blank lines.
 
-  Writes labeled human-readable sections.
-
-None of these derived-output export formats are encrypted by default. They may
-contain raw private keys and extended private keys.
-
-
-Failure Modes
--------------
-
-The derivation engine stops on:
-
-- unsupported mnemonic word count
-- word not in BIP39 list
-- invalid BIP39 checksum
-- unsupported coin
-- testnet request for a coin without testnet config
-- unsupported script type for the selected coin
-- invalid path index
-- invalid child key edge case
-- invalid Ethereum or XRP address-family configuration
-- invalid Taproot tweak or output key edge case
-
-The program is intentionally strict. Producing an address for the wrong path or
-wrong script type is worse than refusing to derive.
+None of the three export formats apply encryption. Any file containing
+private_key_hex, private_key_wif, output_private_key_hex, or any extended
+private key field is operationally equivalent in sensitivity to the source
+mnemonic. Such exports must be stored on encrypted media and handled with the
+same operational security as the seed phrase itself.
 
 
-Practical Recovery Methodology
+Failure Modes and Hard Errors
+-------------------------------
+
+The engine raises explicit, descriptive errors and produces no partial output on:
+
+  Input validation:
+    - Mnemonic word count not in {12, 24}
+    - Any word not present in the BIP39 English word list
+    - BIP39 checksum mismatch
+
+  Configuration:
+    - Unrecognized coin identifier
+    - Testnet flag set for a coin without defined testnet network constants
+    - Script type unsupported for the selected coin and network combination
+    - Invalid path component: non-numeric, out of 32-bit unsigned range, malformed separator
+    - Missing version byte constant for the requested script type on the target network
+
+  Derivation edge cases (negligible probability, explicit handling required):
+    - Master key invalid: parse256(IL) ≥ n or IL == 0
+    - Child key invalid: parse256(IL) ≥ n or child_key == 0
+    - Taproot TapTweak scalar t ≥ n
+    - Taproot output public key is the point at infinity
+    - Taproot output private scalar == 0
+
+  Generation (v1.1.0-production):
+    - Generated mnemonic fails its own BIP39 checksum self-validation
+
+The engine is intentionally intolerant of ambiguity. Deriving an address for the
+wrong path, wrong script type, or wrong coin is a worse outcome than refusing to
+derive. Every error condition surfaces a descriptive diagnostic and yields no
+output.
+
+
+Practical Recovery Reference
 ------------------------------
 
-When trying to recover wallet paths:
+Systematic recovery procedure when attempting to locate a wallet's addresses:
 
-1. Validate the mnemonic.
-2. Confirm whether a BIP39 passphrase was used.
-3. Try the wallet's most likely coin.
-4. Try the wallet's likely purpose:
-   - 44 for legacy
-   - 49 for wrapped SegWit
-   - 84 for native SegWit
-   - 86 for Taproot
-   - 44 for Ethereum and XRP account-style paths
-5. Check receiving branch 0.
-6. Check change branch 1.
-7. Increase address count if the expected address is beyond the initial window.
-8. Treat every private export as sensitive.
+  1. Validate the mnemonic and confirm the BIP39 checksum passes.
+  2. Determine definitively whether a BIP39 passphrase was used. An incorrect
+     or absent passphrase silently produces a completely different key tree with
+     no error or warning; all derived addresses will be cryptographically
+     unrelated to the on-chain history.
+  3. Identify the coin and network.
+  4. Try each purpose-level path in descending order of statistical likelihood:
+       m/44'/coin_type'  -- most common for legacy wallets and all account coins
+       m/84'/coin_type'  -- most common for native SegWit Bitcoin / Litecoin
+       m/49'/coin_type'  -- wrapped SegWit
+       m/86'/coin_type'  -- Taproot
+  5. Inspect the receiving branch (branch index 0) before the change branch (1).
+  6. Use --all-common to derive all four purpose paths for UTXO coins in a single
+     CLI invocation when the originating wallet software is unknown.
+  7. Increase --count if the target address lies beyond the default address window.
+  8. Treat every output record containing private key material as operationally
+     sensitive regardless of current on-chain balance.
 
 
 CLI Reference
--------------
+--------------
 
-Example:
+Invocation:
 
-  python Arculus_Recovery.py --mnemonic "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about" --derivation "m/84'/0'/0'" --script-type p2wpkh --count 5 --output-format txt
+  python Arculus_Recovery.py \
+    --mnemonic "word1 word2 ... word12" \
+    --passphrase "optional BIP39 passphrase" \
+    --derivation "m/84'/0'/0'" \
+    --script-type p2wpkh \
+    --count 5 \
+    --coin bitcoin \
+    --output-format txt
 
-Common flags:
+Flag reference:
 
-  --mnemonic       BIP39 mnemonic
-  --passphrase     optional BIP39 passphrase
-  --derivation     account path
-  --all-common     derive 44/49/84/86 account paths for UTXO coins; 44 only for Ethereum/XRP
-  --script-type    auto, p2pkh, p2wpkh-p2sh, p2wpkh, p2tr
-  --count          indexes per receiving/change branch
-  --coin           bitcoin, litecoin, dogecoin, ethereum, xrp
-  --testnet        bitcoin testnet mode
-  --output-format  json, csv, txt
+  --mnemonic        BIP39 mnemonic phrase (12 or 24 words, space-separated, quoted)
+  --passphrase      Optional BIP39 wallet passphrase
+  --derivation      Account-level derivation path in BIP32 path notation
+  --all-common      Derive m/44', m/49', m/84', m/86' for UTXO coins in one pass;
+                    m/44' only for Ethereum and XRP (v1.1.0-production)
+  --script-type     auto | p2pkh | p2wpkh-p2sh | p2wpkh | p2tr
+  --count           Number of address indices per branch (default: 5)
+  --coin            bitcoin | litecoin | dogecoin | ethereum | xrp (default: bitcoin)
+  --testnet         Enable testnet network parameters (Bitcoin only)
+  --output-format   json | csv | txt (default: json)
+  --gui             Launch the desktop GUI (Tkinter) instead of CLI derivation
+  --version         Print version string (1.1.0-production) and exit
 
-JSON is the default CLI output format.
+JSON is the default CLI output format. When --output-format is not specified,
+the output is written to stdout as a UTF-8 JSON document.
 
 
-Implementation Hotspots
------------------------
+Implementation Reference
+-------------------------
 
-Important Python functions:
+Core function map in derivation pipeline order:
 
-- bip39_validate()
-- bip39_to_seed()
-- master_from_seed()
-- parse_path()
-- normalize_path()
-- ckd_priv()
-- derive()
-- derive_account()
-- taproot_key_material()
-- pubkey_to_address()
-- ext_prv_to_base58()
-- ext_pub_to_base58()
-- run_derivation()
-- format_derived_output()
+  Python                              HTML equivalent
+  ----------------------------------  ----------------------------------
+  generate_random_mnemonic(wc)        generateRandomMnemonic(wordCount)
+  bip39_validate(words)               checkMnemonic(mnemonic, passphrase)
+  bip39_to_seed(mnemonic, passphrase) mnemonicToSeed(mnemonic, passphrase)
+  master_from_seed(seed)              (inline in derivation pipeline)
+  parse_path(path_str)                parsePath(path)
+  normalize_path(path_str)            (canonical form enforced at parse time)
+  ckd_priv(parent_node, index)        ckdPriv(node, index)
+  derive(root_node, path)             deriveNode(root, pathArr)
+  derive_account(seed, path, ...)     deriveAccount(seed, ...)
+  taproot_key_material(child_priv)    taprootKeyMaterial(childPriv)
+  pubkey_to_address(pubkey, ...)      (script-type-dispatched inline)
+  ext_prv_to_base58(node, ...)        extPrivKeyB58(node, ...)
+  ext_pub_to_base58(node, ...)        extPubKeyB58(node, ...)
+  run_derivation(mnemonic, ...)       runDerivation(mnemonic, ...)
+  format_derived_output(result, fmt)  formatDerivedOutput(result, fmt)
 
-The HTML version mirrors the same logic in JavaScript so the browser tool can
-run completely offline without a Python runtime.
+The HTML and Python implementations are specification-equivalent. For identical
+(mnemonic, passphrase, coin, path, script_type, count) inputs, both produce
+byte-identical derivation output, enabling cross-verification between the two
+implementations. A .arc seed file exported from the HTML version imports
+correctly into the Python version and vice versa.

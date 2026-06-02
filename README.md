@@ -20,6 +20,8 @@ Dark mode:
 ## Features
 
 - BIP39 mnemonic validation for 12-word and 24-word seeds
+- Generate a cryptographically random 12-word or 24-word mnemonic
+- Individual word-entry grid with 12/24 selector and inline validation
 - Detailed validation output:
   - Word count
   - Wordlist validity
@@ -104,15 +106,14 @@ Recommended usage:
 Verify the SHA256 hashes before using the recovery tool:
 
 ```bash
-shasum -a 256 Arculus_Recovery.html index.html Arculus_Recovery.py
+shasum -a 256 Arculus_Recovery.html Arculus_Recovery.py
 ```
 
 Expected hashes:
 
 ```text
-edae639ffbb6b5d3774ad92ccb7390084f3cbc1b708d6875b0786eb34c8f2fbf  Arculus_Recovery.html
-edae639ffbb6b5d3774ad92ccb7390084f3cbc1b708d6875b0786eb34c8f2fbf  index.html
-91aa99934d00947e53f06d5743c4bdc6abd4e28af7220de2d5b13e34f4511975  Arculus_Recovery.py
+e877b86312b4b301a5558631869c5b65390da9ea3ae20f08552a698625a1e1a4  Arculus_Recovery.html
+73163b8c643a9c0817c47a92708708e61fdede95651d78befc8073ac6c318c8a  Arculus_Recovery.py
 ```
 
 ## Encrypted Seed Files
@@ -195,6 +196,8 @@ Open `Arculus_Recovery.html` directly in a browser.
 ### HTML Features
 
 - Offline mnemonic validation
+- Individual word-entry grid with 12/24-word radio selector
+- Generate a cryptographically random 12-word or 24-word mnemonic
 - Key and address derivation
 - Export derived keys and addresses as JSON, CSV, or TXT
 - Encrypt/export seed to `.arc`
@@ -216,6 +219,8 @@ python Arculus_Recovery.py --gui
 ### Python GUI Features
 
 - Offline mnemonic validation
+- Individual word-entry grid with 12/24-word selector
+- Generate a cryptographically random 12-word or 24-word mnemonic
 - Key and address derivation
 - Export derived keys and addresses as JSON, CSV, or TXT
 - Encrypt/export seed to `.arc`
@@ -227,7 +232,28 @@ python Arculus_Recovery.py --gui
 ### CLI Example
 
 ```bash
-python Arculus_Recovery.py --mnemonic "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about" --derivation "m/84'/0'/0'" --script-type p2wpkh --count 5 --output-format txt
+python Arculus_Recovery.py \
+  --mnemonic "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about" \
+  --derivation "m/84'/0'/0'" \
+  --script-type p2wpkh \
+  --count 5 \
+  --output-format txt
 ```
+
+### CLI Flags
+
+| Flag | Description |
+| --- | --- |
+| `--gui` | Launch the desktop GUI |
+| `--mnemonic` | BIP39 mnemonic (12 or 24 words) |
+| `--passphrase` | Optional BIP39 passphrase |
+| `--derivation` | Account derivation path |
+| `--all-common` | Derive all common paths (`m/44'`, `m/49'`, `m/84'`, `m/86'`) for the selected coin where applicable |
+| `--script-type` | One of `auto`, `p2pkh`, `p2wpkh-p2sh`, `p2wpkh`, `p2tr` |
+| `--count` | Number of addresses to derive (default: 5) |
+| `--coin` | One of `bitcoin`, `litecoin`, `dogecoin`, `ethereum`, `xrp` (default: `bitcoin`) |
+| `--testnet` | Use testnet network parameters |
+| `--output-format` | One of `json`, `csv`, `txt` (default: `json`) |
+| `--version` | Print version and exit |
 
 CLI output formats are `json`, `csv`, and `txt`. JSON is the default.

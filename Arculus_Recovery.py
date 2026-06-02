@@ -13,11 +13,15 @@ import io
 import json
 import os
 import re
+import socket
 import sys
 import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict, List, Tuple
+
+
+APP_VERSION = "1.1.0-production"
 
 
 # --- Embedded BIP39 English word list ---
@@ -3194,10 +3198,14 @@ def launch_gui() -> None:
     from tkinter.scrolledtext import ScrolledText
 
     root = tk.Tk()
-    root.title("Arculus Recovery")
-    root.geometry("1080x840")
+    root.title(f"Arculus Recovery {APP_VERSION}")
+    root.geometry("1120x860")
+    root.minsize(980, 760)
 
-    frm = ttk.Frame(root, padding=10)
+    app_shell = tk.Frame(root, bd=0, highlightthickness=1)
+    app_shell.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+
+    frm = ttk.Frame(app_shell, padding=20)
     frm.pack(fill=tk.BOTH, expand=True)
     frm.columnconfigure(1, weight=1)
     frm.rowconfigure(11, weight=1)
@@ -3206,7 +3214,8 @@ def launch_gui() -> None:
     bold_font = tkfont.nametofont("TkDefaultFont").copy()
     bold_font.configure(weight="bold")
     title_font = tkfont.nametofont("TkDefaultFont").copy()
-    title_font.configure(size=16, weight="bold")
+    title_font.configure(size=18, weight="bold")
+    root.option_add("*Font", normal_font)
     valid_color = "#1b8f2f"
     invalid_color = "#b71c1c"
     current_theme = {
@@ -3219,25 +3228,37 @@ def launch_gui() -> None:
             "button": "#ffffff",
             "border": "#d1d5db",
             "select": "#dbeafe",
+            "focus": "#2563eb",
+            "ok": "#16a34a",
+            "bad": "#dc2626",
         }
     }
 
     title_row = ttk.Frame(frm)
-    title_row.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 12))
+    title_row.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 16))
+    title_row.columnconfigure(0, weight=1)
     ttk.Label(title_row, text="Arculus Recovery", font=title_font).pack(side=tk.LEFT)
+    ttk.Label(title_row, text=f"v{APP_VERSION}").pack(side=tk.LEFT, padx=(10, 0))
     settings_btn = ttk.Button(title_row, text="Settings")
     settings_btn.pack(side=tk.LEFT, padx=(10, 0))
+    network_status = tk.StringVar(value="Network")
+    network_pill = tk.Frame(title_row, bd=0, highlightthickness=1)
+    network_pill.pack(side=tk.RIGHT)
+    network_dot = tk.Canvas(network_pill, width=16, height=16, highlightthickness=0, bd=0)
+    network_dot.pack(side=tk.LEFT, padx=(8, 4), pady=6)
+    network_label = tk.Label(network_pill, textvariable=network_status, font=bold_font)
+    network_label.pack(side=tk.LEFT, padx=(0, 10), pady=6)
 
-    ttk.Label(frm, text="Mnemonic (12 or 24 words):").grid(row=1, column=0, sticky="w")
+    ttk.Label(frm, text="Mnemonic (12 or 24 words):").grid(row=1, column=0, sticky="w", pady=(0, 6))
     mnemonic_txt = ScrolledText(frm, height=4, wrap=tk.WORD)
-    mnemonic_txt.grid(row=1, column=1, sticky="nsew", padx=(8, 0))
+    mnemonic_txt.grid(row=1, column=1, sticky="nsew", padx=(12, 0), pady=(0, 6))
     mnemonic_txt.tag_configure("valid_word", foreground=valid_color, font=bold_font)
     mnemonic_txt.tag_configure("invalid_word", foreground=invalid_color, font=bold_font)
 
     seed_len_var = tk.IntVar(value=12)
     dark_mode_var = tk.BooleanVar(value=False)
     seed_len_row = ttk.Frame(frm)
-    seed_len_row.grid(row=2, column=1, sticky="w", padx=(8, 0), pady=(4, 0))
+    seed_len_row.grid(row=2, column=1, sticky="w", padx=(12, 0), pady=(4, 10))
     ttk.Label(seed_len_row, text="Seed length:").pack(side=tk.LEFT)
     ttk.Radiobutton(seed_len_row, text="12 words", value=12, variable=seed_len_var).pack(side=tk.LEFT, padx=(8, 0))
     ttk.Radiobutton(seed_len_row, text="24 words", value=24, variable=seed_len_var).pack(side=tk.LEFT, padx=(8, 0))
@@ -3246,32 +3267,34 @@ def launch_gui() -> None:
     generate_seed_btn = tk.Button(seed_len_row, text="Generate Random Seed", bg="#22c55e", fg="#111827", activebackground="#16a34a", activeforeground="#111827")
     generate_seed_btn.pack(side=tk.LEFT, padx=(8, 0))
 
-    ttk.Label(frm, text="Numbered Words:").grid(row=3, column=0, sticky="nw")
+    ttk.Label(frm, text="Numbered Words:").grid(row=3, column=0, sticky="nw", pady=(3, 0))
     words_frame = ttk.Frame(frm)
-    words_frame.grid(row=3, column=1, sticky="ew", padx=(8, 0), pady=(2, 0))
+    words_frame.grid(row=3, column=1, sticky="ew", padx=(12, 0), pady=(2, 10))
     for c in range(4):
         words_frame.columnconfigure(c, weight=1)
 
     word_vars: List[tk.StringVar] = []
     word_entries: List[tk.Entry] = []
+    word_cells: List[ttk.Frame] = []
     for i in range(24):
         row = i // 4
         col = i % 4
         cell = ttk.Frame(words_frame)
         cell.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
+        word_cells.append(cell)
         ttk.Label(cell, text=f"{i + 1}.", width=3).pack(side=tk.LEFT)
         v = tk.StringVar()
-        e = tk.Entry(cell, textvariable=v, width=18)
+        e = tk.Entry(cell, textvariable=v, width=18, relief=tk.FLAT, borderwidth=0, highlightthickness=1)
         e.pack(side=tk.LEFT, fill=tk.X, expand=True)
         word_vars.append(v)
         word_entries.append(e)
 
-    ttk.Label(frm, text="Passphrase:").grid(row=4, column=0, sticky="w")
+    ttk.Label(frm, text="Passphrase:").grid(row=4, column=0, sticky="w", pady=4)
     passphrase_var = tk.StringVar()
     passphrase_entry = ttk.Entry(frm, textvariable=passphrase_var, show="*")
-    passphrase_entry.grid(row=4, column=1, sticky="ew", padx=(8, 0))
+    passphrase_entry.grid(row=4, column=1, sticky="ew", padx=(12, 0), pady=4)
 
-    ttk.Label(frm, text="Coin:").grid(row=5, column=0, sticky="w")
+    ttk.Label(frm, text="Coin:").grid(row=5, column=0, sticky="w", pady=4)
     coin_label_to_value = {
         "Bitcoin": "bitcoin",
         "Litecoin": "litecoin",
@@ -3282,15 +3305,15 @@ def launch_gui() -> None:
     coin_var = tk.StringVar(value="Bitcoin")
     coin_combo = ttk.Combobox(frm, textvariable=coin_var, values=list(coin_label_to_value.keys()), state="readonly")
     coin_combo.grid(
-        row=5, column=1, sticky="w", padx=(8, 0)
+        row=5, column=1, sticky="w", padx=(12, 0), pady=4
     )
 
-    ttk.Label(frm, text="Derivation:").grid(row=6, column=0, sticky="w")
+    ttk.Label(frm, text="Derivation:").grid(row=6, column=0, sticky="w", pady=4)
     derivation_var = tk.StringVar(value="m/0'")
     derivation_entry = ttk.Entry(frm, textvariable=derivation_var)
-    derivation_entry.grid(row=6, column=1, sticky="ew", padx=(8, 0))
+    derivation_entry.grid(row=6, column=1, sticky="ew", padx=(12, 0), pady=4)
 
-    ttk.Label(frm, text="Script Type:").grid(row=7, column=0, sticky="w")
+    ttk.Label(frm, text="Script Type:").grid(row=7, column=0, sticky="w", pady=4)
     script_label_to_value = {
         "Auto": "auto",
         "P2PKH": "p2pkh",
@@ -3300,25 +3323,36 @@ def launch_gui() -> None:
     }
     script_var = tk.StringVar(value="P2WPKH")
     ttk.Combobox(frm, textvariable=script_var, values=list(script_label_to_value.keys()), state="readonly").grid(
-        row=7, column=1, sticky="w", padx=(8, 0)
+        row=7, column=1, sticky="w", padx=(12, 0), pady=4
     )
 
-    ttk.Label(frm, text="Address Count:").grid(row=8, column=0, sticky="w")
+    ttk.Label(frm, text="Address Count:").grid(row=8, column=0, sticky="w", pady=4)
     count_var = tk.StringVar(value="5")
     count_entry = ttk.Entry(frm, textvariable=count_var, width=8)
-    count_entry.grid(row=8, column=1, sticky="w", padx=(8, 0))
+    count_entry.grid(row=8, column=1, sticky="w", padx=(12, 0), pady=4)
 
     status_var = tk.StringVar(value="Ready")
-    ttk.Label(frm, textvariable=status_var).grid(row=9, column=0, columnspan=2, sticky="w", pady=(6, 6))
+    status_label = tk.Label(
+        frm,
+        textvariable=status_var,
+        anchor="w",
+        font=bold_font,
+        bd=0,
+        highlightthickness=1,
+        padx=10,
+        pady=7,
+    )
+    status_label.grid(row=9, column=0, columnspan=2, sticky="ew", pady=(8, 8))
 
     output = ScrolledText(frm, height=20, wrap=tk.NONE)
-    output.grid(row=11, column=0, columnspan=2, sticky="nsew")
-    imported_seed_state = {"mnemonic": None, "source_name": None}
+    output.grid(row=11, column=0, columnspan=2, sticky="nsew", pady=(10, 0))
+    imported_seed_state = {"mnemonic": None, "source_name": None, "kind": None}
     showing_imported_seed = {"active": False}
     root_fingerprint_var = tk.StringVar(value="Root Fingerprint:")
     export_format_var = tk.StringVar(value="JSON")
     last_derived_state = {"data": None}
     settings_window = {"window": None, "frame": None}
+    network_after = {"id": None}
 
     def install_clipboard_bindings(widget: tk.Widget, is_text_widget: bool) -> None:
         menu = tk.Menu(root, tearoff=0)
@@ -3364,8 +3398,66 @@ def launch_gui() -> None:
     def set_root_fingerprint_display(fingerprint: str = "") -> None:
         root_fingerprint_var.set(f"Root Fingerprint: {fingerprint}" if fingerprint else "Root Fingerprint:")
 
+    def has_network_route() -> bool:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.settimeout(0.2)
+                s.connect(("8.8.8.8", 80))
+                return True
+        except OSError:
+            return False
+
+    def refresh_network_status() -> None:
+        colors = current_theme["colors"]
+        connected = has_network_route()
+        status_color = colors["ok"] if connected else colors["bad"]
+        network_status.set("Network")
+        network_pill.configure(
+            bg=colors["field"],
+            highlightbackground=colors["border"],
+            highlightcolor=colors["border"],
+        )
+        network_dot.configure(bg=colors["field"])
+        network_dot.delete("all")
+        network_dot.create_oval(3, 3, 13, 13, fill=status_color, outline=status_color)
+        network_label.configure(bg=colors["field"], fg=colors["text"])
+        status_label.configure(
+            bg=colors["field"],
+            fg=colors["text"],
+            highlightbackground=colors["border"],
+            highlightcolor=colors["border"],
+        )
+        network_pill.update_idletasks()
+        if network_after["id"] is not None:
+            try:
+                network_pill.after_cancel(network_after["id"])
+            except tk.TclError:
+                pass
+        network_after["id"] = network_pill.after(5000, refresh_network_status)
+
     def get_active_mnemonic() -> str:
         return imported_seed_state["mnemonic"] or mnemonic_txt.get("1.0", tk.END).strip()
+
+    def protected_seed_status() -> str:
+        if imported_seed_state["kind"] == "generated":
+            return "Generated seed phrase is hidden but ready for validation, copy, export, and derivation."
+        return "Encrypted seed imported. Seed phrase is hidden but ready for validation and derivation."
+
+    def protected_seed_placeholder() -> str:
+        if imported_seed_state["kind"] == "generated":
+            return "Generated seed phrase hidden. Hold Show Seed to reveal."
+        return "Encrypted seed loaded. Hold Show Seed to reveal."
+
+    def set_obfuscated_seed_inputs(words: List[str]) -> None:
+        mask_word = "****"
+        mnemonic_txt.delete("1.0", tk.END)
+        mnemonic_txt.insert("1.0", " ".join(mask_word for _ in words))
+        max_words = seed_len_var.get()
+        for i in range(24):
+            word_vars[i].set(mask_word if i < len(words) and i < max_words else "")
+        refresh_numbered_entries_style()
+        highlight_main_text_words()
+        mnemonic_txt.edit_modified(False)
 
     def has_visible_seed_input() -> bool:
         if mnemonic_txt.get("1.0", tk.END).strip():
@@ -3390,6 +3482,7 @@ def launch_gui() -> None:
             return
         imported_seed_state["mnemonic"] = None
         imported_seed_state["source_name"] = None
+        imported_seed_state["kind"] = None
         showing_imported_seed["active"] = False
         refresh_root_fingerprint_display()
         if not silent:
@@ -3399,10 +3492,11 @@ def launch_gui() -> None:
         words = normalize_mnemonic_words(mnemonic)
         imported_seed_state["mnemonic"] = " ".join(words)
         imported_seed_state["source_name"] = source_name or "encrypted seed file"
-        clear_visible_seed_inputs()
+        imported_seed_state["kind"] = "imported"
         if len(words) in (12, 24):
             seed_len_var.set(len(words))
-        status_var.set("Encrypted seed imported. Seed phrase is hidden but ready for validation and derivation.")
+        set_obfuscated_seed_inputs(words)
+        status_var.set(protected_seed_status())
         set_output(
             json.dumps(
                 {
@@ -3415,6 +3509,17 @@ def launch_gui() -> None:
             )
         )
         refresh_root_fingerprint_display()
+
+    def apply_generated_seed(mnemonic: str) -> None:
+        words = normalize_mnemonic_words(mnemonic)
+        imported_seed_state["mnemonic"] = " ".join(words)
+        imported_seed_state["source_name"] = "generated seed"
+        imported_seed_state["kind"] = "generated"
+        showing_imported_seed["active"] = False
+        if len(words) in (12, 24):
+            seed_len_var.set(len(words))
+        set_obfuscated_seed_inputs(words)
+        status_var.set(protected_seed_status())
 
     def reveal_imported_seed(_event=None):
         if not imported_seed_state["mnemonic"] or showing_imported_seed["active"]:
@@ -3438,8 +3543,8 @@ def launch_gui() -> None:
         if not imported_seed_state["mnemonic"] or not showing_imported_seed["active"]:
             return None
         showing_imported_seed["active"] = False
-        clear_visible_seed_inputs()
-        status_var.set("Encrypted seed imported. Seed phrase is hidden but ready for validation and derivation.")
+        set_obfuscated_seed_inputs(normalize_mnemonic_words(imported_seed_state["mnemonic"]))
+        status_var.set(protected_seed_status())
         return "break"
 
     def refresh_root_fingerprint_display(*_args) -> None:
@@ -3473,9 +3578,17 @@ def launch_gui() -> None:
                 bg=theme["field"],
                 font=normal_font,
                 insertbackground=theme["text"],
+                highlightbackground=theme["border"],
+                highlightcolor=theme["border"],
             )
             return
-        entry.configure(state="normal", bg=theme["field"], insertbackground=theme["text"])
+        entry.configure(
+            state="normal",
+            bg=theme["field"],
+            insertbackground=theme["text"],
+            highlightbackground=theme["border"],
+            highlightcolor=theme["focus"],
+        )
         word = normalize_nfkd(raw_word.strip().lower())
         if word == "":
             entry.configure(fg=theme["text"], font=normal_font)
@@ -3499,8 +3612,9 @@ def launch_gui() -> None:
 
     def refresh_numbered_entries_style() -> None:
         max_words = seed_len_var.get()
+        hidden_protected_seed = bool(imported_seed_state["mnemonic"]) and not showing_imported_seed["active"]
         for i, e in enumerate(word_entries):
-            style_entry_for_word(e, word_vars[i].get(), i < max_words)
+            style_entry_for_word(e, word_vars[i].get(), i < max_words and not hidden_protected_seed)
 
     def set_entries_from_main_text() -> None:
         words = normalize_mnemonic_words(mnemonic_txt.get("1.0", tk.END).strip())
@@ -3773,22 +3887,16 @@ def launch_gui() -> None:
 
     def on_generate_seed() -> None:
         try:
-            clear_imported_seed(silent=True)
             word_count = seed_len_var.get()
             mnemonic = generate_random_mnemonic(word_count)
             sync_guard["busy"] = True
             try:
-                mnemonic_txt.delete("1.0", tk.END)
-                mnemonic_txt.insert("1.0", mnemonic)
-                seed_len_var.set(word_count)
-                set_entries_from_main_text()
-                highlight_main_text_words()
-                mnemonic_txt.edit_modified(False)
+                apply_generated_seed(mnemonic)
                 sync_state["last_main_words"] = normalize_mnemonic_words(mnemonic)
             finally:
                 sync_guard["busy"] = False
             refresh_root_fingerprint_display()
-            status_var.set(f"Generated random {word_count}-word mnemonic.")
+            status_var.set(f"Generated random {word_count}-word mnemonic. Seed phrase hidden; hold Show Seed to reveal.")
         except Exception as e:
             status_var.set(f"Error: {e}")
             set_output(json.dumps({"error": str(e)}, indent=2))
@@ -3847,6 +3955,9 @@ def launch_gui() -> None:
                 "button": "#374151",
                 "border": "#4b5563",
                 "select": "#1d4ed8",
+                "focus": "#60a5fa",
+                "ok": "#4ade80",
+                "bad": "#f87171",
             }
             if dark
             else {
@@ -3858,6 +3969,9 @@ def launch_gui() -> None:
                 "button": "#ffffff",
                 "border": "#d1d5db",
                 "select": "#dbeafe",
+                "focus": "#2563eb",
+                "ok": "#16a34a",
+                "bad": "#dc2626",
             }
         )
         current_theme["colors"] = colors
@@ -3866,47 +3980,109 @@ def launch_gui() -> None:
             style.theme_use("clam")
         except tk.TclError:
             pass
-        style.configure(".", background=colors["bg"], foreground=colors["text"])
-        style.configure("TFrame", background=colors["bg"])
-        style.configure("TLabel", background=colors["bg"], foreground=colors["text"])
-        style.configure("TButton", background=colors["button"], foreground=colors["text"])
-        style.configure("TCheckbutton", background=colors["bg"], foreground=colors["text"])
-        style.configure("TRadiobutton", background=colors["bg"], foreground=colors["text"])
-        style.configure("TEntry", fieldbackground=colors["field"], foreground=colors["text"])
-        style.configure("TCombobox", fieldbackground=colors["field"], foreground=colors["text"])
+        style.configure(".", background=colors["card"], foreground=colors["text"], bordercolor=colors["border"])
+        style.configure("TFrame", background=colors["card"])
+        style.configure("TLabel", background=colors["card"], foreground=colors["text"], padding=(0, 2))
+        style.configure(
+            "TButton",
+            background=colors["button"],
+            foreground=colors["text"],
+            padding=(12, 8),
+            borderwidth=1,
+            focusthickness=1,
+            focuscolor=colors["focus"],
+        )
+        style.map(
+            "TButton",
+            background=[("active", colors["field"]), ("pressed", colors["select"])],
+            foreground=[("disabled", colors["muted"])],
+        )
+        style.configure("TCheckbutton", background=colors["card"], foreground=colors["text"])
+        style.configure("TRadiobutton", background=colors["card"], foreground=colors["text"])
+        style.configure(
+            "TEntry",
+            fieldbackground=colors["field"],
+            foreground=colors["text"],
+            bordercolor=colors["border"],
+            lightcolor=colors["border"],
+            darkcolor=colors["border"],
+            padding=(8, 6),
+        )
+        style.map("TEntry", bordercolor=[("focus", colors["focus"])])
+        style.configure(
+            "TCombobox",
+            fieldbackground=colors["field"],
+            foreground=colors["text"],
+            bordercolor=colors["border"],
+            lightcolor=colors["border"],
+            darkcolor=colors["border"],
+            padding=(8, 6),
+            arrowsize=14,
+        )
+        style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", colors["field"])],
+            foreground=[("readonly", colors["text"])],
+            bordercolor=[("focus", colors["focus"])],
+        )
         root.configure(bg=colors["bg"])
+        app_shell.configure(
+            bg=colors["card"],
+            highlightbackground=colors["border"],
+            highlightcolor=colors["border"],
+        )
         settings_win = settings_window.get("window")
         if settings_win is not None and settings_win.winfo_exists():
             settings_win.configure(bg=colors["bg"])
-        themed_frames = [frm, title_row, seed_len_row, words_frame, btns]
+        themed_frames = [frm, title_row, seed_len_row, words_frame, btns, *word_cells]
         settings_frame = settings_window.get("frame")
         if settings_frame is not None and settings_frame.winfo_exists():
             themed_frames.append(settings_frame)
         for widget in themed_frames:
             widget.configure(style="TFrame")
+        frm.configure(style="TFrame")
         for text_widget in (mnemonic_txt, output):
             text_widget.configure(
                 bg=colors["field"],
                 fg=colors["text"],
                 insertbackground=colors["text"],
                 selectbackground=colors["select"],
+                selectforeground=colors["text"],
+                relief=tk.FLAT,
+                borderwidth=1,
+                highlightthickness=1,
+                highlightbackground=colors["border"],
+                highlightcolor=colors["focus"],
+                padx=8,
+                pady=8,
             )
         copy_seed_btn.configure(
             bg="#dc2626",
-            fg="#111827",
+            fg="#ffffff",
             activebackground="#b91c1c",
-            activeforeground="#111827",
+            activeforeground="#ffffff",
+            relief=tk.FLAT,
+            borderwidth=0,
+            highlightthickness=0,
+            padx=12,
+            pady=6,
         )
         generate_seed_btn.configure(
             bg="#22c55e",
-            fg="#111827",
+            fg="#052e16",
             activebackground="#16a34a",
-            activeforeground="#111827",
+            activeforeground="#052e16",
+            relief=tk.FLAT,
+            borderwidth=0,
+            highlightthickness=0,
+            padx=12,
+            pady=6,
         )
         mnemonic_txt.tag_configure("valid_word", foreground=valid_color, font=bold_font)
         mnemonic_txt.tag_configure("invalid_word", foreground=invalid_color, font=bold_font)
         refresh_numbered_entries_style()
         highlight_main_text_words()
+        refresh_network_status()
 
     settings_btn.configure(command=open_settings)
     mnemonic_txt.bind("<KeyRelease>", on_main_text_change)
@@ -3942,6 +4118,7 @@ def launch_gui() -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Arculus Recovery")
+    p.add_argument("--version", action="version", version=f"Arculus Recovery {APP_VERSION}")
     p.add_argument("--gui", action="store_true", help="Launch simple desktop GUI.")
     p.add_argument("--mnemonic", help="BIP39 mnemonic (12 or 24 words).")
     p.add_argument("--passphrase", default="", help="Optional BIP39 passphrase.")

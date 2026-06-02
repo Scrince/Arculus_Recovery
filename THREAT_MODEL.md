@@ -1,7 +1,7 @@
 # Threat Model — Arculus Recovery
 
-**Version:** Current (`main` branch)
-**Last Updated:** 2026-06-01
+**Version:** 1.1.0-production  
+**Last Updated:** 2026-06-01  
 **Scope:** `Arculus_Recovery.html`, `index.html`, `Arculus_Recovery.py`
 
 ---
@@ -11,6 +11,8 @@
 Arculus Recovery is an offline BIP39/BIP32 seed recovery and key-derivation utility. It is available as a self-contained HTML file opened directly in a browser and as a Python script with both a desktop GUI (Tkinter) and a CLI. The tool performs all computation locally. It requires no server, cloud API, network request, telemetry endpoint, or external package.
 
 The current derivation scope includes Bitcoin, Litecoin, Dogecoin, Ethereum / ERC-20, and XRP. Ethereum and XRP support are account-address derivation features; they do not query balances, inspect tokens, or fetch ledger data.
+
+Version 1.1.0-production adds two significant input surfaces: a **Generate Random Seed** function that produces cryptographically random 12-word or 24-word mnemonics using the platform CSPRNG, and an **individual word-entry grid** that replaces the previous single-textarea mnemonic input.
 
 The fundamental security promise is: **seed phrases, passphrases, private keys, and derived output never leave the user's machine through the application itself.**
 
@@ -22,8 +24,9 @@ The following assets are considered sensitive and are the primary targets of any
 
 | Asset | Description | Sensitivity |
 |---|---|---|
-| BIP39 mnemonic | 12- or 24-word seed phrase | Critical |
+| BIP39 mnemonic | 12- or 24-word seed phrase (typed, imported, or generated) | Critical |
 | BIP39 passphrase | Optional 25th-word extension | Critical |
+| CSPRNG entropy | Raw entropy bytes used during mnemonic generation | Critical (transient) |
 | Master private key | Root HD wallet key derived from seed | Critical |
 | Master chain code | Root HD wallet chain code | Critical |
 | Derived private keys | Child keys at specific derivation paths | Critical |
@@ -48,12 +51,15 @@ The following assets are considered sensitive and are the primary targets of any
 │  │   (HTML in browser  /  Python GUI or CLI)        │   │
 │  │                                                  │   │
 │  │  • BIP39 validation     • Key derivation         │   │
-│  │  • .arc encrypt/decrypt • Export (JSON/CSV/TXT)  │   │
+│  │  • Random seed gen      • .arc encrypt/decrypt   │   │
+│  │  • Word-grid input      • Export (JSON/CSV/TXT)  │   │
 │  └──────────────────────────────────────────────────┘   │
-│                         │                               │
-│              Local filesystem only                      │
-│         (file open/save dialogs or CLI paths)           │
-│                                                         │
+│            │                       │                    │
+│   OS CSPRNG (os.urandom /          │                    │
+│   crypto.getRandomValues)          │                    │
+│   (entropy input only;       Local filesystem only      │
+│    no network)               (file open/save dialogs    │
+│                               or CLI paths)             │
 │  ┌───────────────────┐   ┌───────────────────────────┐  │
 │  │  Browser storage  │   │  OS clipboard / memory    │  │
 │  │  (dark-mode pref  │   │  (ephemeral; shared with  │  │
@@ -75,7 +81,7 @@ The following assets are considered sensitive and are the primary targets of any
 |---|---|---|
 | Remote attacker (network) | Can intercept traffic, serve malicious pages | Steal funds by capturing seed |
 | Local attacker (same machine) | Can read process memory, clipboard, temp files | Steal seed material from a compromised session |
-| Malicious file supplier | Can distribute a backdoored copy of the tool | Exfiltrate seed on first use |
+| Malicious file supplier | Can distribute a backdoored copy of the tool | Exfiltrate seed on first use, or bias generated mnemonics |
 | Physical attacker | Can access a powered-off or unattended machine | Extract keys from disk or memory |
 | Passive observer | Can see screen, capture photos/video | Visual exposure of seed or private keys |
 
@@ -87,7 +93,7 @@ The following assets are considered sensitive and are the primary targets of any
 
 | ID | Threat | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
-| N-1 | User opens the HTML file while online; a browser extension exfiltrates form contents | Medium | Critical | Disconnect from internet before use; disable extensions; use a clean browser profile |
+| N-1 | User opens the HTML file while online; a browser extension exfiltrates form contents or generated entropy | Medium | Critical | Disconnect from internet before use; disable extensions; use a clean browser profile |
 | N-2 | User downloads a trojanized copy from a malicious mirror | Medium | Critical | Verify SHA256 hashes published in the README before every use |
 | N-3 | DNS or BGP hijack redirects a hosted copy | Low | Critical | The tool is designed to be opened as a local file, not served from a website |
 
@@ -95,15 +101,24 @@ The following assets are considered sensitive and are the primary targets of any
 
 | ID | Threat | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
-| L-1 | Keylogger captures seed entry | Medium | Critical | Use an air-gapped machine; avoid general-purpose desktops for seed work |
-| L-2 | Screen recorder or screenshot captures mnemonic display | Medium | Critical | Cover screen when working; use press-and-hold reveal only when necessary |
+| L-1 | Keylogger captures seed entry via the word-entry grid | Medium | Critical | Use an air-gapped machine; avoid general-purpose desktops for seed work |
+| L-2 | Screen recorder or screenshot captures mnemonic display or word-grid contents | Medium | Critical | Cover screen when working; use press-and-hold reveal only when necessary |
 | L-3 | Clipboard manager stores copied seed phrase | High | Critical | Avoid copying seed phrases; the app warns before clipboard use |
-| L-4 | Browser stores form values or autofill history | Medium | High | Use a private/incognito window or a clean browser profile |
-| L-5 | Process memory scraping extracts the decrypted mnemonic | Low | Critical | The decrypted mnemonic must exist in memory during use; minimize time in memory by closing the app promptly |
+| L-4 | Browser stores word-grid field values or autofill history | Medium | High | Use a private/incognito window or a clean browser profile; autofill should be disabled |
+| L-5 | Process memory scraping extracts the decrypted or generated mnemonic | Low | Critical | The mnemonic must exist in memory during use; minimize time in memory by closing the app promptly |
 | L-6 | Derived-output export file (JSON/CSV/TXT) left unprotected | High | Critical | Treat every export as secret; store on encrypted media; delete after use |
 | L-7 | Browser download history reveals that a seed tool was used | Low | Medium | Clear browser downloads and history after use |
 
-### 5.3 Encrypted Seed File (`.arc`) Threats
+### 5.3 Random Seed Generation Threats
+
+| ID | Threat | Likelihood | Impact | Mitigation |
+|---|---|---|---|---|
+| G-1 | Backdoored tool returns a biased or attacker-known mnemonic during generation | Low | Critical | Verify SHA256 hashes before use; review generation code (`generateRandomMnemonic` in HTML, `generate_random_mnemonic` in Python) |
+| G-2 | Weak CSPRNG produces low-entropy output | Very Low | Critical | HTML uses `crypto.getRandomValues`; Python uses `os.urandom`; both delegate to OS-level cryptographic entropy sources |
+| G-3 | Generated mnemonic exposed via clipboard before user reviews it | Medium | Critical | Generated seeds follow the same hidden-seed workflow as imported seeds; the phrase is not placed in the clipboard or word grid automatically |
+| G-4 | User generates a seed while online, allowing a network-capable extension to observe the CSPRNG output or DOM | Medium | Critical | Disconnect from the internet before generating a seed |
+
+### 5.4 Encrypted Seed File (`.arc`) Threats
 
 | ID | Threat | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
@@ -113,22 +128,22 @@ The following assets are considered sensitive and are the primary targets of any
 | A-4 | `.arc` file stored in an insecure location (cloud sync, email) | High | High | Store `.arc` files on encrypted removable media only; never cloud-sync them |
 | A-5 | Older format imports (≥600,000 iterations) accepted alongside current exports | Low | Low | Legacy imports are accepted for compatibility; users should re-export to current format when possible |
 
-### 5.4 Supply-Chain Threats
+### 5.5 Supply-Chain Threats
 
 | ID | Threat | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
-| S-1 | Malicious commit to repository injects backdoor | Low | Critical | Verify SHA256 hashes from the README on every download |
+| S-1 | Malicious commit to repository injects backdoor or biases CSPRNG output | Low | Critical | Verify SHA256 hashes from the README on every download |
 | S-2 | GitHub account compromise leads to backdoored release | Low | Critical | Hash verification is independent of GitHub trust |
 | S-3 | Python standard library vulnerability exploited | Very Low | Medium | The tool uses only stdlib; keep the Python runtime patched |
 
-### 5.5 Operational Threats
+### 5.6 Operational Threats
 
 | ID | Threat | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
-| O-1 | User recovers seed on a machine already infected with malware | High | Critical | Use a dedicated air-gapped machine; run from a live OS if possible |
+| O-1 | User recovers or generates a seed on a machine already infected with malware | High | Critical | Use a dedicated air-gapped machine; run from a live OS if possible |
 | O-2 | User shares exported files containing private keys | Medium | Critical | Exports are not encrypted; treat as plaintext secrets |
-| O-3 | User forgets to disconnect from internet before use | High | Medium | The README and SECURITY.md both emphasize offline use |
-| O-4 | Physical shoulder-surfing during seed entry | Medium | Critical | Use the tool in a private environment |
+| O-3 | User forgets to disconnect from internet before use | High | Medium | The README and SECURITY.md both emphasize offline use; applies to both recovery and seed generation |
+| O-4 | Physical shoulder-surfing during seed entry or reveal | Medium | Critical | Use the tool in a private environment |
 
 ---
 
@@ -136,6 +151,8 @@ The following assets are considered sensitive and are the primary targets of any
 
 | Component | Algorithm | Parameters |
 |---|---|---|
+| Random mnemonic generation (HTML) | `crypto.getRandomValues` | OS CSPRNG via Web Crypto API; entropy length matches word count (128-bit for 12 words, 256-bit for 24 words) |
+| Random mnemonic generation (Python) | `os.urandom` | OS CSPRNG; same entropy lengths |
 | BIP39 seed derivation | PBKDF2-HMAC-SHA512 | 2048 iterations, salt = `"mnemonic" + passphrase` (standard) |
 | BIP32 master key | HMAC-SHA512 | Key = `"Bitcoin seed"` |
 | `.arc` KDF | PBKDF2-HMAC-SHA512 | 1,000,000 iterations, 32-byte random salt |
@@ -166,9 +183,10 @@ The following are explicitly outside the threat model of this tool:
 
 Even with all recommended mitigations applied, the following residual risks remain:
 
-1. **Memory exposure:** The decrypted mnemonic must reside in process memory during validation and derivation. A sufficiently privileged attacker with access to the machine during a session can extract it.
+1. **Memory exposure:** The decrypted or generated mnemonic must reside in process memory during validation and derivation. A sufficiently privileged attacker with access to the machine during a session can extract it.
 2. **Password strength:** The security of `.arc` files at rest is bounded entirely by password entropy. No technical control compensates for a guessable password.
 3. **Unencrypted derived exports:** JSON/CSV/TXT exports containing private keys have no built-in encryption. They are as sensitive as the mnemonic itself.
+4. **CSPRNG trust:** Generated mnemonic security depends on the platform CSPRNG (`crypto.getRandomValues` / `os.urandom`). If the OS entropy source is compromised or the tool file is backdoored to bias output, generated seeds may be predictable.
 
 ---
 
@@ -176,10 +194,11 @@ Even with all recommended mitigations applied, the following residual risks rema
 
 1. Use the tool on an air-gapped machine, ideally booted from a live OS.
 2. Verify SHA256 hashes from the README before every use.
-3. Disconnect from the internet before opening the HTML file or running the Python script.
+3. Disconnect from the internet before opening the HTML file or running the Python script — this applies equally to seed recovery and seed generation.
 4. Use a clean browser profile with all extensions disabled.
 5. Use a strong, unique password for `.arc` exports.
 6. Store `.arc` files and derived-output exports on encrypted removable media.
 7. Clear clipboard, download history, and terminal history after every session.
 8. Avoid copying seed phrases, passphrases, or private keys to the clipboard.
 9. Close the application promptly when done.
+10. When generating a new seed, write it down on paper immediately after revealing it; do not store it digitally in plaintext.
