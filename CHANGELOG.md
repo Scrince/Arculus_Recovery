@@ -12,6 +12,41 @@ Changes on `main` not yet tagged in a formal release.
 
 ---
 
+## [1.2.0-production] — 2026-06-02
+
+### Added
+
+**Laptop / Small-Screen Layout (HTML)**
+- New responsive breakpoint at `max-width: 1280px` (above the existing 980px collapse point) applies compact spacing without switching to single-column layout.
+- At the laptop breakpoint: body and card padding reduced (20px → 8px / 16px → 10px), label column narrowed (260px → 180px), font sizes tightened (14px → 13px), button and input padding reduced, and word-grid gap tightened.
+
+**Compact Default Sizing (Python GUI)**
+- Default window geometry reduced from `1120×860` to `1040×760` to open comfortably on 13" screens without immediately hitting the minimum size constraint.
+- Minimum window size reduced from `980×760` to `860×640`.
+- `TButton` padding reduced from `(12, 8)` to `(8, 5)`; `TEntry` and `TCombobox` vertical padding reduced from `6` to `4`.
+
+### Changed
+
+**Word Grid — 12-Word Mode Hides Slots 13–24 (HTML & Python GUI)**
+- Word entry cells 13–24 are now hidden when 12-word mode is active, cutting the numbered-words section roughly in half for the common case.
+- Cells reappear immediately when the user switches to 24-word mode or pastes a 24-word mnemonic.
+- In the HTML version, cells toggle via `display: none` inside `refreshWordEnabled()`. In the Python GUI, cells toggle via `grid_remove()` / `grid()` inside `on_seed_length_change()`.
+
+**Mnemonic Textarea — Reduced Default Height (HTML & Python GUI)**
+- Default height reduced from 4 lines (`min-height: 96px`) to 2 lines (`min-height: 60px`). The field remains user-resizable.
+
+**Output Textarea — Reduced Default Height (HTML & Python GUI)**
+- Default height reduced from 20 lines (`min-height: 280px`) to 10 lines (`min-height: 120px`). The field remains user-resizable, allowing expansion when reviewing full derivation output.
+
+**Seed Mask Character Changed from Asterisks to Bullets (HTML & Python GUI)**
+- The masking character used to obscure hidden seed words changed from `****` to `••••` in both the mnemonic textarea and the numbered word entries.
+- Applies to both imported `.arc` seeds and generated seeds while in protected (hidden) state.
+
+**`min-height: 100dvh` (HTML)**
+- Replaced `100vh` with `100dvh` so macOS Safari correctly accounts for browser chrome height, preventing subtle overflow on 13" MacBook displays.
+
+---
+
 ## [1.1.0-production] — 2026-06-01
 
 ### Added
@@ -132,4 +167,4 @@ The following summarizes the development history reconstructed from the reposito
 
 ## Notes on Versioning
 
-The project now uses a `major.minor.patch-channel` version string (`1.1.0-production`), surfaced in the UI title bar and via `--version` on the CLI. The README includes SHA256 hashes for `Arculus_Recovery.html`, `index.html`, and `Arculus_Recovery.py` so users can verify the exact file state they are running, independent of the version string.
+The project now uses a `major.minor.patch-channel` version string (`1.2.0-production`), surfaced in the UI title bar and via `--version` on the CLI. The README includes SHA256 hashes for `Arculus_Recovery.html`, `index.html`, and `Arculus_Recovery.py` so users can verify the exact file state they are running, independent of the version string.

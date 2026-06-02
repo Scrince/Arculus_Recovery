@@ -22,6 +22,8 @@ Dark mode:
 - BIP39 mnemonic validation for 12-word and 24-word seeds
 - Generate a cryptographically random 12-word or 24-word mnemonic
 - Individual word-entry grid with 12/24 selector and inline validation
+- Word slots 13–24 hidden automatically in 12-word mode, revealed on switch to 24 words
+- Seed mask character displayed as bullets (••••) rather than asterisks
 - Detailed validation output:
   - Word count
   - Wordlist validity
@@ -112,8 +114,8 @@ shasum -a 256 Arculus_Recovery.html Arculus_Recovery.py
 Expected hashes:
 
 ```text
-e877b86312b4b301a5558631869c5b65390da9ea3ae20f08552a698625a1e1a4  Arculus_Recovery.html
-73163b8c643a9c0817c47a92708708e61fdede95651d78befc8073ac6c318c8a  Arculus_Recovery.py
+2a449e9ce6a42bb37c8237c2a1045a9bf0406562e63f8d4b195ea442bbe0e677  Arculus_Recovery.html
+6fc1d89c0570c61e58fb088275ca5c5ab6f6ebc8b81a20d777ff2dea0792f052  Arculus_Recovery.py
 ```
 
 ## Encrypted Seed Files
@@ -196,7 +198,7 @@ Open `Arculus_Recovery.html` directly in a browser.
 ### HTML Features
 
 - Offline mnemonic validation
-- Individual word-entry grid with 12/24-word radio selector
+- Individual word-entry grid with 12/24-word radio selector; words 13–24 hidden in 12-word mode
 - Generate a cryptographically random 12-word or 24-word mnemonic
 - Key and address derivation
 - Export derived keys and addresses as JSON, CSV, or TXT
@@ -205,6 +207,7 @@ Open `Arculus_Recovery.html` directly in a browser.
 - Hold-to-show hidden imported seed
 - Root fingerprint display in the action toolbar
 - Settings dialog beside the title with a Dark Mode toggle
+- Responsive layout with a laptop breakpoint (≤1280px) for compact display on 13" screens
 
 ## Python Version
 
@@ -219,7 +222,7 @@ python Arculus_Recovery.py --gui
 ### Python GUI Features
 
 - Offline mnemonic validation
-- Individual word-entry grid with 12/24-word selector
+- Individual word-entry grid with 12/24-word selector; words 13–24 hidden in 12-word mode
 - Generate a cryptographically random 12-word or 24-word mnemonic
 - Key and address derivation
 - Export derived keys and addresses as JSON, CSV, or TXT
@@ -228,6 +231,7 @@ python Arculus_Recovery.py --gui
 - Hold-to-show hidden imported seed
 - Root fingerprint display in the action toolbar
 - Settings popup with a Dark Mode toggle
+- Compact default window size (1040×760) suited for 13" laptop screens
 
 ### CLI Example
 

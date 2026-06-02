@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Tuple
 
 
-APP_VERSION = "1.1.0-production"
+APP_VERSION = "1.2.0-production"
 
 
 # --- Embedded BIP39 English word list ---
@@ -3199,8 +3199,8 @@ def launch_gui() -> None:
 
     root = tk.Tk()
     root.title(f"Arculus Recovery {APP_VERSION}")
-    root.geometry("1120x860")
-    root.minsize(980, 760)
+    root.geometry("1040x760")
+    root.minsize(860, 640)
 
     app_shell = tk.Frame(root, bd=0, highlightthickness=1)
     app_shell.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
@@ -3250,7 +3250,7 @@ def launch_gui() -> None:
     network_label.pack(side=tk.LEFT, padx=(0, 10), pady=6)
 
     ttk.Label(frm, text="Mnemonic (12 or 24 words):").grid(row=1, column=0, sticky="w", pady=(0, 6))
-    mnemonic_txt = ScrolledText(frm, height=4, wrap=tk.WORD)
+    mnemonic_txt = ScrolledText(frm, height=2, wrap=tk.WORD)
     mnemonic_txt.grid(row=1, column=1, sticky="nsew", padx=(12, 0), pady=(0, 6))
     mnemonic_txt.tag_configure("valid_word", foreground=valid_color, font=bold_font)
     mnemonic_txt.tag_configure("invalid_word", foreground=invalid_color, font=bold_font)
@@ -3344,7 +3344,7 @@ def launch_gui() -> None:
     )
     status_label.grid(row=9, column=0, columnspan=2, sticky="ew", pady=(8, 8))
 
-    output = ScrolledText(frm, height=20, wrap=tk.NONE)
+    output = ScrolledText(frm, height=10, wrap=tk.NONE)
     output.grid(row=11, column=0, columnspan=2, sticky="nsew", pady=(10, 0))
     imported_seed_state = {"mnemonic": None, "source_name": None, "kind": None}
     showing_imported_seed = {"active": False}
@@ -3449,7 +3449,7 @@ def launch_gui() -> None:
         return "Encrypted seed loaded. Hold Show Seed to reveal."
 
     def set_obfuscated_seed_inputs(words: List[str]) -> None:
-        mask_word = "****"
+        mask_word = "\u2022\u2022\u2022\u2022"
         mnemonic_txt.delete("1.0", tk.END)
         mnemonic_txt.insert("1.0", " ".join(mask_word for _ in words))
         max_words = seed_len_var.get()
@@ -3700,6 +3700,13 @@ def launch_gui() -> None:
             for i in range(24):
                 if i >= max_words:
                     word_vars[i].set("")
+                # Hide cells 12-23 when in 12-word mode
+                cell = word_cells[i]
+                if i >= 12:
+                    if max_words == 12:
+                        cell.grid_remove()
+                    else:
+                        cell.grid(row=i // 4, column=i % 4, sticky="ew", padx=2, pady=2)
             refresh_numbered_entries_style()
             if imported_seed_state["mnemonic"] and not showing_imported_seed["active"] and not has_visible_seed_input():
                 sync_state["last_main_words"] = []
@@ -3987,7 +3994,7 @@ def launch_gui() -> None:
             "TButton",
             background=colors["button"],
             foreground=colors["text"],
-            padding=(12, 8),
+            padding=(8, 5),
             borderwidth=1,
             focusthickness=1,
             focuscolor=colors["focus"],
@@ -4006,7 +4013,7 @@ def launch_gui() -> None:
             bordercolor=colors["border"],
             lightcolor=colors["border"],
             darkcolor=colors["border"],
-            padding=(8, 6),
+            padding=(8, 4),
         )
         style.map("TEntry", bordercolor=[("focus", colors["focus"])])
         style.configure(
@@ -4016,7 +4023,7 @@ def launch_gui() -> None:
             bordercolor=colors["border"],
             lightcolor=colors["border"],
             darkcolor=colors["border"],
-            padding=(8, 6),
+            padding=(8, 4),
             arrowsize=14,
         )
         style.map(
