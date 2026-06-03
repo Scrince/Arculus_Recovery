@@ -37,6 +37,43 @@
 	      --focus: #60a5fa;
 	      --shadow: rgba(0, 0, 0, 0.35);
 	    }
+	    body.dark-plus {
+	      --bg: #1a1a1a;
+	      --page-top: #0d0d0d;
+	      --card: #222222;
+	      --field: #1a1a1a;
+	      --button: #2e2e2e;
+	      --primary: #e86926;
+	      --primary-text: #ffffff;
+	      --text: #ececec;
+	      --muted: #888888;
+	      --ok: #5dba6e;
+	      --bad: #f07070;
+	      --border: #3a3a3a;
+	      --focus: #e86926;
+	      --shadow: rgba(0, 0, 0, 0.5);
+	      --accent: #e86926;
+	    }
+	    body.dark-plus .app {
+	      border-color: #3a3a3a;
+	    }
+	    body.dark-plus button.primary {
+	      background: #e86926;
+	      border-color: #e86926;
+	      color: #ffffff;
+	    }
+	    body.dark-plus #status.valid { color: #e86926; }
+	    body.dark-plus textarea:focus,
+	    body.dark-plus input:focus,
+	    body.dark-plus select:focus {
+	      outline-color: #e86926;
+	      border-color: #e86926;
+	    }
+	    body.dark-plus .toggle input:checked + .toggle-track {
+	      background: #e86926;
+	      border-color: #e86926;
+	    }
+	    body.dark-plus .network-status.online .network-dot { background: #e86926; }
 	    * { box-sizing: border-box; }
 	    body {
 	      margin: 0;
@@ -126,11 +163,6 @@
 	      cursor: pointer;
 		    }
 		    button.primary { background: var(--primary); color: var(--primary-text); border-color: var(--primary); }
-	    button.copy-seed {
-	      background: #dc2626;
-	      color: #111827;
-	      border-color: #dc2626;
-	    }
 	    button.generate-seed {
 	      background: #22c55e;
 	      color: #111827;
@@ -253,6 +285,55 @@
     #status { margin: 6px 0; min-height: 20px; font-weight: 600; }
     #output { min-height: 120px; resize: vertical; white-space: pre; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     .footer { margin-top: 10px; font-size: 12px; color: var(--muted); }
+    .label-with-tip { display: flex; align-items: center; gap: 6px; padding-top: 8px; }
+    .label-with-tip .label { padding-top: 0; }
+    .info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1.5px solid var(--muted);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      cursor: default;
+      flex-shrink: 0;
+      position: relative;
+      line-height: 1;
+    }
+    .info-icon:hover .tooltip,
+    .info-icon:focus .tooltip { display: block; }
+    .tooltip {
+      display: none;
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 8px);
+      transform: translateX(-50%);
+      width: 260px;
+      background: var(--primary);
+      color: var(--primary-text);
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.5;
+      padding: 8px 10px;
+      border-radius: 7px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+      z-index: 100;
+      pointer-events: none;
+      white-space: normal;
+    }
+    .tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: var(--primary);
+    }
+
     /* Laptop breakpoint: tighten spacing without collapsing to single-column */
     @media (max-width: 1280px) and (min-width: 981px) {
       body { padding: 8px; }
@@ -275,6 +356,41 @@
       .grid { grid-template-columns: 1fr; }
       .label { padding-top: 0; }
       .words-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+    }
+
+    /* ── QR Code Modal ── */
+    #qrModal {
+      width: min(340px, calc(100vw - 40px));
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0;
+      background: var(--card);
+      color: var(--text);
+      box-shadow: 0 18px 45px rgba(0,0,0,0.28);
+    }
+    #qrModal::backdrop { background: rgba(17,24,39,0.5); }
+    .qr-panel { padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .qr-header { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .qr-header h2 { margin: 0; font-size: 17px; }
+    .qr-address-label {
+      font-size: 11px;
+      color: var(--muted);
+      word-break: break-all;
+      text-align: center;
+      max-width: 100%;
+      line-height: 1.5;
+    }
+    #qrCanvas {
+      border-radius: 8px;
+      image-rendering: pixelated;
+    }
+    .qr-actions { display: flex; gap: 10px; }
+    button.qr-trigger {
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      min-height: 26px;
+      border-radius: 6px;
     }
   </style>
 </head>
@@ -300,6 +416,8 @@
 	        <label><input type="radio" name="seedLen" value="24"> 24 words</label>
 	        <button id="copySeedBtn" type="button" class="copy-seed">Copy Seed</button>
 	        <button id="generateSeedBtn" type="button" class="generate-seed">Generate Random Seed</button>
+	        <button id="showSeedBtn" type="button">Show Seed</button>
+	        <button id="clearAllBtn" type="button">Clear All</button>
 	      </div>
 
       <div class="label">Numbered Words</div>
@@ -317,7 +435,10 @@
         <option>XRP</option>
       </select>
 
-      <div class="label">Derivation Path</div>
+      <div class="label-with-tip">
+        <span class="label">Derivation Path</span>
+        <span class="info-icon" id="derivationInfoIcon" tabindex="0" aria-label="Derivation path help" style="display:none;">i<span class="tooltip">Arculus uses <strong>m/0'</strong> (a single hardened account level) rather than the BIP-44 standard path <strong>m/44'/coin'/0'</strong>. If you are importing a seed from a different wallet, you may need to change this path to match that wallet&rsquo;s convention.</span></span>
+      </div>
       <input id="derivation" type="text" value="m/0'" spellcheck="false" />
 
       <div class="label">Script Type</div>
@@ -344,7 +465,8 @@
       </select>
       <button id="encryptExportBtn">Encrypt/Export Seed</button>
       <button id="importSeedBtn">Import Seed</button>
-      <button id="showSeedBtn" type="button">Show Seed</button>
+
+      <button id="qrAddressesBtn">QR Export</button>
       <input id="rootFingerprintDisplay" class="button-field" type="text" value="Root Fingerprint:" readonly />
     </div>
 
@@ -352,18 +474,45 @@
     <textarea id="output" spellcheck="false" readonly></textarea>
     <div class="footer">Runs fully offline in your browser. Never share real seed phrases.</div>
     <input id="importSeedFile" type="file" accept=".arc,.json,application/json" hidden />
+    <dialog id="qrModal" aria-labelledby="qrModalTitle">
+      <div class="qr-panel">
+        <div class="qr-header">
+          <h2 id="qrModalTitle">QR Export</h2>
+          <button id="qrModalCloseBtn" type="button" class="settings-close" aria-label="Close QR">x</button>
+        </div>
+        <div style="width:100%;display:flex;gap:8px;align-items:stretch;">
+          <input id="qrAddressInput" type="text" spellcheck="false" autocomplete="off"
+            placeholder="Paste address here..." style="flex:1;min-width:0;" />
+          <button id="qrGenerateBtn" type="button" class="primary">Generate</button>
+        </div>
+        <canvas id="qrCanvas" width="256" height="256" style="display:none;"></canvas>
+        <div id="qrAddressLabel" class="qr-address-label" style="display:none;"></div>
+        <div class="qr-actions" id="qrSaveRow" style="display:none;">
+          <button id="qrSaveBtn" type="button">Save PNG</button>
+          <button id="qrCopyAddrBtn" type="button">Copy Address</button>
+        </div>
+      </div>
+    </dialog>
+
     <dialog id="settingsDialog" aria-labelledby="settingsTitle">
       <div class="settings-panel">
         <div class="settings-header">
           <h2 id="settingsTitle">Settings</h2>
           <button id="settingsCloseBtn" type="button" class="settings-close" aria-label="Close settings">x</button>
         </div>
-        <div class="setting-row">
-          <span>Dark Mode</span>
-          <label class="toggle" aria-label="Dark Mode">
-            <input id="darkModeToggle" type="checkbox">
-            <span class="toggle-track"></span>
-          </label>
+        <div class="setting-row" style="flex-direction:column; align-items:flex-start; gap:10px;">
+          <span style="font-weight:600;">Theme</span>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="radio" name="themeMode" id="themeModeLight" value="light"> Light
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="radio" name="themeMode" id="themeModeDark" value="dark"> Dark
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="radio" name="themeMode" id="themeModeDarkPlus" value="dark-plus"> Dark+
+            </label>
+          </div>
         </div>
       </div>
     </dialog>
@@ -471,7 +620,11 @@
       showSeedBtn: document.getElementById('showSeedBtn'),
       rootFingerprintDisplay: document.getElementById('rootFingerprintDisplay'),
       importSeedFile: document.getElementById('importSeedFile'),
-      darkModeToggle: document.getElementById('darkModeToggle')
+      themeModeRadios: () => document.querySelectorAll('input[name="themeMode"]'),
+      themeModeLight: document.getElementById('themeModeLight'),
+      themeModeDark: document.getElementById('themeModeDark'),
+      themeModeDarkPlus: document.getElementById('themeModeDarkPlus'),
+      clearAllBtn: document.getElementById('clearAllBtn')
     };
 
     const wordInputs = [];
@@ -518,14 +671,24 @@
       els.status.className = cls;
     }
 
-    function applyDarkMode(enabled) {
-      document.body.classList.toggle('dark-mode', enabled);
-      els.darkModeToggle.checked = enabled;
+    function applyTheme(mode) {
+      // mode: 'light' | 'dark' | 'dark-plus'
+      document.body.classList.remove('dark-mode', 'dark-plus');
+      if (mode === 'dark') document.body.classList.add('dark-mode');
+      else if (mode === 'dark-plus') document.body.classList.add('dark-plus');
+      // sync radio buttons
+      document.querySelectorAll('input[name="themeMode"]').forEach(r => {
+        r.checked = r.value === mode;
+      });
       try {
-        localStorage.setItem('arculusDarkMode', enabled ? '1' : '0');
+        localStorage.setItem('arculusTheme', mode);
       } catch {
         // Local files may be opened in privacy-restricted contexts.
       }
+    }
+    // Keep legacy name as alias for any internal callers
+    function applyDarkMode(enabled) {
+      applyTheme(enabled ? 'dark' : 'light');
     }
 
     function refreshNetworkStatus() {
@@ -608,6 +771,19 @@
         hidden_on_screen: true
       }, null, 2);
       scheduleRootFingerprintRefresh();
+      // Show derivation path info icon only when path is m/0' (the Arculus default)
+      function refreshDerivationInfoIcon() {
+        const icon = document.getElementById('derivationInfoIcon');
+        if (!icon) return;
+        const val = (els.derivation.value || '').trim();
+        icon.style.display = (val === "m/0'") ? '' : 'none';
+      }
+      els.derivation.addEventListener('input', refreshDerivationInfoIcon);
+      // Also re-evaluate whenever the coin selector resets the derivation path
+      els.coin.addEventListener('change', () => setTimeout(refreshDerivationInfoIcon, 0));
+      // Show on load — default is Bitcoin with m/0'
+      window.addEventListener('DOMContentLoaded', refreshDerivationInfoIcon);
+      refreshDerivationInfoIcon();
     }
 
     function applyGeneratedSeed(mnemonic) {
@@ -1852,6 +2028,26 @@
       uiStatus(`Generated random ${wordCount}-word mnemonic. Seed phrase hidden; hold Show Seed to reveal.`, 'valid');
     }
 
+    function handleClearAll() {
+      clearImportedSeed({ silent: true });
+      syncBusy = true;
+      try {
+        els.mnemonic.value = '';
+        for (const inp of wordInputs) {
+          inp.value = '';
+          inp.classList.remove('valid', 'invalid');
+        }
+        els.mnemonic.classList.remove('valid', 'invalid');
+        els.passphrase.value = '';
+        els.output.value = '';
+        setRootFingerprintDisplay('');
+      } finally {
+        syncBusy = false;
+      }
+      styleMnemonicBox();
+      uiStatus('All fields cleared.', '');
+    }
+
     function buildWordInputs() {
       for (let i = 0; i < 24; i++) {
         const cell = document.createElement('div');
@@ -1903,7 +2099,7 @@
 	      els.settingsDialog.addEventListener('click', event => {
 	        if (event.target === els.settingsDialog) els.settingsDialog.close();
 	      });
-	      els.darkModeToggle.addEventListener('change', () => applyDarkMode(els.darkModeToggle.checked));
+	      document.querySelectorAll('input[name="themeMode"]').forEach(r => r.addEventListener('change', () => applyTheme(r.value)));
 	      window.addEventListener('online', refreshNetworkStatus);
 	      window.addEventListener('offline', refreshNetworkStatus);
 	
@@ -1977,7 +2173,8 @@
 	          els.output.value = JSON.stringify({ error: e.message }, null, 2);
 	        }
 	      });
-	      els.importSeedFile.addEventListener('change', async () => {
+	      els.clearAllBtn.addEventListener('click', () => handleClearAll());
+      els.importSeedFile.addEventListener('change', async () => {
         try {
           await handleImportSeedFile(els.importSeedFile.files?.[0]);
         } catch (e) {
@@ -2004,15 +2201,339 @@
 	      buildWordInputs();
 	      bindUI();
 	      try {
-	        applyDarkMode(localStorage.getItem('arculusDarkMode') === '1');
+	        const saved = localStorage.getItem('arculusTheme') || (localStorage.getItem('arculusDarkMode') === '1' ? 'dark' : 'light');
+	        applyTheme(saved);
 	      } catch {
-	        applyDarkMode(false);
+	        applyTheme('light');
 	      }
 	      refreshWordEnabled();
 	      refreshNetworkStatus();
       styleMnemonicBox();
       uiStatus('Ready');
+      // Ensure derivation info icon reflects default state after full init
+      const _icon = document.getElementById('derivationInfoIcon');
+      if (_icon) _icon.style.display = (document.getElementById('derivation')?.value?.trim() === "m/0'") ? '' : 'none';
     })();
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // Self-contained QR Code generator (no external dependencies)
+    // Supports alphanumeric + byte mode; ECC levels M/Q; versions 1-10
+    // ══════════════════════════════════════════════════════════════════════════
+    const QRGen = (() => {
+      // GF(256) arithmetic for Reed-Solomon
+      const EXP = new Uint8Array(512), LOG = new Uint8Array(256);
+      (function buildGF() {
+        let x = 1;
+        for (let i = 0; i < 255; i++) {
+          EXP[i] = x; LOG[x] = i;
+          x = x << 1; if (x > 255) x ^= 0x11d;
+        }
+        for (let i = 255; i < 512; i++) EXP[i] = EXP[i - 255];
+      })();
+      const gfMul = (a, b) => a && b ? EXP[LOG[a] + LOG[b]] : 0;
+      const gfPoly = ec => {
+        let p = [1];
+        for (let i = 0; i < ec; i++) {
+          const q = [1, EXP[i]];
+          const r = new Uint8Array(p.length + 1);
+          for (let a = 0; a < p.length; a++) for (let b = 0; b < q.length; b++) r[a+b] ^= gfMul(p[a], q[b]);
+          p = Array.from(r);
+        }
+        return p;
+      };
+      const rsEncode = (data, ec) => {
+        const gen = gfPoly(ec), out = new Uint8Array(data.length + ec).fill(0);
+        for (let i = 0; i < data.length; i++) out[i] = data[i];
+        for (let i = 0; i < data.length; i++) {
+          const c = out[i];
+          if (c) for (let j = 0; j < gen.length; j++) out[i+j] ^= gfMul(gen[j], c);
+        }
+        return out.slice(data.length);
+      };
+
+      // Version capacity tables [version][ecLevel] = {dataBytes, ecPerBlock, blocks}
+      // ecLevel: 0=M,1=Q; versions 1-10 only
+      const CAP = [
+        null,
+        [{db:16,ec:10,b:1},{db:13,ec:13,b:1}],
+        [{db:28,ec:16,b:1},{db:22,ec:22,b:1}],
+        [{db:44,ec:26,b:2},{db:32,ec:18,b:2}],
+        [{db:64,ec:18,b:2},{db:48,ec:26,b:2}],
+        [{db:86,ec:24,b:2},{db:64,ec:18,b:4}],
+        [{db:108,ec:16,b:4},{db:84,ec:24,b:4}],
+        [{db:124,ec:18,b:4},{db:93,ec:18,b:6}],  // v7 Q: split blocks handled separately
+        [{db:154,ec:22,b:4},{db:122,ec:22,b:6}],
+        [{db:182,ec:22,b:5},{db:154,ec:20,b:7}], // approximations — byte mode fits in M
+        [{db:216,ec:26,b:5},{db:180,ec:24,b:8}],
+      ];
+
+      // Format info strings (mask 0-7) for ECC level M (bits 5-14 of 15-bit format)
+      const FMT_M = [0b101010000010010,0b101000100100101,0b101111001111100,0b101101101001011,
+                     0b100010111111001,0b100000011001110,0b100111110010111,0b100101010100000];
+      const FMT_Q = [0b011010101011111,0b011000001101000,0b011111100110001,0b011101000000110,
+                     0b010010010110100,0b010000110000011,0b010111011011010,0b010101111101101];
+
+      // Alignment pattern positions per version
+      const ALIGN = [null,[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50]];
+
+      function makeMatrix(ver) {
+        const size = ver * 4 + 17;
+        const m = Array.from({length:size},()=>new Array(size).fill(null));
+        const set = (r,c,v) => { if (r>=0&&r<size&&c>=0&&c<size) m[r][c]=v; };
+        // Finder patterns
+        const finder = (tr,tc) => {
+          for (let r=-1;r<=7;r++) for (let c=-1;c<=7;c++) set(tr+r,tc+c, r>=0&&r<=6&&c>=0&&c<=6 ? (r===0||r===6||c===0||c===6||(r>=2&&r<=4&&c>=2&&c<=4)) : false);
+        };
+        finder(0,0); finder(0,size-7); finder(size-7,0);
+        // Timing
+        for (let i=8;i<size-8;i++) { set(6,i,(i&1)===0); set(i,6,(i&1)===0); }
+        // Dark module
+        set(size-8,8,true);
+        // Alignment patterns
+        const ap = ALIGN[ver];
+        for (const r of ap) for (const c of ap) {
+          if (m[r][c]!==null) continue;
+          for (let dr=-2;dr<=2;dr++) for (let dc=-2;dc<=2;dc++)
+            set(r+dr,c+dc, dr===-2||dr===2||dc===-2||dc===2||(dr===0&&dc===0));
+        }
+        // Reserve format areas
+        for (let i=0;i<9;i++) { if(m[8][i]===null) set(8,i,false); if(m[i][8]===null) set(i,8,false); }
+        for (let i=0;i<8;i++) { set(8,size-1-i,false); set(size-1-i,8,false); }
+        return m;
+      }
+
+      function placeData(m, data) {
+        const size = m.length;
+        let bit = 0, up = true;
+        for (let col = size-1; col >= 1; col -= 2) {
+          if (col === 6) col--;
+          for (let row2 = 0; row2 < size; row2++) {
+            const row = up ? size-1-row2 : row2;
+            for (let dx = 0; dx < 2; dx++) {
+              const c = col - dx;
+              if (m[row][c] === null) {
+                m[row][c] = bit < data.length * 8 ? ((data[bit>>3] >> (7-(bit&7))) & 1) === 1 : false;
+                bit++;
+              }
+            }
+          }
+          up = !up;
+        }
+      }
+
+      function applyMask(m, mask) {
+        const size = m.length;
+        const fns = [
+          (r,c)=>(r+c)%2===0,
+          (r,c)=>r%2===0,
+          (r,c)=>c%3===0,
+          (r,c)=>(r+c)%3===0,
+          (r,c)=>(Math.floor(r/2)+Math.floor(c/3))%2===0,
+          (r,c)=>(r*c)%2+(r*c)%3===0,
+          (r,c)=>((r*c)%2+(r*c)%3)%2===0,
+          (r,c)=>((r+c)%2+(r*c)%3)%2===0,
+        ];
+        const fn = fns[mask];
+        const out = m.map(row=>row.slice());
+        for (let r=0;r<size;r++) for (let c=0;c<size;c++)
+          if (typeof out[r][c]==='boolean') out[r][c] ^= fn(r,c);
+        return out;
+      }
+
+      function writeFormat(m, ecLevel, mask) {
+        const fmt = ecLevel === 1 ? FMT_Q[mask] : FMT_M[mask];
+        const size = m.length;
+        const bits = i => (fmt >> (14-i)) & 1 ? true : false;
+        const pos = [0,1,2,3,4,5,7,8];
+        for (let i=0;i<6;i++) { m[8][i]=bits(i); m[i][8]=bits(i); }
+        m[8][7]=bits(6); m[7][8]=bits(6);
+        m[8][8]=bits(7); m[8][8]=bits(7);
+        for (let i=0;i<8;i++) { m[8][size-1-i]=bits(i); m[size-1-i][8]=bits(i); }
+        m[size-8][8]=bits(14);
+      }
+
+      function penaltyScore(m) {
+        const size = m.length;
+        let score = 0;
+        // Rule 1: 5+ same in a row/col
+        for (let r=0;r<size;r++) {
+          let run=1;
+          for (let c=1;c<size;c++) { if(m[r][c]===m[r][c-1]){run++;}else{if(run>=5)score+=run-2;run=1;} }
+          if(run>=5)score+=run-2;
+        }
+        for (let c=0;c<size;c++) {
+          let run=1;
+          for (let r=1;r<size;r++) { if(m[r][c]===m[r-1][c]){run++;}else{if(run>=5)score+=run-2;run=1;} }
+          if(run>=5)score+=run-2;
+        }
+        // Rule 2: 2x2 blocks
+        for (let r=0;r<size-1;r++) for (let c=0;c<size-1;c++)
+          if(m[r][c]===m[r][c+1]&&m[r][c]===m[r+1][c]&&m[r][c]===m[r+1][c+1]) score+=3;
+        return score;
+      }
+
+      function encodeBytes(text) {
+        const enc = new TextEncoder().encode(text);
+        const bits = [];
+        // Mode indicator: byte = 0100
+        bits.push(0,1,0,0);
+        const len = enc.length;
+        // Character count: 8 bits for byte mode v1-9
+        for (let i=7;i>=0;i--) bits.push((len>>i)&1);
+        for (const b of enc) for (let i=7;i>=0;i--) bits.push((b>>i)&1);
+        return { bits, byteLen: enc.length };
+      }
+
+      function buildCodewords(bits, totalData, ecPerBlock, numBlocks) {
+        // Pad bits to fill data capacity
+        bits.push(0,0,0,0); // terminator
+        while (bits.length % 8) bits.push(0);
+        const padBytes = [0b11101100, 0b00010001];
+        let pi = 0;
+        while (bits.length < totalData * 8) { for (let b=7;b>=0;b--) bits.push((padBytes[pi]>>b)&1); pi=(pi+1)%2; }
+        // Convert bits to bytes
+        const data = new Uint8Array(totalData);
+        for (let i=0;i<totalData;i++) for (let b=0;b<8;b++) data[i]=(data[i]<<1)|bits[i*8+b];
+        // Split into blocks and compute EC
+        const blockSize = Math.floor(totalData / numBlocks);
+        const longBlocks = totalData % numBlocks;
+        const blocks = [], ecBlocks = [];
+        let offset = 0;
+        for (let b=0;b<numBlocks;b++) {
+          const len = b < numBlocks - longBlocks ? blockSize : blockSize + 1;
+          const block = data.slice(offset, offset+len); offset+=len;
+          blocks.push(block); ecBlocks.push(rsEncode(block, ecPerBlock));
+        }
+        // Interleave data then EC
+        const out = [];
+        const maxLen = Math.max(...blocks.map(b=>b.length));
+        for (let i=0;i<maxLen;i++) for (const b of blocks) if(i<b.length) out.push(b[i]);
+        for (let i=0;i<ecPerBlock;i++) for (const b of ecBlocks) out.push(b[i]);
+        return new Uint8Array(out);
+      }
+
+      function generate(text) {
+        const { bits, byteLen } = encodeBytes(text);
+        // Pick smallest version that fits (ECC level M first, Q if needed)
+        let ver = 1, ecLevel = 0;
+        for (let v=1;v<=10;v++) {
+          if (CAP[v][0].db >= byteLen) { ver=v; ecLevel=0; break; }
+          if (v===10 && CAP[v][1].db >= byteLen) { ver=v; ecLevel=1; break; }
+          if (CAP[v][1].db >= byteLen) { ver=v; ecLevel=1; break; }
+        }
+        const cap = CAP[ver][ecLevel];
+        const codewords = buildCodewords(bits.slice(), cap.db, cap.ec, cap.b);
+        // Build matrix, place data, pick best mask
+        const base = makeMatrix(ver);
+        placeData(base, codewords);
+        let bestMask = 0, bestScore = Infinity;
+        for (let mask=0;mask<8;mask++) {
+          const candidate = applyMask(base, mask);
+          writeFormat(candidate, ecLevel, mask);
+          const s = penaltyScore(candidate);
+          if (s < bestScore) { bestScore=s; bestMask=mask; }
+        }
+        const final = applyMask(base, bestMask);
+        writeFormat(final, ecLevel, bestMask);
+        return final;
+      }
+
+      function render(matrix, canvas, opts={}) {
+        const size = matrix.length;
+        const quiet = opts.quiet ?? 3;
+        const totalModules = size + quiet * 2;
+        const dim = opts.size ?? 256;
+        const mod = Math.floor(dim / totalModules);
+        const actual = mod * totalModules;
+        canvas.width = actual; canvas.height = actual;
+        const ctx = canvas.getContext('2d');
+        const dark = opts.dark ?? '#000000';
+        const light = opts.light ?? '#ffffff';
+        ctx.fillStyle = light;
+        ctx.fillRect(0, 0, actual, actual);
+        ctx.fillStyle = dark;
+        for (let r=0;r<size;r++) for (let c=0;c<size;c++)
+          if (matrix[r][c]) ctx.fillRect((c+quiet)*mod, (r+quiet)*mod, mod, mod);
+      }
+
+      return { generate, render };
+    })();
+
+    // ── QR UI ────────────────────────────────────────────────────────────────
+    function renderQrFromAddress(address) {
+      const canvas = document.getElementById('qrCanvas');
+      const label = document.getElementById('qrAddressLabel');
+      const saveRow = document.getElementById('qrSaveRow');
+      const isDarkPlus = document.body.classList.contains('dark-plus');
+      const isDark = document.body.classList.contains('dark-mode');
+      const dark = isDarkPlus ? '#e86926' : '#000000';
+      const light = isDarkPlus ? '#1a1a1a' : (isDark ? '#1f2937' : '#ffffff');
+      try {
+        const matrix = QRGen.generate(address);
+        QRGen.render(matrix, canvas, { size: 256, quiet: 3, dark, light });
+        canvas.style.display = '';
+        label.textContent = address;
+        label.style.display = '';
+        saveRow.style.display = '';
+      } catch(e) {
+        canvas.style.display = 'none';
+        label.textContent = 'Error: ' + e.message;
+        label.style.display = '';
+        saveRow.style.display = 'none';
+      }
+    }
+
+    function openQrModal() {
+      // Reset state
+      const canvas = document.getElementById('qrCanvas');
+      const label = document.getElementById('qrAddressLabel');
+      const saveRow = document.getElementById('qrSaveRow');
+      const input = document.getElementById('qrAddressInput');
+      canvas.style.display = 'none';
+      label.style.display = 'none';
+      saveRow.style.display = 'none';
+      input.value = '';
+      const dlg = document.getElementById('qrModal');
+      if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open','');
+      setTimeout(() => input.focus(), 50);
+    }
+
+    function bindQrUI() {
+      document.getElementById('qrAddressesBtn').addEventListener('click', openQrModal);
+      document.getElementById('qrModalCloseBtn').addEventListener('click', () => document.getElementById('qrModal').close());
+      document.getElementById('qrModal').addEventListener('click', e => { if (e.target === document.getElementById('qrModal')) document.getElementById('qrModal').close(); });
+      document.getElementById('qrGenerateBtn').addEventListener('click', () => {
+        const address = document.getElementById('qrAddressInput').value.trim();
+        if (!address) return;
+        renderQrFromAddress(address);
+      });
+      document.getElementById('qrAddressInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          const address = e.target.value.trim();
+          if (address) renderQrFromAddress(address);
+        }
+      });
+      document.getElementById('qrSaveBtn').addEventListener('click', () => {
+        const canvas = document.getElementById('qrCanvas');
+        const address = document.getElementById('qrAddressInput').value.trim();
+        const safeName = address.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40) || 'address';
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = `qr_${safeName}.png`;
+        a.click();
+      });
+      document.getElementById('qrCopyAddrBtn').addEventListener('click', async () => {
+        const address = document.getElementById('qrAddressInput').value.trim();
+        if (!address) return;
+        await copyTextToClipboard(address);
+        const btn = document.getElementById('qrCopyAddrBtn');
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = orig, 1500);
+      });
+    }
+
+    bindQrUI();
   </script>
 </body>
 </html>

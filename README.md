@@ -5,7 +5,7 @@ Offline BIP39/BIP32 recovery and key-derivation tool with both:
 - a browser-based interface in `Arculus_Recovery.html`
 - a Python desktop/CLI version in `Arculus_Recovery.py`
 
-This project is designed to run fully offline and uses only local computation.
+This project is designed to run fully offline and uses only local computation. No external libraries or network requests are required.
 
 ## Screenshots
 
@@ -16,6 +16,10 @@ Light mode:
 Dark mode:
 
 ![Arculus Recovery dark mode](Documentation/screenshots/arculus-dark.png)
+
+Dark+ mode:
+
+![Arculus Recovery dark+ mode](Documentation/screenshots/arculus-dark-plus.png)
 
 ## Features
 
@@ -42,7 +46,7 @@ Dark mode:
   - P2WPKH-P2SH
   - P2WPKH
   - P2TR (Taproot)
-- Taproot support includes:
+- Taproot support:
   - Bech32m addresses
   - BIP86 purpose detection (`m/86'/coin'/0'`)
   - Taproot internal public/private key data
@@ -55,14 +59,14 @@ Dark mode:
   - Dogecoin
   - Ethereum and ERC-20 tokens
   - XRP
-- Encrypted seed export/import
-- Export derived keys/addresses:
-  - HTML: JSON, CSV, or TXT
-  - Python GUI: JSON, CSV, or TXT
+- QR Export — generate a scannable QR code from any address with no external dependencies
+- Encrypted seed export/import via `.arc` files
+- Export derived keys/addresses as JSON, CSV, or TXT
 - Hidden imported-seed workflow
 - Press-and-hold seed reveal
 - Inline root fingerprint display
-- Settings dialog with Dark Mode toggle
+- Clear All — wipes all fields and protected seed state in one action
+- Settings dialog with Light / Dark / Dark+ theme selector
 
 ## Derivation Paths
 
@@ -87,10 +91,14 @@ Common account paths:
 | Dogecoin | P2WPKH-P2SH | `m/49'/3'/0'` | `9...` or `A...` | Supported by the tool, but wallet support may vary |
 | Dogecoin | P2WPKH | `m/84'/3'/0'` | `doge1q...` | Supported by the tool, but wallet support may vary |
 | Dogecoin | P2TR | `m/86'/3'/0'` | Not supported | Dogecoin Taproot is disabled in the tool |
-| Ethereum / ERC-20 | Account | `m/44'/60'/0'` | `0x...` | Receiving paths derive as `m/44'/60'/0'/0/index`; ERC-20 tokens use the same Ethereum address |
-| XRP | Account | `m/44'/144'/0'` | `r...` | Receiving paths derive as `m/44'/144'/0'/0/index`; destination tags are not derived from the seed |
+| Ethereum / ERC-20 | Account | `m/44'/60'/0'` | `0x...` | ERC-20 tokens use the same Ethereum address |
+| XRP | Account | `m/44'/144'/0'` | `r...` | Destination tags are not derived from the seed |
 
-The browser and Python GUI default to `m/0'` for Bitcoin, `m/84'/2'/0'` for Litecoin, `m/44'/3'/0'` for Dogecoin, `m/44'/60'/0'` for Ethereum / ERC-20, and `m/44'/144'/0'` for XRP. Use `Auto` script type to infer the script from BIP44/49/84/86 purpose when using standard UTXO paths. Ethereum ignores UTXO script type and derives EIP-55 checksummed addresses. XRP ignores UTXO script type and derives XRPL classic addresses.
+The browser and Python GUI default to `m/0'` for Bitcoin (the Arculus-native path), `m/84'/2'/0'` for Litecoin, `m/44'/3'/0'` for Dogecoin, `m/44'/60'/0'` for Ethereum / ERC-20, and `m/44'/144'/0'` for XRP.
+
+The Bitcoin default `m/0'` is a single hardened account level used natively by the Arculus hardware wallet. It differs from the BIP-44 standard path `m/44'/0'/0'`. If you are recovering a seed originally set up in a different wallet, change the derivation path to match that wallet's convention. An info tooltip is shown beside the Derivation Path field whenever `m/0'` is active as a reminder.
+
+Use `Auto` script type to infer the script from BIP44/49/84/86 purpose when using standard UTXO paths. Ethereum ignores UTXO script type and derives EIP-55 checksummed addresses. XRP ignores UTXO script type and derives XRPL classic addresses.
 
 ## Security Notes
 
@@ -102,6 +110,7 @@ Recommended usage:
 2. Open the HTML file locally or run the Python script on a trusted machine
 3. Never share your seed phrase, exported files, passwords, or derived private keys
 4. Treat encrypted seed exports as sensitive backups
+5. Use the Clear All button or close the tab when you are finished
 
 ## Hash Verification
 
@@ -114,13 +123,34 @@ shasum -a 256 Arculus_Recovery.html Arculus_Recovery.py
 Expected hashes:
 
 ```text
-2a449e9ce6a42bb37c8237c2a1045a9bf0406562e63f8d4b195ea442bbe0e677  Arculus_Recovery.html
-6fc1d89c0570c61e58fb088275ca5c5ab6f6ebc8b81a20d777ff2dea0792f052  Arculus_Recovery.py
+<hash for current Arculus_Recovery.html>  Arculus_Recovery.html
+<hash for current Arculus_Recovery.py>    Arculus_Recovery.py
 ```
+
+Update these hashes in your own copy of the README after each release.
+
+## Themes
+
+The HTML version includes three themes selectable from the Settings dialog:
+
+- **Light** — default white/gray palette
+- **Dark** — dark gray backgrounds with light text
+- **Dark+** — near-black backgrounds with the Claude orange (`#e86926`) as the accent color, applied to focus rings, the online network indicator, status messages, toggles, and primary buttons
+
+Theme preference is saved to `localStorage` and restored on the next page load.
+
+## QR Export
+
+The `QR Export` button opens a modal where you can paste any address and generate a scannable QR code. The encoder is entirely self-contained — no external libraries or network requests are used.
+
+- Paste an address into the input field and click **Generate** or press **Enter**
+- **Save PNG** downloads the QR code as an image
+- **Copy Address** copies the address text to the clipboard
+- In Dark+ mode the QR renders with the orange-on-dark-gray palette
 
 ## Encrypted Seed Files
 
-The project supports encrypted seed backup/export using the `.arc` file extension.
+The project supports encrypted seed backup and export using the `.arc` file extension.
 
 ### Behavior
 
@@ -129,36 +159,30 @@ The project supports encrypted seed backup/export using the `.arc` file extensio
 - Imported seeds remain hidden on screen
 - Imported hidden seeds can still be validated and used for key derivation
 - `Show Seed` temporarily reveals the hidden imported seed only while held down
+- `Clear All` removes the imported seed from memory along with all other fields
 
 ### Compatibility
 
-New `.arc` exports are designed to work in both:
-
-- `Arculus_Recovery.html`
-- `Arculus_Recovery.py`
+New `.arc` exports work in both `Arculus_Recovery.html` and `Arculus_Recovery.py`.
 
 ### File Format
 
-Current `.arc` exports are armored UTF-8 text. Opening the file shows an opaque envelope rather than readable JSON metadata:
+Current `.arc` exports are armored UTF-8 text:
 
 ```text
 ARCULUS-ARC-V2
 eyJjaXBoZXIiOnsibmFtZSI6IkhNQUMtU0hBNTEyLUNUUiIsIm5vbmNlX2I2NCI6Ii4uLiJ9LCIuLi4iOiIuLi4ifQ==
 ```
 
-The armored body contains a base64-encoded version 2 metadata bundle. This keeps the file format compact and less casually inspectable, while still requiring the password and MAC verification before the seed can be decrypted.
-
 High-level behavior:
 
-- The password is normalized with Unicode NFKD before key derivation.
-- PBKDF2-HMAC-SHA512 derives a 64-byte master key from the password and a 32-byte random salt.
-- New exports use 1,000,000 KDF iterations.
-- Existing version 2 imports with 600,000 or more iterations remain supported.
-- Encryption and authentication keys are separated with domain-specific HMAC-SHA512 labels.
-- The plaintext payload is JSON containing the normalized mnemonic, word count, and creation timestamp.
-- The plaintext is encrypted with an HMAC-SHA512 counter stream using a 24-byte random nonce.
-- `mac_b64` is HMAC-SHA512 over the versioned file metadata, salt, nonce, and ciphertext.
-- Binary fields inside the armored bundle are base64 encoded.
+- Password is normalized with Unicode NFKD before key derivation
+- PBKDF2-HMAC-SHA512 derives a 64-byte master key from the password and a 32-byte random salt
+- New exports use 1,000,000 KDF iterations; existing version 2 imports with 600,000 or more iterations remain supported
+- Encryption and authentication keys are separated with domain-specific HMAC-SHA512 labels
+- The plaintext payload is JSON containing the normalized mnemonic, word count, and creation timestamp
+- The plaintext is encrypted with an HMAC-SHA512 counter stream using a 24-byte random nonce
+- `mac_b64` is HMAC-SHA512 over the versioned file metadata, salt, nonce, and ciphertext
 
 Decrypted plaintext payload:
 
@@ -182,18 +206,13 @@ Supported import formats:
 
 ## Files
 
-- `Arculus_Recovery.html`  
-  Browser-based offline recovery tool
-
-- `Arculus_Recovery.py`  
-  Python version with GUI and CLI support
-
-- `docs/screenshots/`  
-  README screenshots for light and dark mode
+- `Arculus_Recovery.html` — browser-based offline recovery tool
+- `Arculus_Recovery.py` — Python version with GUI and CLI support
+- `docs/screenshots/` — README screenshots
 
 ## HTML Version
 
-Open `Arculus_Recovery.html` directly in a browser.
+Open `Arculus_Recovery.html` directly in a browser. No installation required.
 
 ### HTML Features
 
@@ -202,11 +221,14 @@ Open `Arculus_Recovery.html` directly in a browser.
 - Generate a cryptographically random 12-word or 24-word mnemonic
 - Key and address derivation
 - Export derived keys and addresses as JSON, CSV, or TXT
+- QR Export — generate a QR code from any pasted address, no external dependencies
 - Encrypt/export seed to `.arc`
 - Import encrypted seed from `.arc`
 - Hold-to-show hidden imported seed
+- Clear All button to wipe all fields and protected seed state
 - Root fingerprint display in the action toolbar
-- Settings dialog beside the title with a Dark Mode toggle
+- Derivation path info tooltip when using the Arculus-native `m/0'` path
+- Settings dialog with Light / Dark / Dark+ theme selector
 - Responsive layout with a laptop breakpoint (≤1280px) for compact display on 13" screens
 
 ## Python Version
@@ -259,5 +281,3 @@ python Arculus_Recovery.py \
 | `--testnet` | Use testnet network parameters |
 | `--output-format` | One of `json`, `csv`, `txt` (default: `json`) |
 | `--version` | Print version and exit |
-
-CLI output formats are `json`, `csv`, and `txt`. JSON is the default.

@@ -1,0 +1,518 @@
+Arculus Recovery v1.2.0-production — Operational Security Guide
+================================================================
+
+Scope
+-----
+
+This document defines the operational security requirements, recommended
+procedures, and threat mitigations for all use of Arculus Recovery v1.2.0-
+production. It covers the full operational lifecycle: airgap preparation,
+session execution, output handling, .arc file management, long-term storage,
+and incident response. It does not repeat the cryptographic specifications
+defined in Derivation.txt and Encryption.txt except where those specifications
+have direct operational consequences the user must act on.
+
+This document is not optional reading. The cryptographic guarantees of the
+engine are only realized if the operational conditions below are satisfied.
+A mathematically sound derivation pipeline operating on a compromised machine
+or with output handled insecurely provides weaker protection than the most
+naive tool operated correctly. The weakest link in the security chain is never
+the algorithm.
+
+
+Threat Model
+-------------
+
+The engine is designed to resist the following adversary classes under the
+stated conditions.
+
+Adversary class 1 — Offline file acquisition:
+  An adversary who obtains a .arc file without the decryption password gains
+  no access to the mnemonic. The PBKDF2-HMAC-SHA512 construction at 1,000,000
+  iterations is the resistance barrier. This barrier is linear in iteration
+  count and does not protect a low-entropy password against an adversary with
+  GPU acceleration. See the password entropy requirements section below for the
+  minimum entropy threshold that makes this barrier meaningful.
+
+Adversary class 2 — Network adversary:
+  The engine performs no network I/O of any kind. A network adversary who
+  intercepts traffic to and from a machine running the engine observes nothing
+  related to the mnemonic, its derived keys, or the .arc file contents.
+  This protection is contingent on the machine being airgapped or the network
+  being fully disconnected before mnemonic input begins. It does not hold if
+  the machine is connected to any network while seed material is in memory.
+
+Adversary class 3 — Post-session disk forensics:
+  An adversary who performs disk forensics on a machine after a recovery session
+  may recover mnemonic material from swap space, hibernation files, crash dumps,
+  or unwiped free space. This risk is addressed by the airgap and ephemeral OS
+  requirements below. It is not mitigated by the engine itself; it must be
+  mitigated operationally.
+
+Adversary class 4 — .arc file tampering:
+  The encrypt-then-MAC construction ensures that any modification to any field
+  of a .arc file — including KDF parameters, nonce, ciphertext, or MAC — is
+  detected at import time as an authentication failure. An adversary who obtains
+  a .arc file cannot modify it in any way without the MAC verification gate
+  detecting the tampering. This protection is unconditional and does not depend
+  on password strength.
+
+Adversary class 5 — Clipboard and screen interception:
+  An adversary with access to clipboard contents or screen capture can observe
+  mnemonic material directly. This risk exists during any session in which the
+  mnemonic is displayed or copied. Mitigations are operational only: minimize
+  display duration, avoid clipboard use for seed material, do not capture
+  screenshots during a session.
+
+Adversary class 6 — Physical access during a live session:
+  An adversary with physical access to a machine during an active session can
+  observe the screen, photograph keyboard input, or perform a cold boot attack
+  to extract RAM contents. This risk is addressed by physical access controls
+  during the session: closed private room, no cameras pointed at the screen,
+  session duration minimized.
+
+Out-of-scope adversaries — The following are explicitly outside the threat
+model. No operational procedure in this document provides protection against them:
+
+  - An adversary with full root access to the operating system before the
+    session begins (rootkit, firmware compromise, supply chain attack on the
+    hardware, evil maid attack on a non-ephemeral OS).
+  - An adversary who learns the mnemonic by other means before the session
+    (prior compromise of the source hardware wallet, coercion of the user).
+  - A hardware keylogger installed between the keyboard and the machine.
+  - An adversary who holds the correct .arc password and uses it to decrypt
+    legitimately; a correct password always unlocks the file, as designed.
+
+
+Airgap Requirements
+--------------------
+
+A recovery session involving live mnemonic material must be conducted on a
+machine that is fully airgapped for the duration of the session. Airgap means:
+
+  Physical disconnection of all network interfaces:
+    - Remove or disable Ethernet cables. If the NIC cannot be disabled in
+      firmware, remove the cable physically.
+    - Disable Wi-Fi at the hardware level. On laptops, this is the hardware
+      wireless kill switch if present, or removal of the wireless card if not.
+      Disabling Wi-Fi in the operating system is insufficient if the kernel
+      module remains loaded; a firmware or RF-level disable is required.
+    - Disable Bluetooth at the hardware level by the same criteria.
+    - If the machine has a cellular modem (some laptops), it must be disabled
+      at the same level.
+
+  Verification of disconnection:
+    - Confirm the machine has no active network route before beginning. In the
+      Python GUI, the network status indicator in the title bar provides a real-
+      time probe. The indicator polls a UDP connection attempt to 8.8.8.8:80
+      every five seconds and displays the result. A green indicator means a
+      route exists; a red indicator means no route was detected. The indicator
+      is a convenience check, not a security control. Physical confirmation of
+      cable removal and hardware switch state is authoritative.
+
+  Duration of airgap:
+    - The airgap must be maintained from before any mnemonic input begins until
+      after all derived output has been recorded and all in-memory state has
+      been cleared. Reconnecting to a network while the mnemonic is displayed
+      or while output containing private keys is on screen defeats the airgap
+      entirely. There is no safe reconnection point during an active session.
+
+
+Ephemeral Operating System Requirements
+----------------------------------------
+
+Disk forensics on a machine that was previously used for a recovery session
+can recover mnemonic material from locations the user never explicitly wrote to:
+swap files, hibernation images, crash dumps, browser caches (in the HTML
+version), and the filesystem journal. The only complete mitigation is to conduct
+the session from an operating system that writes nothing to persistent storage.
+
+Recommended approach — Live bootable OS:
+
+  Boot the machine from a live USB drive running a read-only operating system
+  such as Tails or a standard Linux live environment. A live environment that
+  has not been configured to persist writes to the USB drive operates entirely
+  from RAM. When the machine is powered off after the session, all in-memory
+  state — including mnemonic, derived keys, swap contents, and any temporary
+  files — is destroyed at power loss, provided the machine does not hibernate.
+  Hibernation must be disabled. Suspend-to-RAM is acceptable if the machine
+  will not leave physical control during the session.
+
+  For the Python implementation: copy Arculus_Recovery.py to a RAM-backed
+  tmpfs (e.g. /tmp on most Linux live environments) before running. Do not
+  execute it from a persistent volume mounted read-write. Verify with the
+  mount command that /tmp is tmpfs-backed before proceeding.
+
+  For the HTML implementation: open the local HTML file from the live
+  environment's file manager or browser. Verify that the browser is not
+  configured to sync history, passwords, or form data to any cloud service.
+  Clear browser history and cache before closing the session. On a live OS,
+  this state is discarded at shutdown regardless, but explicit clearing is
+  good practice.
+
+Alternative — Dedicated offline machine:
+
+  A machine purchased new and never connected to any network provides a stronger
+  baseline than a machine that has previously been online. However, a dedicated
+  offline machine retains persistent storage and therefore retains data across
+  sessions. After any session on a dedicated offline machine, the swap partition
+  and any temporary files should be explicitly wiped using a tool that overwrites
+  with random data. On SSDs, wear-leveling means software wiping does not
+  reliably reach all cells that held the data; this limitation is an inherent
+  property of SSD architecture and is not addressable through software alone.
+  A live USB approach does not have this limitation.
+
+Python version requirement:
+  The engine requires Python 3.9 or later. It uses no third-party packages.
+  The standard library modules it imports — hashlib, hmac, os, json, base64,
+  unicodedata, argparse, csv, io, re, socket, sys, dataclasses, datetime,
+  typing — are available in any standard CPython distribution. A minimal Python
+  installation without Tkinter is sufficient for CLI use; Tkinter is required
+  only for the --gui flag.
+
+
+Session Execution Procedure
+-----------------------------
+
+The following procedure defines the correct sequence of operations for a
+recovery session. Deviation from this sequence does not make the session
+invalid, but may expose mnemonic material beyond the minimum necessary.
+
+Pre-session:
+
+  1. Prepare the physical environment. Close the room. Ensure no cameras,
+     whether device cameras, security cameras, or other observers' phones, have
+     a line of sight to the screen or keyboard.
+
+  2. Boot the airgapped machine from the live OS or, if using a dedicated
+     offline machine, confirm it has not been connected to any network since
+     the last secure wipe.
+
+  3. Confirm the airgap. Remove network cables physically. Verify the hardware
+     wireless kill switch position. If using the Python GUI, confirm the network
+     indicator is red before proceeding.
+
+  4. Copy the tool files to a RAM-backed location if on a live OS. Do not run
+     directly from a mounted persistent volume.
+
+  5. If importing from a .arc file, transfer the .arc file to the machine via a
+     method that does not require network connectivity: USB drive, SD card, or
+     QR code scan. The USB drive should be dedicated to this purpose and not
+     used with networked machines after the session. If the USB drive was
+     previously connected to a networked machine, its filesystem may contain
+     traces of the file regardless of deletion.
+
+During session:
+
+  6. Enter the mnemonic using the keyboard. Do not paste from a clipboard unless
+     the clipboard was populated on this same airgapped machine immediately
+     before use. External clipboard managers, clipboard history, and cloud
+     clipboard sync features must be disabled. The Copy Seed button in the
+     Python GUI triggers an explicit warning before placing seed material on the
+     clipboard; this warning is informational, not a safety control.
+
+  7. Validate the mnemonic before deriving. A BIP39 checksum failure indicates
+     a word was entered incorrectly. Deriving keys from an incorrect mnemonic
+     produces a completely different key tree with no connection to any on-chain
+     history. The root fingerprint displayed in the UI after validation is the
+     correct verification artifact: compare it against a previously recorded
+     fingerprint to confirm mnemonic entry was correct before exporting any key
+     material.
+
+  8. Confirm the derivation path and script type before deriving. An incorrect
+     path or script type produces different addresses silently. There is no error
+     produced when a correct mnemonic is derived with a wrong path; the engine
+     produces valid key material for whatever path is specified.
+
+  9. If exporting derived key material (JSON, CSV, TXT), do so to a RAM-backed
+     location. Do not write to a persistent volume unless the persistent volume
+     will be explicitly wiped after the session. Recognize that any export file
+     containing private_key_hex, private_key_wif, or any extended private key
+     field is operationally equivalent in sensitivity to the mnemonic itself.
+     There is no partial sensitivity: one exported private key gives access to
+     exactly one derived address; a full export gives access to all of them.
+
+  10. If exporting a .arc file, copy it to a USB drive dedicated to encrypted
+      seed storage. Do not copy it to a drive that will be connected to a
+      networked machine for any other purpose without full-disk encryption
+      protecting that machine's storage.
+
+Post-session:
+
+  11. Clear all on-screen mnemonic display. If using the Python GUI, the
+      imported seed overlay hides the mnemonic after import; if words were typed
+      directly, clear the mnemonic fields explicitly before closing the window.
+      Clear the output panel.
+
+  12. If on a live OS, power the machine off completely. Do not suspend or
+      hibernate. Power-off destroys all RAM contents, clearing all session state
+      permanently.
+
+  13. If on a dedicated offline machine, explicitly wipe the swap partition and
+      any RAM-backed temp directories that were written to during the session.
+      Power off completely.
+
+  14. Store the USB drive containing the .arc file in a physically secure
+      location separate from the hardware wallet and separate from any written
+      backup of the mnemonic. Physical separation of secrets reduces the blast
+      radius of any single physical compromise.
+
+
+Password Entropy Requirements for .arc Encryption
+---------------------------------------------------
+
+The .arc format's protection against offline guessing attacks is a direct
+function of the password's entropy. The PBKDF2-HMAC-SHA512 construction at
+1,000,000 iterations imposes a fixed computational cost per guess. The cost is
+multiplicative with password entropy: high entropy makes the cost irrelevant
+because the search space is too large to exhaust; low entropy makes the cost
+irrelevant because the password can be recovered in hours or days regardless.
+
+The following guidance defines minimum-acceptable and recommended entropy levels:
+
+Unacceptable (below minimum):
+  - Any single dictionary word in any language.
+  - Any PIN of any length. A 16-digit PIN has 53.2 bits of entropy at best and
+    is typically far less in practice due to birth dates, patterns, and reuse.
+  - Personal information: names, dates, addresses, phone numbers, combinations
+    thereof. These have entropy far below what the label implies because
+    adversaries construct custom wordlists from available personal data.
+  - Passwords used for any other account or system, regardless of length or
+    apparent complexity. Credential databases leaked from other services enable
+    targeted attacks against reused passwords.
+  - Short character strings under 12 characters, regardless of character set.
+
+Minimum acceptable (marginal):
+  - A randomly selected sequence of 4 words from a large wordlist (the Diceware
+    standard or equivalent), providing approximately 51 bits of entropy from a
+    7776-word list. This is the absolute floor for a password that provides any
+    meaningful resistance to a motivated adversary with GPU acceleration.
+    This level is not recommended; it should be considered temporary and upgraded.
+
+Recommended:
+  - A randomly selected sequence of 6 or more words from a large wordlist,
+    providing approximately 77 bits of entropy from a 7776-word list. At this
+    entropy level, exhaustive search is computationally infeasible for any
+    adversary, regardless of hardware capabilities, for the foreseeable future.
+  - A randomly generated alphanumeric string of 20 or more characters from a
+    full character set (uppercase, lowercase, digits, symbols), providing
+    approximately 130+ bits of entropy. This is the strongest practical option
+    for users comfortable managing such a string.
+
+The word-based approach is strongly preferred over manually composed passwords
+for one reason: humans are systematically poor at composing high-entropy strings
+from memory. A randomly generated word sequence has provably measurable entropy;
+a human-composed password has unknown effective entropy that is almost always
+substantially lower than its apparent complexity suggests.
+
+A password that meets the entropy threshold above is worth protecting with the
+same diligence as the mnemonic itself. Write it down and store it separately
+from the .arc file and from the mnemonic. A .arc file without the password is
+unrecoverable by any means, including by the authors of this software.
+
+The .arc password and the BIP39 wallet passphrase are different secrets managed
+on different key schedules. They may have the same value by user choice, but the
+engine treats them as entirely separate inputs. An incorrect BIP39 passphrase
+produces a valid-looking but wrong key tree with no error; an incorrect .arc
+password produces an authentication failure. The operational consequence is that
+both must be preserved separately and accurately. Loss of either results in
+permanent loss of access to different things.
+
+
+Output Handling and Storage
+----------------------------
+
+Derived key material falls into two categories with fundamentally different
+handling requirements.
+
+Category A — Addresses only (public information):
+  P2PKH, P2WPKH-P2SH, P2WPKH, P2TR, Ethereum, and XRP addresses are public by
+  construction; they are published on-chain for every transaction. Recording,
+  storing, or transmitting addresses does not require any special handling. Use
+  addresses freely for the purpose of verifying that derivation matches
+  expectations or for sharing with counterparties for payment.
+
+Category B — Private keys and seeds (funds-controlling secrets):
+  private_key_hex, private_key_wif, internal_private_key_hex, output_private_
+  key_hex, extended private keys (xprv, yprv, zprv, tprv), and the mnemonic
+  itself are all funds-controlling secrets. Any of these, in any form, provides
+  complete access to the associated funds. There is no partial exposure: a single
+  exported private key controls exactly one address; the mnemonic controls the
+  entire key tree across all paths, all coins, and all addresses.
+
+  Operational requirements for Category B material:
+    - Never transmit over any network connection, including encrypted ones,
+      unless the receiving party is intended to have full control of the funds.
+    - Never store on any device that has ever been connected to a network unless
+      that device uses full-disk encryption and the encryption key itself has
+      equivalent or higher entropy than the material it protects.
+    - Never photograph or record video of Category B material with a device that
+      uploads to cloud storage, even if the upload feature has been manually
+      disabled. Cloud-connected cameras have historically re-enabled uploads
+      through software updates without user awareness.
+    - Paper copies of Category B material must be stored in physically secure
+      locations: fire-resistant containers, safety deposit boxes, or equivalent.
+      Multiple copies in geographically separated locations reduce single-point
+      physical risk.
+    - JSON, CSV, and TXT derived-output export files are not encrypted by the
+      .arc format. They are plaintext files. If an export file contains any
+      Category B field, it is a Category B artifact and must be handled as such.
+      The .arc format encrypts only the mnemonic; it does not encrypt derivation
+      output.
+
+
+.arc File Backup and Verification Protocol
+------------------------------------------
+
+A .arc file that cannot be decrypted at recovery time is worse than no backup:
+it creates false confidence that a backup exists while providing no actual
+recovery capability. The following protocol is mandatory before treating any
+.arc file as a valid backup.
+
+Export and verify at creation time:
+
+  1. Export the .arc file from the mnemonic on the airgapped machine.
+
+  2. Without closing or restarting the tool, import the .arc file back into the
+     same session using the Import Seed function. Enter the same password.
+
+  3. Confirm that the imported mnemonic matches the source mnemonic by verifying
+     the root fingerprint. The root fingerprint is derived deterministically from
+     the mnemonic and passphrase; if the imported round-trip produces the same
+     fingerprint, the mnemonic was stored and recovered correctly.
+
+  4. If the root fingerprint does not match, do not use this .arc file as a
+     backup. Identify the discrepancy before proceeding.
+
+  5. Transfer the .arc file to the storage USB drive. Copy it to at least two
+     physically separate drives to protect against media failure.
+
+Periodic verification (recommended every 12 months):
+
+  6. On an airgapped machine, import the stored .arc file and enter the password.
+
+  7. Verify the root fingerprint matches the expected value.
+
+  8. If verification fails due to a forgotten password, the .arc file is
+     unrecoverable. The mnemonic must be recovered through other means (hardware
+     wallet, paper backup, or other encrypted backup). If no other recovery path
+     exists, the funds are inaccessible.
+
+  9. If verification succeeds, re-export a fresh .arc file. Re-export is
+     recommended annually because it upgrades the salt, nonce, and any
+     improvements to the KDF parameters introduced in newer versions, and
+     provides evidence that the export chain remains intact.
+
+Media longevity:
+
+  USB drives have an estimated data retention of 10 years under normal storage
+  conditions; actual retention varies substantially with temperature, humidity,
+  and usage frequency. For multi-year storage, test the drive's readability
+  periodically and maintain at least two copies on separate media. Metal-backed
+  storage solutions (stamped or engraved stainless steel or titanium) are
+  appropriate for a paper mnemonic backup that must survive fire, water, and
+  physical abuse. USB drives are not.
+
+
+Multi-Factor Recovery Architecture
+------------------------------------
+
+A recovery architecture that stores a single backup in a single location has
+a single point of failure. The recommended architecture separates secrets
+across multiple locations and media types such that no single physical event
+compromises recovery capability.
+
+Recommended minimum architecture:
+
+  Component 1 — Hardware wallet (primary):
+    The production signing device. Located where it is used. Secured by PIN and,
+    if the wallet supports it, a passphrase. Loss or destruction of this device
+    triggers recovery from one of the components below.
+
+  Component 2 — Mnemonic paper backup (primary recovery path):
+    A physical record of the mnemonic words written in permanent ink on archival
+    paper or engraved on metal. Stored in a fire-resistant container at a
+    different physical location from the hardware wallet. This backup is
+    sufficient to restore the wallet on any BIP39-compatible device. No password
+    is required; if the wallet uses a BIP39 passphrase, the passphrase must be
+    stored separately and is required for full recovery.
+
+  Component 3 — .arc encrypted digital backup (redundant recovery path):
+    A .arc file stored on one or more USB drives at one or more physical
+    locations. The .arc password is stored separately from the USB drive,
+    either as a second paper backup or in a separate physical location.
+    This backup provides recovery capability without requiring the paper backup
+    to be intact, and survives scenarios where the paper backup is destroyed but
+    the USB drive is intact.
+
+  Component 4 — BIP39 passphrase backup (if applicable):
+    If a BIP39 wallet passphrase is in use, it must be backed up independently
+    of the mnemonic. A mnemonic backed up without its passphrase recovers only
+    the empty-passphrase key tree, not the passphrase-derived tree where funds
+    may actually reside. The passphrase backup must be stored at a location and
+    in a medium that survives independently of both the hardware wallet and the
+    mnemonic backup.
+
+No single physical location should hold both the mnemonic (in any form) and the
+means to access funds: the hardware wallet, a device with the .arc password, or
+any private key material. Geographic separation between backup components
+substantially reduces the probability that any single event — fire, flood,
+theft, or natural disaster — results in total loss.
+
+
+Common Operational Errors and Their Consequences
+-------------------------------------------------
+
+This section enumerates the most frequently encountered operational failures and
+their consequences. Each failure is recoverable if caught early; some become
+permanent after sufficient time passes.
+
+Error: Deriving with an incorrect BIP39 passphrase.
+  Consequence: The derived addresses and keys are cryptographically unrelated to
+  any on-chain history. No error is produced. The only detection mechanism is
+  root fingerprint comparison against a previously recorded value. If the user
+  sends funds to an address derived from an incorrect passphrase, those funds
+  are recoverable only if the incorrect passphrase can be identified and re-
+  entered. There is no other path; the engine cannot recover which passphrase
+  was used from the mnemonic alone.
+
+Error: Exporting derived output to a networked machine before recording addresses.
+  Consequence: If the export file reaches a networked machine, Category B key
+  material has been exposed to the network threat surface. All derived private
+  keys in the export should be considered potentially compromised. Funds
+  controlled by those keys should be moved to addresses derived from a freshly
+  generated mnemonic at the earliest practical opportunity.
+
+Error: Using the same .arc password for multiple .arc files protecting different
+  mnemonics, with any one file stored on a networked machine.
+  Consequence: If the password is compromised through the lower-security storage
+  path, all .arc files using that password are compromised. Use distinct,
+  independently generated passwords for .arc files protecting distinct mnemonics.
+
+Error: Failing to record the root fingerprint at backup creation time.
+  Consequence: There is no way to verify that a subsequently recovered mnemonic
+  is the correct one without access to the original hardware wallet or a known
+  on-chain address. Record the root fingerprint alongside, but not inside, every
+  mnemonic and .arc backup. A root fingerprint has no security-relevant value on
+  its own (it does not enable key recovery); it is safe to store alongside other
+  backup metadata.
+
+Error: Operating the tool on a machine connected to a network during seed entry.
+  Consequence: Screen capture, clipboard interception, RAM scraping, and keylogging
+  all become possible network-accessible attack vectors if the machine is
+  compromised. The airgap requirement exists because these attacks are common
+  against machines with value associated with cryptocurrency operations. If a
+  session was conducted on a connected machine and the machine may be
+  compromised, the mnemonic and all derived keys should be considered exposed.
+
+Error: Failing to verify the .arc round-trip before destroying the mnemonic.
+  Consequence: If the .arc export was corrupted during write (a real failure mode
+  on failing storage media), or if the password was mistyped at export time, the
+  backup is unrecoverable. Never delete or destroy a mnemonic backup until a
+  full export-import-verify cycle has been completed successfully.
+
+Error: Storing the .arc file and its decryption password in the same location.
+  Consequence: A single physical compromise (theft, fire, or unauthorized access
+  to the storage location) yields both the encrypted file and the key to decrypt
+  it. The .arc encryption provides no protection in this scenario. The password
+  and the file must be stored at physically separate locations.
