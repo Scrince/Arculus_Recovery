@@ -61,7 +61,8 @@ Dark+ mode:
   - XRP
 - QR Export — generate a scannable QR code from any address with no external dependencies
 - Encrypted seed export/import via `.arc` files
-- Export derived keys/addresses as JSON, CSV, or TXT
+- Export derived keys/addresses as JSON, CSV, TXT, or PDF
+- PDF export includes title block, root fingerprint, extended keys section, and full address table
 - Hidden imported-seed workflow
 - Press-and-hold seed reveal
 - Inline root fingerprint display
@@ -220,7 +221,8 @@ Open `Arculus_Recovery.html` directly in a browser. No installation required.
 - Individual word-entry grid with 12/24-word radio selector; words 13–24 hidden in 12-word mode
 - Generate a cryptographically random 12-word or 24-word mnemonic
 - Key and address derivation
-- Export derived keys and addresses as JSON, CSV, or TXT
+- Export derived keys and addresses as JSON, CSV, TXT, or PDF (PDF is the default; includes root fingerprint, extended keys, and full address table)
+- Table View shows public key hex and private key hex columns in full with inline copy buttons; no truncation applied
 - QR Export — generate a QR code from any pasted address, no external dependencies
 - Encrypt/export seed to `.arc`
 - Import encrypted seed from `.arc`

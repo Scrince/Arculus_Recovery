@@ -10,6 +10,106 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Changes on `main` not yet tagged in a formal release.
 
+### Added
+
+**PDF Key Export (HTML)**
+- New `PDF` option in the Export format selector triggers a full key export as a landscape A4 PDF via jsPDF (loaded on demand from cdnjs; no network required unless PDF export is actually used).
+- Page 1 opens with a title block ("Arculus Key Export"), a meta line showing coin, app version, UTC timestamp, and root fingerprint, followed by an **Extended Keys** section and then the address table.
+- Extended Keys section lists all present root and account extended keys (xprv, xpub, zprv, zpub, yprv, ypub, trprv, trpub) vertically in order — label on the left, full value spanning the remaining page width — separated from the address table by a horizontal rule.
+- Address table columns: Branch, Path, Address, and the appropriate private key column — Private Key WIF for UTXO coins (Bitcoin, Litecoin, Dogecoin) or Private Key Hex for Ethereum and XRP. Branch values are colour-coded (green for receiving, grey for change). Rows use alternating background shading.
+- Continuation pages repeat the title/meta block and table header without the extended keys section.
+- File saved as `Arculus_Key_Export_<coin>.pdf`.
+
+**Extended Keys Tab (HTML)**
+- A third output tab, "Extended Keys", added after "Raw JSON".
+- Displays all present root and account extended keys for the most recent derivation run, in a two-group layout (root / account) separated by a divider, each entry with an individual copy button (⧉).
+- Tab content is populated when derivation completes and cleared when output is reset.
+
+**Per-Cell Copy Buttons for Address and WIF (HTML)**
+- Address and Private Key WIF cells in the Table View each include an inline ⧉ copy button that copies the cell value to the clipboard with a brief ✓ confirmation.
+
+### Changed
+
+**PDF Export — Root Fingerprint in Meta Line (HTML)**
+- The root fingerprint is now displayed inline on the PDF meta line (after the UTC timestamp) using the same `·` separator style as the other meta fields, making it easy to identify which account was exported at a glance.
+- The fingerprint is sourced from the live root fingerprint display and omitted gracefully if unavailable.
+- Previously the fingerprint appeared on a dedicated second line below the meta row; that line has been removed.
+
+**PDF Export — Network Identifier Removed (HTML)**
+- The network name (e.g. "Mainnet") is no longer included in the PDF meta line.
+
+**PDF Export — Coin Name Capitalization (HTML)**
+- Coin names in the PDF header now use proper display capitalization: `Bitcoin`, `Ethereum`, `Litecoin`, `Dogecoin`, `XRP`. Previously the raw internal identifier (e.g. `bitcoin`) was used.
+
+**PDF Export — Default Format (HTML)**
+- `PDF` is now the pre-selected option in the Export format dropdown. Previously `JSON` was the default.
+
+**Table View — Column Ordering (HTML)**
+- Address and Private Key WIF columns are now promoted to appear before all other data columns.
+- Branch and Path columns precede Address and Private Key WIF.
+
+**Table View — No Truncation on Hex and Key Columns (HTML)**
+- `public_key_hex`, `private_key_hex`, and all taproot and Ethereum hex variant columns (`ethereum_public_key_hex`, `taproot_internal_public_key_hex`, `taproot_internal_private_key_hex`, `taproot_output_public_key_hex`, `taproot_output_private_key_hex`, `taproot_tweak_hex`) now display in full with an inline ⧉ copy button, matching the behavior of Address and Private Key WIF. Previously they were truncated at 260 px with an ellipsis.
+- Address and Private Key WIF cells no longer apply `max-width` / `text-overflow` truncation; they display in full.
+
+**Table View — Suppressed Columns (HTML)**
+- The following fields are no longer rendered as table columns, as they are surfaced elsewhere (Extended Keys tab or page header): `root_xprv`, `root_xpub`, `root_zprv`, `root_zpub`, `root_yprv`, `root_ypub`, `root_trprv`, `root_trpub`, `account_xprv`, `account_xpub`, `account_zprv`, `account_zpub`, `account_yprv`, `account_ypub`, `account_trprv`, `account_trpub`, `network`, `word_count`, `derivation`, `account_script_type_used`, `coin`.
+
+**PDF Export — Coin-Appropriate Private Key Column (HTML)**
+- For Ethereum and XRP exports the PDF address table now shows a **Private Key Hex** column in place of Private Key WIF, since WIF encoding does not apply to those coins. UTXO coins (Bitcoin, Litecoin, Dogecoin) continue to use Private Key WIF. The column header updates accordingly.
+
+**Export Format Selector — Renamed PDF Option (HTML)**
+- The export option previously labelled "Dump" is now labelled "PDF".
+
+---
+
+## [1.4.0-production] — 2026-06-03
+
+### Added
+
+**Passphrase Visibility Toggle (HTML)**
+- The passphrase field now defaults to `type="password"` so the value is masked by default.
+- An eye-icon button placed inside the field's right edge toggles between masked and plain-text display.
+- Button label and `aria-label` update to reflect current state ("Show passphrase" / "Hide passphrase").
+
+**Clipboard Auto-Clear (HTML)**
+- After copying a seed phrase via the Copy Seed button, the clipboard is automatically overwritten with an empty string after 60 seconds.
+- A live countdown badge appears inline beside the status message, ticking down each second and disappearing when the clipboard is cleared.
+
+**Inactivity Auto-Clear (HTML)**
+- A 5-minute idle timer watches for mouse, keyboard, touch, and scroll events across the page.
+- At 4 minutes of inactivity a warning banner appears at the top of the app: "Idle timeout in 60 seconds. All fields will be cleared."
+- At 5 minutes all seed fields, the passphrase, the output area, and any in-memory seed state are cleared automatically, matching the behavior of the existing Clear All button.
+- Any user interaction resets the timer and dismisses the warning banner.
+
+**Derived Output Table View (HTML)**
+- After a successful "Derive Keys + Addresses" run, the output area switches to a tabbed interface with two views: **Table View** and **Raw JSON**.
+- Table View renders a sticky-header scrollable table with one row per derived address. Each column is auto-sized and truncated with an ellipsis for long values; hovering a cell shows the full value via the native `title` attribute.
+- Null-only columns are suppressed from the table automatically.
+- The branch column renders color-coded badges (green for receiving, gray for change) for quick visual scanning.
+- Raw JSON remains accessible via the Raw JSON tab and is unchanged from previous behavior.
+- The tab strip is hidden when the output panel shows validation results or is empty, and is cleared when Clear All is triggered.
+
+**Copy-per-Row Address Buttons (HTML)**
+- Each row in the Table View includes a "Copy" button in the first column that copies that row's address to the clipboard with a 1.5-second "Copied!" confirmation.
+
+**Derivation Progress Indicator (HTML)**
+- A thin progress bar appears below the status line when "Derive Keys + Addresses" is clicked.
+- Progress advances from 5 % at start through proportional increments as each address is derived (10–90 %) to 100 % on completion, then hides after 400 ms.
+- The UI thread is yielded every 3 addresses so the bar animates smoothly during large derivation runs.
+- Progress bar accent color follows the active theme (blue for Light/Dark, orange for Dark+).
+
+### Changed
+
+**Version bump (HTML)**
+- `APP_VERSION` and the title-bar badge updated from `1.3.0-production` to `1.4.0-production`.
+
+**Passphrase Field Default Type (HTML)**
+- Changed from `type="text"` to `type="password"` so the value is hidden on load. The visibility toggle restores previous behavior when needed.
+
+**Output Area Border (HTML)**
+- When the output tab strip is shown, the output `<textarea>` border is managed by the wrapping `#outputWrap` container so that the top edge aligns cleanly with the active tab.
+
 ---
 
 ## [1.3.0-production] — 2026-06-02

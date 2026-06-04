@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Arculus Recovery</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F511;</text></svg>" />
   <style>
 	    :root {
 	      --bg: #f7f8fa;
@@ -358,7 +359,256 @@
       .words-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
     }
 
-    /* ── QR Code Modal ── */
+    /* ── Passphrase toggle ── */
+    .passphrase-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .passphrase-wrap input { padding-right: 40px; }
+    .toggle-visibility {
+      position: absolute;
+      right: 8px;
+      background: none;
+      border: none;
+      padding: 4px;
+      cursor: pointer;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      min-height: unset;
+      line-height: 1;
+    }
+    .toggle-visibility:hover { filter: none; color: var(--text); }
+
+    /* ── Clipboard countdown ── */
+    .clipboard-countdown {
+      display: inline;
+      margin-left: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--bad);
+    }
+
+    /* ── Idle timer banner ── */
+    #idleBanner {
+      display: none;
+      background: var(--bad);
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    #idleBanner.visible { display: block; }
+
+    /* ── Progress bar ── */
+    #deriveProgress {
+      display: none;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--border);
+      margin: 6px 0 4px;
+      overflow: hidden;
+    }
+    #deriveProgress.visible { display: block; }
+    #deriveProgressBar {
+      height: 100%;
+      width: 0%;
+      background: var(--focus);
+      border-radius: 999px;
+      transition: width 0.15s ease;
+    }
+    body.dark-plus #deriveProgressBar { background: #e86926; }
+
+    /* ── Output tabs ── */
+    .output-tabs {
+      display: flex;
+      gap: 4px;
+      margin-top: 8px;
+      margin-bottom: 0;
+    }
+    .output-tab {
+      padding: 5px 12px;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      background: var(--field);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .output-tab.active {
+      background: var(--card);
+      color: var(--text);
+      border-bottom: 1px solid var(--card);
+      margin-bottom: -1px;
+      z-index: 1;
+    }
+    #outputWrap {
+      border: 1px solid var(--border);
+      border-radius: 0 6px 6px 6px;
+      overflow: hidden;
+    }
+    #derivedTable {
+      display: none;
+      width: 100%;
+      overflow-x: auto;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+    #derivedTable.active { display: block; }
+    #output { border: none; border-radius: 0; min-height: 120px; }
+    #output.output-hidden { display: none; }
+    .derived-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    .derived-table th {
+      position: sticky;
+      top: 0;
+      background: var(--field);
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 11px;
+      text-align: left;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      z-index: 2;
+    }
+    .derived-table td {
+      padding: 5px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+      white-space: nowrap;
+      color: var(--text);
+    }
+    .derived-table td.td-truncate {
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .derived-table td.td-notrunc {
+      max-width: none;
+      overflow: visible;
+    }
+    .derived-table tr:last-child td { border-bottom: none; }
+    .derived-table tr:hover td { background: var(--field); }
+    .branch-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+    .branch-receiving { background: rgba(27,143,47,0.12); color: var(--ok); }
+    .branch-change    { background: rgba(107,114,128,0.12); color: var(--muted); }
+    .copy-row-btn {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--button);
+      color: var(--muted);
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      min-height: unset;
+      line-height: 1.4;
+      display: inline-block;
+    }
+    .copy-row-btn:hover { filter: none; color: var(--text); background: var(--field); }
+    .copy-row-btn.copied { color: var(--ok); border-color: var(--ok); }
+    .td-copy-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .copy-cell-btn {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--button);
+      color: var(--muted);
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      min-height: unset;
+      line-height: 1.4;
+      flex-shrink: 0;
+    }
+    .copy-cell-btn:hover { filter: none; color: var(--text); background: var(--field); }
+    .copy-cell-btn.copied { color: var(--ok); border-color: var(--ok); }
+
+    #accountKeysPane {
+      display: none;
+      padding: 16px 20px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
+    #accountKeysPane.active { display: block; }
+    .ak-title {
+      font-family: "Segoe UI", Tahoma, Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .ak-grid {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 4px 14px;
+      align-items: baseline;
+    }
+    .ak-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .ak-value {
+      color: var(--text);
+      font-size: 11.5px;
+      word-break: break-all;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .ak-value span { flex: 1; }
+    .ak-copy {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--button);
+      color: var(--muted);
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      min-height: unset;
+      line-height: 1.5;
+      flex-shrink: 0;
+      font-family: "Segoe UI", Tahoma, Helvetica, Arial, sans-serif;
+    }
+    .ak-copy:hover { filter: none; color: var(--text); background: var(--field); }
+    .ak-copy.copied { color: var(--ok); border-color: var(--ok); }
+    .ak-divider {
+      grid-column: 1 / -1;
+      height: 1px;
+      background: var(--border);
+      margin: 4px 0;
+    }
     #qrModal {
       width: min(340px, calc(100vw - 40px));
       border: 1px solid var(--border);
@@ -398,7 +648,7 @@
   <div class="app">
     <div class="title-row">
       <h1>Arculus Recovery</h1>
-      <span class="app-version">v1.2.0-production</span>
+      <span class="app-version">v1.4.0-production</span>
       <button id="settingsBtn" type="button" class="settings-button" aria-label="Open settings" title="Settings"></button>
       <div id="networkStatus" class="network-status" title="Browser network status" aria-live="polite">
         <span class="network-dot" aria-hidden="true"></span>
@@ -424,7 +674,12 @@
       <div class="words-grid" id="wordsGrid"></div>
 
       <div class="label">Passphrase</div>
-      <input id="passphrase" type="text" autocomplete="off" spellcheck="false" />
+      <div class="passphrase-wrap">
+        <input id="passphrase" type="password" autocomplete="off" spellcheck="false" />
+        <button type="button" class="toggle-visibility" id="passphraseToggle" aria-label="Show passphrase" title="Show/hide passphrase">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
 
       <div class="label">Coin</div>
       <select id="coin">
@@ -459,9 +714,10 @@
       <button id="deriveBtn">Derive Keys + Addresses</button>
       <button id="exportBtn">Export</button>
       <select id="exportFormat" class="export-format" aria-label="Export format">
-        <option selected>JSON</option>
+        <option>JSON</option>
         <option>CSV</option>
         <option>TXT</option>
+        <option selected>PDF</option>
       </select>
       <button id="encryptExportBtn">Encrypt/Export Seed</button>
       <button id="importSeedBtn">Import Seed</button>
@@ -470,8 +726,19 @@
       <input id="rootFingerprintDisplay" class="button-field" type="text" value="Root Fingerprint:" readonly />
     </div>
 
-    <div id="status">Ready</div>
-    <textarea id="output" spellcheck="false" readonly></textarea>
+    <div id="idleBanner" role="alert"></div>
+    <div id="status" aria-live="polite">Ready</div>
+    <div id="deriveProgress" aria-hidden="true"><div id="deriveProgressBar"></div></div>
+    <div class="output-tabs" id="outputTabs" style="display:none;">
+      <button type="button" class="output-tab active" data-tab="table">Table View</button>
+      <button type="button" class="output-tab" data-tab="raw">Raw JSON</button>
+      <button type="button" class="output-tab" data-tab="keys">Extended Keys</button>
+    </div>
+    <div id="outputWrap">
+      <div id="derivedTable"></div>
+      <textarea id="output" spellcheck="false" readonly></textarea>
+      <div id="accountKeysPane" aria-label="Account extended keys"></div>
+    </div>
     <div class="footer">Runs fully offline in your browser. Never share real seed phrases.</div>
     <input id="importSeedFile" type="file" accept=".arc,.json,application/json" hidden />
     <dialog id="qrModal" aria-labelledby="qrModalTitle">
@@ -519,7 +786,7 @@
   </div>
 
   <script>
-    const APP_VERSION = '1.2.0-production';
+    const APP_VERSION = '1.4.0-production';
     const BIP39_WORDS = ['abandon','ability','able','about','above','absent','absorb','abstract','absurd','abuse','access','accident','account','accuse','achieve','acid','acoustic','acquire','across','act','action','actor','actress','actual','adapt','add','addict','address','adjust','admit','adult','advance','advice','aerobic','affair','afford','afraid','again','age','agent','agree','ahead','aim','air','airport','aisle','alarm','album','alcohol','alert','alien','all','alley','allow','almost','alone','alpha','already','also','alter','always','amateur','amazing','among','amount','amused','analyst','anchor','ancient','anger','angle','angry','animal','ankle','announce','annual','another','answer','antenna','antique','anxiety','any','apart','apology','appear','apple','approve','april','arch','arctic','area','arena','argue','arm','armed','armor','army','around','arrange','arrest','arrive','arrow','art','artefact','artist','artwork','ask','aspect','assault','asset','assist','assume','asthma','athlete','atom','attack','attend','attitude','attract','auction','audit','august','aunt','author','auto','autumn','average','avocado','avoid','awake','aware','away','awesome','awful','awkward','axis','baby','bachelor','bacon','badge','bag','balance','balcony','ball','bamboo','banana','banner','bar','barely','bargain','barrel','base','basic','basket','battle','beach','bean','beauty','because','become','beef','before','begin','behave','behind','believe','below','belt','bench','benefit','best','betray','better','between','beyond','bicycle','bid','bike','bind','biology','bird','birth','bitter','black','blade','blame','blanket','blast','bleak','bless','blind','blood','blossom','blouse','blue','blur','blush','board','boat','body','boil','bomb','bone','bonus','book','boost','border','boring','borrow','boss','bottom','bounce','box','boy','bracket','brain','brand','brass','brave','bread','breeze','brick','bridge','brief','bright','bring','brisk','broccoli','broken','bronze','broom','brother','brown','brush','bubble','buddy','budget','buffalo','build','bulb','bulk','bullet','bundle','bunker','burden','burger','burst','bus','business','busy','butter','buyer','buzz','cabbage','cabin','cable','cactus','cage','cake','call','calm','camera','camp','can','canal','cancel','candy','cannon','canoe','canvas','canyon','capable','capital','captain','car','carbon','card','cargo','carpet','carry','cart','case','cash','casino','castle','casual','cat','catalog','catch','category','cattle','caught','cause','caution','cave','ceiling','celery','cement','census','century','cereal','certain','chair','chalk','champion','change','chaos','chapter','charge','chase','chat','cheap','check','cheese','chef','cherry','chest','chicken','chief','child','chimney','choice','choose','chronic','chuckle','chunk','churn','cigar','cinnamon','circle','citizen','city','civil','claim','clap','clarify','claw','clay','clean','clerk','clever','click','client','cliff','climb','clinic','clip','clock','clog','close','cloth','cloud','clown','club','clump','cluster','clutch','coach','coast','coconut','code','coffee','coil','coin','collect','color','column','combine','come','comfort','comic','common','company','concert','conduct','confirm','congress','connect','consider','control','convince','cook','cool','copper','copy','coral','core','corn','correct','cost','cotton','couch','country','couple','course','cousin','cover','coyote','crack','cradle','craft','cram','crane','crash','crater','crawl','crazy','cream','credit','creek','crew','cricket','crime','crisp','critic','crop','cross','crouch','crowd','crucial','cruel','cruise','crumble','crunch','crush','cry','crystal','cube','culture','cup','cupboard','curious','current','curtain','curve','cushion','custom','cute','cycle','dad','damage','damp','dance','danger','daring','dash','daughter','dawn','day','deal','debate','debris','decade','december','decide','decline','decorate','decrease','deer','defense','define','defy','degree','delay','deliver','demand','demise','denial','dentist','deny','depart','depend','deposit','depth','deputy','derive','describe','desert','design','desk','despair','destroy','detail','detect','develop','device','devote','diagram','dial','diamond','diary','dice','diesel','diet','differ','digital','dignity','dilemma','dinner','dinosaur','direct','dirt','disagree','discover','disease','dish','dismiss','disorder','display','distance','divert','divide','divorce','dizzy','doctor','document','dog','doll','dolphin','domain','donate','donkey','donor','door','dose','double','dove','draft','dragon','drama','drastic','draw','dream','dress','drift','drill','drink','drip','drive','drop','drum','dry','duck','dumb','dune','during','dust','dutch','duty','dwarf','dynamic','eager','eagle','early','earn','earth','easily','east','easy','echo','ecology','economy','edge','edit','educate','effort','egg','eight','either','elbow','elder','electric','elegant','element','elephant','elevator','elite','else','embark','embody','embrace','emerge','emotion','employ','empower','empty','enable','enact','end','endless','endorse','enemy','energy','enforce','engage','engine','enhance','enjoy','enlist','enough','enrich','enroll','ensure','enter','entire','entry','envelope','episode','equal','equip','era','erase','erode','erosion','error','erupt','escape','essay','essence','estate','eternal','ethics','evidence','evil','evoke','evolve','exact','example','excess','exchange','excite','exclude','excuse','execute','exercise','exhaust','exhibit','exile','exist','exit','exotic','expand','expect','expire','explain','expose','express','extend','extra','eye','eyebrow','fabric','face','faculty','fade','faint','faith','fall','false','fame','family','famous','fan','fancy','fantasy','farm','fashion','fat','fatal','father','fatigue','fault','favorite','feature','february','federal','fee','feed','feel','female','fence','festival','fetch','fever','few','fiber','fiction','field','figure','file','film','filter','final','find','fine','finger','finish','fire','firm','first','fiscal','fish','fit','fitness','fix','flag','flame','flash','flat','flavor','flee','flight','flip','float','flock','floor','flower','fluid','flush','fly','foam','focus','fog','foil','fold','follow','food','foot','force','forest','forget','fork','fortune','forum','forward','fossil','foster','found','fox','fragile','frame','frequent','fresh','friend','fringe','frog','front','frost','frown','frozen','fruit','fuel','fun','funny','furnace','fury','future','gadget','gain','galaxy','gallery','game','gap','garage','garbage','garden','garlic','garment','gas','gasp','gate','gather','gauge','gaze','general','genius','genre','gentle','genuine','gesture','ghost','giant','gift','giggle','ginger','giraffe','girl','give','glad','glance','glare','glass','glide','glimpse','globe','gloom','glory','glove','glow','glue','goat','goddess','gold','good','goose','gorilla','gospel','gossip','govern','gown','grab','grace','grain','grant','grape','grass','gravity','great','green','grid','grief','grit','grocery','group','grow','grunt','guard','guess','guide','guilt','guitar','gun','gym','habit','hair','half','hammer','hamster','hand','happy','harbor','hard','harsh','harvest','hat','have','hawk','hazard','head','health','heart','heavy','hedgehog','height','hello','helmet','help','hen','hero','hidden','high','hill','hint','hip','hire','history','hobby','hockey','hold','hole','holiday','hollow','home','honey','hood','hope','horn','horror','horse','hospital','host','hotel','hour','hover','hub','huge','human','humble','humor','hundred','hungry','hunt','hurdle','hurry','hurt','husband','hybrid','ice','icon','idea','identify','idle','ignore','ill','illegal','illness','image','imitate','immense','immune','impact','impose','improve','impulse','inch','include','income','increase','index','indicate','indoor','industry','infant','inflict','inform','inhale','inherit','initial','inject','injury','inmate','inner','innocent','input','inquiry','insane','insect','inside','inspire','install','intact','interest','into','invest','invite','involve','iron','island','isolate','issue','item','ivory','jacket','jaguar','jar','jazz','jealous','jeans','jelly','jewel','job','join','joke','journey','joy','judge','juice','jump','jungle','junior','junk','just','kangaroo','keen','keep','ketchup','key','kick','kid','kidney','kind','kingdom','kiss','kit','kitchen','kite','kitten','kiwi','knee','knife','knock','know','lab','label','labor','ladder','lady','lake','lamp','language','laptop','large','later','latin','laugh','laundry','lava','law','lawn','lawsuit','layer','lazy','leader','leaf','learn','leave','lecture','left','leg','legal','legend','leisure','lemon','lend','length','lens','leopard','lesson','letter','level','liar','liberty','library','license','life','lift','light','like','limb','limit','link','lion','liquid','list','little','live','lizard','load','loan','lobster','local','lock','logic','lonely','long','loop','lottery','loud','lounge','love','loyal','lucky','luggage','lumber','lunar','lunch','luxury','lyrics','machine','mad','magic','magnet','maid','mail','main','major','make','mammal','man','manage','mandate','mango','mansion','manual','maple','marble','march','margin','marine','market','marriage','mask','mass','master','match','material','math','matrix','matter','maximum','maze','meadow','mean','measure','meat','mechanic','medal','media','melody','melt','member','memory','mention','menu','mercy','merge','merit','merry','mesh','message','metal','method','middle','midnight','milk','million','mimic','mind','minimum','minor','minute','miracle','mirror','misery','miss','mistake','mix','mixed','mixture','mobile','model','modify','mom','moment','monitor','monkey','monster','month','moon','moral','more','morning','mosquito','mother','motion','motor','mountain','mouse','move','movie','much','muffin','mule','multiply','muscle','museum','mushroom','music','must','mutual','myself','mystery','myth','naive','name','napkin','narrow','nasty','nation','nature','near','neck','need','negative','neglect','neither','nephew','nerve','nest','net','network','neutral','never','news','next','nice','night','noble','noise','nominee','noodle','normal','north','nose','notable','note','nothing','notice','novel','now','nuclear','number','nurse','nut','oak','obey','object','oblige','obscure','observe','obtain','obvious','occur','ocean','october','odor','off','offer','office','often','oil','okay','old','olive','olympic','omit','once','one','onion','online','only','open','opera','opinion','oppose','option','orange','orbit','orchard','order','ordinary','organ','orient','original','orphan','ostrich','other','outdoor','outer','output','outside','oval','oven','over','own','owner','oxygen','oyster','ozone','pact','paddle','page','pair','palace','palm','panda','panel','panic','panther','paper','parade','parent','park','parrot','party','pass','patch','path','patient','patrol','pattern','pause','pave','payment','peace','peanut','pear','peasant','pelican','pen','penalty','pencil','people','pepper','perfect','permit','person','pet','phone','photo','phrase','physical','piano','picnic','picture','piece','pig','pigeon','pill','pilot','pink','pioneer','pipe','pistol','pitch','pizza','place','planet','plastic','plate','play','please','pledge','pluck','plug','plunge','poem','poet','point','polar','pole','police','pond','pony','pool','popular','portion','position','possible','post','potato','pottery','poverty','powder','power','practice','praise','predict','prefer','prepare','present','pretty','prevent','price','pride','primary','print','priority','prison','private','prize','problem','process','produce','profit','program','project','promote','proof','property','prosper','protect','proud','provide','public','pudding','pull','pulp','pulse','pumpkin','punch','pupil','puppy','purchase','purity','purpose','purse','push','put','puzzle','pyramid','quality','quantum','quarter','question','quick','quit','quiz','quote','rabbit','raccoon','race','rack','radar','radio','rail','rain','raise','rally','ramp','ranch','random','range','rapid','rare','rate','rather','raven','raw','razor','ready','real','reason','rebel','rebuild','recall','receive','recipe','record','recycle','reduce','reflect','reform','refuse','region','regret','regular','reject','relax','release','relief','rely','remain','remember','remind','remove','render','renew','rent','reopen','repair','repeat','replace','report','require','rescue','resemble','resist','resource','response','result','retire','retreat','return','reunion','reveal','review','reward','rhythm','rib','ribbon','rice','rich','ride','ridge','rifle','right','rigid','ring','riot','ripple','risk','ritual','rival','river','road','roast','robot','robust','rocket','romance','roof','rookie','room','rose','rotate','rough','round','route','royal','rubber','rude','rug','rule','run','runway','rural','sad','saddle','sadness','safe','sail','salad','salmon','salon','salt','salute','same','sample','sand','satisfy','satoshi','sauce','sausage','save','say','scale','scan','scare','scatter','scene','scheme','school','science','scissors','scorpion','scout','scrap','screen','script','scrub','sea','search','season','seat','second','secret','section','security','seed','seek','segment','select','sell','seminar','senior','sense','sentence','series','service','session','settle','setup','seven','shadow','shaft','shallow','share','shed','shell','sheriff','shield','shift','shine','ship','shiver','shock','shoe','shoot','shop','short','shoulder','shove','shrimp','shrug','shuffle','shy','sibling','sick','side','siege','sight','sign','silent','silk','silly','silver','similar','simple','since','sing','siren','sister','situate','six','size','skate','sketch','ski','skill','skin','skirt','skull','slab','slam','sleep','slender','slice','slide','slight','slim','slogan','slot','slow','slush','small','smart','smile','smoke','smooth','snack','snake','snap','sniff','snow','soap','soccer','social','sock','soda','soft','solar','soldier','solid','solution','solve','someone','song','soon','sorry','sort','soul','sound','soup','source','south','space','spare','spatial','spawn','speak','special','speed','spell','spend','sphere','spice','spider','spike','spin','spirit','split','spoil','sponsor','spoon','sport','spot','spray','spread','spring','spy','square','squeeze','squirrel','stable','stadium','staff','stage','stairs','stamp','stand','start','state','stay','steak','steel','stem','step','stereo','stick','still','sting','stock','stomach','stone','stool','story','stove','strategy','street','strike','strong','struggle','student','stuff','stumble','style','subject','submit','subway','success','such','sudden','suffer','sugar','suggest','suit','summer','sun','sunny','sunset','super','supply','supreme','sure','surface','surge','surprise','surround','survey','suspect','sustain','swallow','swamp','swap','swarm','swear','sweet','swift','swim','swing','switch','sword','symbol','symptom','syrup','system','table','tackle','tag','tail','talent','talk','tank','tape','target','task','taste','tattoo','taxi','teach','team','tell','ten','tenant','tennis','tent','term','test','text','thank','that','theme','then','theory','there','they','thing','this','thought','three','thrive','throw','thumb','thunder','ticket','tide','tiger','tilt','timber','time','tiny','tip','tired','tissue','title','toast','tobacco','today','toddler','toe','together','toilet','token','tomato','tomorrow','tone','tongue','tonight','tool','tooth','top','topic','topple','torch','tornado','tortoise','toss','total','tourist','toward','tower','town','toy','track','trade','traffic','tragic','train','transfer','trap','trash','travel','tray','treat','tree','trend','trial','tribe','trick','trigger','trim','trip','trophy','trouble','truck','true','truly','trumpet','trust','truth','try','tube','tuition','tumble','tuna','tunnel','turkey','turn','turtle','twelve','twenty','twice','twin','twist','two','type','typical','ugly','umbrella','unable','unaware','uncle','uncover','under','undo','unfair','unfold','unhappy','uniform','unique','unit','universe','unknown','unlock','until','unusual','unveil','update','upgrade','uphold','upon','upper','upset','urban','urge','usage','use','used','useful','useless','usual','utility','vacant','vacuum','vague','valid','valley','valve','van','vanish','vapor','various','vast','vault','vehicle','velvet','vendor','venture','venue','verb','verify','version','very','vessel','veteran','viable','vibrant','vicious','victory','video','view','village','vintage','violin','virtual','virus','visa','visit','visual','vital','vivid','vocal','voice','void','volcano','volume','vote','voyage','wage','wagon','wait','walk','wall','walnut','want','warfare','warm','warrior','wash','wasp','waste','water','wave','way','wealth','weapon','wear','weasel','weather','web','wedding','weekend','weird','welcome','west','wet','whale','what','wheat','wheel','when','where','whip','whisper','wide','width','wife','wild','will','win','window','wine','wing','wink','winner','winter','wire','wisdom','wise','wish','witness','wolf','woman','wonder','wood','wool','word','work','world','worry','worth','wrap','wreck','wrestle','wrist','write','wrong','yard','year','yellow','you','young','youth','zebra','zero','zone','zoo'];
     const BIP39_SET = new Set(BIP39_WORDS);
     const BIP39_INDEX = Object.fromEntries(BIP39_WORDS.map((w, i) => [w, i]));
@@ -640,6 +907,311 @@
     const ARC_V2_MIN_KDF_ITERATIONS = 600000;
     const ARC_V2_SALT_BYTES = 32;
     const ARC_V2_NONCE_BYTES = 24;
+    const IDLE_TIMEOUT_MS = 5 * 60 * 1000;   // 5 minutes
+    const CLIPBOARD_CLEAR_SECS = 60;
+
+    // ── Idle timer ──────────────────────────────────────────────────────────
+    let idleTimer = null;
+    let idleWarningTimer = null;
+
+    function resetIdleTimer() {
+      clearTimeout(idleTimer);
+      clearTimeout(idleWarningTimer);
+      const banner = document.getElementById('idleBanner');
+      if (banner) banner.classList.remove('visible');
+      idleWarningTimer = setTimeout(() => {
+        const b = document.getElementById('idleBanner');
+        if (b) {
+          b.textContent = 'Idle timeout in 60 seconds. All fields will be cleared.';
+          b.classList.add('visible');
+        }
+      }, IDLE_TIMEOUT_MS - 60000);
+      idleTimer = setTimeout(() => {
+        handleClearAll();
+        const b = document.getElementById('idleBanner');
+        if (b) {
+          b.textContent = 'Session cleared due to inactivity.';
+          b.classList.add('visible');
+          setTimeout(() => b.classList.remove('visible'), 5000);
+        }
+      }, IDLE_TIMEOUT_MS);
+    }
+
+    function startIdleWatcher() {
+      ['mousedown', 'keydown', 'touchstart', 'scroll'].forEach(ev =>
+        document.addEventListener(ev, resetIdleTimer, { passive: true })
+      );
+      resetIdleTimer();
+    }
+
+    // ── Clipboard auto-clear ─────────────────────────────────────────────────
+    let clipboardClearTimer = null;
+    let clipboardCountdownInterval = null;
+
+    function startClipboardCountdown(labelEl) {
+      clearTimeout(clipboardClearTimer);
+      clearInterval(clipboardCountdownInterval);
+      let secs = CLIPBOARD_CLEAR_SECS;
+      function tick() {
+        if (labelEl) labelEl.textContent = ' (clipboard clears in ' + secs + 's)';
+      }
+      tick();
+      clipboardCountdownInterval = setInterval(function() {
+        secs--;
+        tick();
+        if (secs <= 0) clearInterval(clipboardCountdownInterval);
+      }, 1000);
+      clipboardClearTimer = setTimeout(async function() {
+        clearInterval(clipboardCountdownInterval);
+        if (labelEl) labelEl.textContent = '';
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText('');
+          }
+        } catch(e) {}
+      }, CLIPBOARD_CLEAR_SECS * 1000);
+    }
+
+    // ── Derivation progress ──────────────────────────────────────────────────
+    function setProgress(pct) {
+      const bar = document.getElementById('deriveProgressBar');
+      const wrap = document.getElementById('deriveProgress');
+      if (!bar || !wrap) return;
+      wrap.classList.add('visible');
+      bar.style.width = pct + '%';
+    }
+
+    function hideProgress() {
+      const wrap = document.getElementById('deriveProgress');
+      if (wrap) wrap.classList.remove('visible');
+    }
+
+    // ── Output table rendering ───────────────────────────────────────────────
+    let currentOutputMode = 'raw';
+
+    function buildDerivedTable(data) {
+      const rows = flattenDerivedRows(data);
+      if (!rows.length) return null;
+      const allKeys = Array.from(rows.reduce(function(set, row) {
+        Object.keys(row).forEach(function(k) { set.add(k); });
+        return set;
+      }, new Set()));
+      const allCols = allKeys.filter(function(k) {
+        return rows.some(function(r) { return r[k] !== null && r[k] !== undefined && r[k] !== ''; });
+      });
+
+      // Columns that should appear first (promoted), with no truncation
+      const PROMOTED = ['branch', 'path', 'address', 'private_key_wif'];
+      const NO_TRUNCATE = new Set(['address', 'private_key_wif', 'public_key_hex', 'private_key_hex', 'ethereum_public_key_hex', 'taproot_internal_public_key_hex', 'taproot_internal_private_key_hex', 'taproot_output_public_key_hex', 'taproot_output_private_key_hex', 'taproot_tweak_hex']);
+
+      // Build final ordered column list: promoted cols first (if present), then the rest
+      const promotedPresent = PROMOTED.filter(function(k) { return allCols.includes(k); });
+      const rest = allCols.filter(function(k) { return !new Set(PROMOTED).has(k); });
+      const cols = promotedPresent.concat(rest);
+
+      const table = document.createElement('table');
+      table.className = 'derived-table';
+      const thead = table.createTHead();
+      const hrow = thead.insertRow();
+      cols.forEach(function(col) {
+        const th = document.createElement('th');
+        th.textContent = col.replace(/_/g, ' ');
+        th.title = col;
+        hrow.appendChild(th);
+      });
+
+      function makeCopyBtn(val, cls) {
+        const btn = document.createElement('button');
+        btn.className = cls || 'copy-cell-btn';
+        btn.textContent = '⧉';
+        btn.title = 'Copy to clipboard';
+        btn.addEventListener('click', async function() {
+          try {
+            await copyTextToClipboard(String(val));
+            btn.textContent = '✓';
+            btn.classList.add('copied');
+            setTimeout(function() { btn.textContent = '⧉'; btn.classList.remove('copied'); }, 1500);
+          } catch(e) {}
+        });
+        return btn;
+      }
+
+      function makeQrBtn(address) {
+        const btn = document.createElement('button');
+        btn.className = 'copy-cell-btn';
+        btn.textContent = '▦';
+        btn.title = 'Show QR code';
+        btn.addEventListener('click', function() {
+          const input = document.getElementById('qrAddressInput');
+          const dlg   = document.getElementById('qrModal');
+          // Reset modal state first
+          document.getElementById('qrCanvas').style.display = 'none';
+          document.getElementById('qrAddressLabel').style.display = 'none';
+          document.getElementById('qrSaveRow').style.display = 'none';
+          input.value = address;
+          if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+          // Render immediately
+          renderQrFromAddress(address);
+        });
+        return btn;
+      }
+
+      const tbody = table.createTBody();
+      rows.forEach(function(row) {
+        const tr = tbody.insertRow();
+        cols.forEach(function(col) {
+          const td = tr.insertCell();
+          const val = row[col];
+          if (val === null || val === undefined) { td.className = 'td-truncate'; td.textContent = ''; return; }
+          if (col === 'branch') {
+            td.className = 'td-truncate';
+            const badge = document.createElement('span');
+            badge.className = 'branch-badge ' + (val === 'receiving' ? 'branch-receiving' : 'branch-change');
+            badge.textContent = val;
+            td.appendChild(badge);
+          } else if (NO_TRUNCATE.has(col)) {
+            td.className = 'td-notrunc';
+            const wrap = document.createElement('span');
+            wrap.className = 'td-copy-wrap';
+            const text = document.createElement('span');
+            text.textContent = String(val);
+            wrap.appendChild(makeCopyBtn(val));
+            if (col === 'address') wrap.appendChild(makeQrBtn(val));
+            wrap.appendChild(text);
+            td.appendChild(wrap);
+            td.title = String(val);
+          } else {
+            td.className = 'td-truncate';
+            td.textContent = String(val);
+            td.title = String(val);
+          }
+        });
+      });
+      return table;
+    }
+
+    function showDerivedTable(data) {
+      const container = document.getElementById('derivedTable');
+      const tabs = document.getElementById('outputTabs');
+      if (!container || !tabs) return;
+      container.innerHTML = '';
+      const table = buildDerivedTable(data);
+      if (table) {
+        container.appendChild(table);
+        tabs.style.display = '';
+        setOutputTab('table');
+      }
+      showAccountKeys(data);
+    }
+
+    function setOutputTab(tab) {
+      currentOutputMode = tab;
+      const tableEl = document.getElementById('derivedTable');
+      const rawEl = document.getElementById('output');
+      const keysEl = document.getElementById('accountKeysPane');
+      document.querySelectorAll('.output-tab').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+      });
+      tableEl.classList.toggle('active', tab === 'table');
+      rawEl.classList.toggle('output-hidden', tab !== 'raw');
+      if (keysEl) keysEl.classList.toggle('active', tab === 'keys');
+    }
+
+    function resetOutputToRaw() {
+      const tabs = document.getElementById('outputTabs');
+      const tableEl = document.getElementById('derivedTable');
+      const rawEl = document.getElementById('output');
+      if (tabs) tabs.style.display = 'none';
+      if (tableEl) { tableEl.innerHTML = ''; tableEl.classList.remove('active'); }
+      if (rawEl) rawEl.classList.remove('output-hidden');
+      hideAccountKeys();
+    }
+
+    // Key labels: human-readable name for each extended key field
+    const AK_LABELS = {
+      root_xprv: 'root xprv',  root_xpub: 'root xpub',
+      root_yprv: 'root yprv',  root_ypub: 'root ypub',
+      root_zprv: 'root zprv',  root_zpub: 'root zpub',
+      root_trprv: 'root trprv', root_trpub: 'root trpub',
+      account_xprv: 'account xprv', account_xpub: 'account xpub',
+      account_yprv: 'account yprv', account_ypub: 'account ypub',
+      account_zprv: 'account zprv', account_zpub: 'account zpub',
+      account_trprv: 'account trprv', account_trpub: 'account trpub',
+    };
+    const AK_KEY_ORDER = Object.keys(AK_LABELS);
+
+    function showAccountKeys(data) {
+      const pane = document.getElementById('accountKeysPane');
+      if (!pane) return;
+      pane.innerHTML = '';
+
+      const account = (data.accounts || [])[0];
+      if (!account) return;
+
+      const pairs = AK_KEY_ORDER
+        .filter(function(k) { return account[k]; })
+        .map(function(k) { return { key: k, label: AK_LABELS[k], value: account[k] }; });
+
+      if (!pairs.length) return;
+
+      const title = document.createElement('div');
+      title.className = 'ak-title';
+      title.textContent = 'Extended Keys';
+      pane.appendChild(title);
+
+      const grid = document.createElement('div');
+      grid.className = 'ak-grid';
+      pane.appendChild(grid);
+
+      let lastGroup = null;
+      pairs.forEach(function(pair) {
+        const group = pair.key.startsWith('root_') ? 'root' : 'account';
+        if (lastGroup !== null && group !== lastGroup) {
+          const div = document.createElement('div');
+          div.className = 'ak-divider';
+          grid.appendChild(div);
+        }
+        lastGroup = group;
+
+        const labelEl = document.createElement('div');
+        labelEl.className = 'ak-label';
+        labelEl.textContent = pair.label;
+
+        const valWrap = document.createElement('div');
+        valWrap.className = 'ak-value';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'ak-copy';
+        copyBtn.textContent = '⧉';
+        copyBtn.title = 'Copy ' + pair.label;
+        (function(v, btn) {
+          btn.addEventListener('click', async function() {
+            try {
+              await copyTextToClipboard(v);
+              btn.textContent = '✓';
+              btn.classList.add('copied');
+              setTimeout(function() { btn.textContent = '⧉'; btn.classList.remove('copied'); }, 1500);
+            } catch(e) {}
+          });
+        })(pair.value, copyBtn);
+
+        const valSpan = document.createElement('span');
+        valSpan.textContent = pair.value;
+        valSpan.title = pair.value;
+
+        valWrap.appendChild(copyBtn);
+        valWrap.appendChild(valSpan);
+        grid.appendChild(labelEl);
+        grid.appendChild(valWrap);
+      });
+    }
+
+    function hideAccountKeys() {
+      const pane = document.getElementById('accountKeysPane');
+      if (pane) { pane.classList.remove('active'); pane.innerHTML = ''; }
+    }
+
+
 
     function getSeedLen() {
       return Number(document.querySelector('input[name="seedLen"]:checked').value);
@@ -1659,10 +2231,15 @@
       result.accounts[0].receiving = [];
       result.accounts[0].change = [];
 
+      const totalAddresses = count * 2;
+      let addressesDerived = 0;
       for (const [branch, key] of [[0, 'receiving'], [1, 'change']]) {
         const branchNode = await ckdPriv(account, branch);
         for (let i = 0; i < count; i++) {
           const child = await ckdPriv(branchNode, i);
+          addressesDerived++;
+          setProgress(10 + Math.round((addressesDerived / totalAddresses) * 80));
+          if (addressesDerived % 3 === 0) await new Promise(r => setTimeout(r, 0));
           const pub = serPub(pointMul(child.k, G));
           const item = {
             path: `${derivation}/${branch}/${i}`,
@@ -1704,16 +2281,14 @@
     function flattenDerivedRows(data) {
       const rows = [];
       for (const account of data.accounts || []) {
+        const EXCLUDE_FROM_TABLE = new Set([...AK_KEY_ORDER, 'network', 'word_count', 'derivation', 'account_script_type_used', 'coin']);
         const accountFields = {};
         for (const [key, value] of Object.entries(account)) {
-          if (key !== 'receiving' && key !== 'change') accountFields[key] = value;
+          if (key !== 'receiving' && key !== 'change' && !EXCLUDE_FROM_TABLE.has(key)) accountFields[key] = value;
         }
         for (const branch of ['receiving', 'change']) {
           for (const item of account[branch] || []) {
             rows.push({
-              coin: data.coin,
-              network: data.network,
-              word_count: data.word_count,
               branch,
               ...accountFields,
               ...item
@@ -1803,12 +2378,234 @@
       };
     }
 
+    async function exportDump() {
+      if (!lastDerivedOutput) {
+        uiStatus('Nothing to export. Derive keys and addresses first.');
+        return;
+      }
+      const rows = flattenDerivedRows(lastDerivedOutput);
+      if (!rows.length) {
+        uiStatus('No rows to export.');
+        return;
+      }
+
+      // Load jsPDF on demand
+      if (!window.jspdf) {
+        await new Promise(function(resolve, reject) {
+          const s = document.createElement('script');
+          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+          s.onload = resolve;
+          s.onerror = function() { reject(new Error('Failed to load PDF library. Check your network connection.')); };
+          document.head.appendChild(s);
+        });
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+
+      const PAGE_W = doc.internal.pageSize.getWidth();
+      const PAGE_H = doc.internal.pageSize.getHeight();
+      const MARGIN = 36;
+      const USABLE_W = PAGE_W - MARGIN * 2;
+
+      // ── fonts & sizes ──────────────────────────────────────────────
+      const TITLE_SIZE   = 13;
+      const HEADER_SIZE  = 8;
+      const CELL_SIZE    = 7.5;
+      const ROW_H        = 14;
+      const HEADER_H     = 18;
+      const COL_GAP      = 6;
+      const KEY_LABEL_W  = 90;
+      const KEY_LINE_H   = 13;
+      const KEY_FONT     = 7.5;
+      const KEY_LABEL_SZ = 7;
+
+      // ── column config ──────────────────────────────────────────────
+      const COIN_DISPLAY_NAMES = { bitcoin: 'Bitcoin', litecoin: 'Litecoin', dogecoin: 'Dogecoin', ethereum: 'Ethereum', xrp: 'XRP' };
+      const coin      = COIN_DISPLAY_NAMES[lastDerivedOutput.coin] || lastDerivedOutput.coin || '';
+      const isHexKeyCoin = lastDerivedOutput.coin === 'ethereum' || lastDerivedOutput.coin === 'xrp';
+      const privKeyCol = isHexKeyCoin
+        ? { key: 'private_key_hex', label: 'Private Key Hex', fixedW: null }
+        : { key: 'private_key_wif', label: 'Private Key WIF', fixedW: null };
+
+      const COL_DEFS = [
+        { key: 'branch',          label: 'Branch',          fixedW: 52  },
+        { key: 'path',            label: 'Path',            fixedW: 110 },
+        { key: 'address',         label: 'Address',         fixedW: null },
+        privKeyCol,
+      ];
+
+      const fixedTotal = COL_DEFS.reduce(function(s, c) { return s + (c.fixedW || 0); }, 0)
+                       + COL_GAP * (COL_DEFS.length - 1);
+      const flexW = Math.floor((USABLE_W - fixedTotal) / 2);
+      const cols = COL_DEFS.map(function(c) {
+        return { key: c.key, label: c.label, w: c.fixedW !== null ? c.fixedW : flexW };
+      });
+      const wordCount = lastDerivedOutput.word_count || '';
+      const ts = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+
+      let y = MARGIN;
+      let pageNum = 1;
+
+      // ── helper: clip text to maxW ──────────────────────────────────
+      function clipText(text, maxW) {
+        if (doc.getTextWidth(text) <= maxW) return text;
+        while (text.length > 1 && doc.getTextWidth(text + '…') > maxW) text = text.slice(0, -1);
+        return text + '…';
+      }
+
+      // ── root fingerprint ───────────────────────────────────────────
+      const rawFpDisplay = els.rootFingerprintDisplay.value || '';
+      const fpMatch = rawFpDisplay.match(/Root Fingerprint:\s*([0-9a-fA-F]+)/);
+      const rootFp = fpMatch ? fpMatch[1] : '';
+
+      // ── page title + meta line ─────────────────────────────────────
+      function drawTitleBlock() {
+        doc.setFontSize(TITLE_SIZE);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(17, 24, 39);
+        doc.text('Arculus Key Export', MARGIN, y);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(107, 114, 128);
+        const metaParts = [coin, 'Arculus v' + APP_VERSION, ts];
+        if (rootFp) metaParts.push('Fingerprint: ' + rootFp);
+        const meta = metaParts.filter(Boolean).join('  ·  ');
+        doc.text(meta, MARGIN, y + 14);
+        const pgLabel = 'Page ' + pageNum;
+        doc.text(pgLabel, PAGE_W - MARGIN - doc.getTextWidth(pgLabel), y + 14);
+        y += 30;
+      }
+
+      // ── extended keys section ──────────────────────────────────────
+      function drawExtendedKeys() {
+        const account = (lastDerivedOutput.accounts || [])[0];
+        if (!account) return;
+
+        const pairs = AK_KEY_ORDER
+          .filter(function(k) { return account[k]; })
+          .map(function(k) { return { key: k, label: AK_LABELS[k], value: account[k] }; });
+        if (!pairs.length) return;
+
+        // Section heading
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(107, 114, 128);
+        doc.text('EXTENDED KEYS', MARGIN, y);
+        y += 10;
+
+        const maxValW = USABLE_W - KEY_LABEL_W - COL_GAP;
+
+        pairs.forEach(function(pair) {
+          doc.setFontSize(KEY_LABEL_SZ);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(107, 114, 128);
+          doc.text(pair.label.toUpperCase(), MARGIN, y);
+
+          doc.setFontSize(KEY_FONT);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(17, 24, 39);
+          doc.text(clipText(pair.value, maxValW), MARGIN + KEY_LABEL_W, y);
+          y += KEY_LINE_H;
+        });
+
+        y += 6;
+
+        // Divider before table
+        doc.setDrawColor(209, 213, 219);
+        doc.setLineWidth(0.5);
+        doc.line(MARGIN, y, MARGIN + USABLE_W, y);
+        y += 10;
+      }
+
+      // ── table header row ───────────────────────────────────────────
+      function drawTableHeader() {
+        doc.setFillColor(243, 244, 246);
+        doc.roundedRect(MARGIN, y, USABLE_W, HEADER_H, 3, 3, 'F');
+        doc.setFontSize(HEADER_SIZE);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(107, 114, 128);
+        let x = MARGIN + COL_GAP;
+        for (const col of cols) {
+          doc.text(col.label.toUpperCase(), x, y + HEADER_H / 2 + 3);
+          x += col.w + COL_GAP;
+        }
+        y += HEADER_H + 2;
+      }
+
+      // ── continuation page header (no keys, just title + table hdr) ─
+      function drawContinuationHeader() {
+        drawTitleBlock();
+        drawTableHeader();
+      }
+
+      function checkNewPage() {
+        if (y + ROW_H > PAGE_H - MARGIN) {
+          doc.addPage();
+          pageNum++;
+          y = MARGIN;
+          drawContinuationHeader();
+        }
+      }
+
+      // ── render page 1 ──────────────────────────────────────────────
+      drawTitleBlock();
+      y += 8;
+      drawExtendedKeys();
+      drawTableHeader();
+
+      // ── render address rows ────────────────────────────────────────
+      rows.forEach(function(row, idx) {
+        checkNewPage();
+
+        if (idx % 2 === 0) {
+          doc.setFillColor(249, 250, 251);
+          doc.rect(MARGIN, y, USABLE_W, ROW_H, 'F');
+        }
+
+        doc.setFontSize(CELL_SIZE);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(17, 24, 39);
+
+        let x = MARGIN + COL_GAP;
+        for (const col of cols) {
+          const val = row[col.key] != null ? String(row[col.key]) : '';
+          const text = clipText(val, col.w - COL_GAP);
+          if (col.key === 'branch') {
+            doc.setTextColor(val === 'receiving' ? 27 : 107, val === 'receiving' ? 143 : 114, val === 'receiving' ? 47 : 128);
+            doc.setFont('helvetica', 'bold');
+          } else {
+            doc.setTextColor(17, 24, 39);
+            doc.setFont('helvetica', 'normal');
+          }
+          doc.text(text, x, y + ROW_H / 2 + 2.5);
+          x += col.w + COL_GAP;
+        }
+
+        doc.setDrawColor(229, 231, 235);
+        doc.setLineWidth(0.3);
+        doc.line(MARGIN, y + ROW_H, MARGIN + USABLE_W, y + ROW_H);
+        y += ROW_H;
+      });
+
+      const filename = 'Arculus_Key_Export_' + (coin || 'export') + '.pdf';
+      doc.save(filename);
+      uiStatus('Key export saved as PDF.', 'valid');
+    }
+
+
     function exportOutput() {
       if (!lastDerivedOutput) {
         uiStatus('Nothing to export. Derive keys and addresses first.');
         return;
       }
       const format = els.exportFormat.value.toLowerCase();
+      if (format === 'pdf') {
+        exportDump().catch(function(e) {
+          uiStatus('Error: ' + e.message, 'invalid');
+        });
+        return;
+      }
       const payload = exportPayload(lastDerivedOutput, format);
       const blob = new Blob([payload.text], { type: payload.type });
       const a = document.createElement('a');
@@ -2013,7 +2810,12 @@
         return;
       }
       await copyTextToClipboard(words.join(' '));
-      uiStatus('Seed phrase copied to clipboard.', 'valid');
+      els.status.className = 'valid';
+      els.status.textContent = 'Seed phrase copied to clipboard.';
+      const countdownSpan = document.createElement('span');
+      countdownSpan.className = 'clipboard-countdown';
+      els.status.appendChild(countdownSpan);
+      startClipboardCountdown(countdownSpan);
     }
 
     async function handleGenerateSeed() {
@@ -2045,6 +2847,8 @@
         syncBusy = false;
       }
       styleMnemonicBox();
+      resetOutputToRaw();
+      lastDerivedOutput = null;
       uiStatus('All fields cleared.', '');
     }
 
@@ -2088,6 +2892,20 @@
         }
       });
 	      els.passphrase.addEventListener('input', scheduleRootFingerprintRefresh);
+      // Passphrase visibility toggle
+      document.getElementById('passphraseToggle').addEventListener('click', function() {
+        const inp = els.passphrase;
+        const btn = document.getElementById('passphraseToggle');
+        if (inp.type === 'password') {
+          inp.type = 'text';
+          btn.setAttribute('aria-label', 'Hide passphrase');
+          btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+        } else {
+          inp.type = 'password';
+          btn.setAttribute('aria-label', 'Show passphrase');
+          btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+        }
+      });
 	      els.settingsBtn.addEventListener('click', () => {
 	        if (typeof els.settingsDialog.showModal === 'function') {
 	          els.settingsDialog.showModal();
@@ -2108,6 +2926,7 @@
           const res = await analyzeMnemonic(getActiveMnemonic(), els.passphrase.value);
           setRootFingerprintDisplay(res.root_fingerprint || '');
           uiStatus(res.message, res.wordsOk && res.checksumOk ? 'valid' : 'invalid');
+          resetOutputToRaw();
           els.output.value = JSON.stringify({
             validation: res.wordsOk && res.checksumOk ? 'ok' : 'failed',
             word_count: res.word_count,
@@ -2134,11 +2953,17 @@
       els.deriveBtn.addEventListener('click', async () => {
         try {
           uiStatus('Deriving...');
+          setProgress(5);
           const data = await deriveOutput();
+          setProgress(95);
           lastDerivedOutput = data;
           els.output.value = JSON.stringify(data, null, 2);
+          setProgress(100);
+          setTimeout(hideProgress, 400);
+          showDerivedTable(data);
           uiStatus('Derivation complete.', 'valid');
         } catch (e) {
+          hideProgress();
           uiStatus(`Error: ${e.message}`, 'invalid');
           els.output.value = JSON.stringify({ error: e.message }, null, 2);
         }
@@ -2195,6 +3020,10 @@
       els.showSeedBtn.addEventListener('touchend', stopShowSeed);
       els.showSeedBtn.addEventListener('touchcancel', stopShowSeed);
       scheduleRootFingerprintRefresh();
+      // Output tab switching
+      document.querySelectorAll('.output-tab').forEach(function(btn) {
+        btn.addEventListener('click', function() { setOutputTab(btn.dataset.tab); });
+      });
     }
 
 	    (function init() {
@@ -2210,6 +3039,7 @@
 	      refreshNetworkStatus();
       styleMnemonicBox();
       uiStatus('Ready');
+      startIdleWatcher();
       // Ensure derivation info icon reflects default state after full init
       const _icon = document.getElementById('derivationInfoIcon');
       if (_icon) _icon.style.display = (document.getElementById('derivation')?.value?.trim() === "m/0'") ? '' : 'none';
