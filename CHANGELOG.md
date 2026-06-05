@@ -12,6 +12,50 @@ Changes on `main` not yet tagged in a formal release.
 
 ### Added
 
+**QR Code — BIP21 / URI Scheme Auto-Detection (HTML)**
+- A new `toBip21Uri()` function inspects the pasted address before encoding and prepends the correct URI scheme automatically, producing the format that wallet apps expect to scan rather than a bare address string.
+- Detection rules: `bc1…` / `1…` / `3…` → `bitcoin:`, `ltc1…` / `L…` / `M…` → `litecoin:`, `D…` / `A…` → `dogecoin:`, `0x…` (40 hex chars) → `ethereum:`. XRP classic addresses (`r…`) are encoded as bare addresses with no scheme prefix, which is the safest cross-wallet approach — `xrp:` is not a recognised standard and `xrpl:` (XLS-7d) has inconsistent wallet support.
+- Addresses that already carry a scheme (e.g. manually typed `bitcoin:…`) are passed through unchanged.
+- The address label displayed beneath the QR canvas shows the full URI so the user can verify exactly what was encoded.
+
+**QR Code — Forced Black-on-White Rendering (HTML)**
+- QR codes now always render with a `#000000` foreground on a `#ffffff` background regardless of the active theme.
+- Previously, Dark+ mode rendered an orange-on-dark-gray QR (`#e86926` / `#1a1a1a`) which caused silent scan failures on many wallet camera decoders tuned for high-contrast black-on-white.
+
+**QR Code — Increased Quiet Zone (HTML)**
+- The quiet zone around the QR matrix increased from 3 modules to 4 modules, matching the minimum recommended by the QR specification and improving decode reliability on scanners that crop near the canvas edge.
+
+### Fixed
+
+**QR Code Generator — Structural Module Type Collision (HTML)**
+- The original `makeMatrix()` used JavaScript `true`/`false` for finder patterns, timing strips, alignment patterns, and the dark module. Since `applyMask()` identified data modules by checking `typeof cell === 'boolean'`, structural cells were incorrectly masked, corrupting the QR matrix.
+- Fixed by using integer `1`/`0` for all structural modules and reserving `boolean` values exclusively for data and error-correction modules.
+
+**QR Code Generator — `applyMask()` XOR on Booleans (HTML)**
+- `out[r][c] ^= fn(r,c)` on a boolean operand produces an integer (`0` or `1`), not a boolean, silently breaking all subsequent `=== true` / `=== false` comparisons downstream.
+- Fixed by replacing the XOR with `out[r][c] = out[r][c] !== fn(r,c)`, which preserves the boolean type.
+
+**QR Code Generator — `writeFormat()` Incorrect Bit Placement (HTML)**
+- The original `writeFormat()` contained a redundant loop that overwrote already-written bits and missed several of the 15 format bit positions specified by the QR standard, producing unreadable format information strips.
+- Rewritten to place all 15 format bits at their exact positions on both the top-left and top-right / bottom-left copy strips.
+
+**QR Code Generator — `penaltyScore()` Mixed-Type Comparisons (HTML)**
+- With the previous mixed `true`/`false`/`1`/`0` cell types, `m[r][c] === m[r][c-1]` cross-type comparisons always returned `false`, making the penalty scorer unable to detect runs of identical modules and causing suboptimal mask selection.
+- Fixed by normalising all cell values through a `val(r,c) => !!m[r][c]` helper before comparison.
+
+**Listener Leak in `applyImportedSeed()` (HTML)**
+- `applyImportedSeed()` registered new `input` and `change` listeners on the derivation path field and coin selector, plus a `DOMContentLoaded` listener on `window`, every time it was called. Importing multiple seeds in one session accumulated unbounded duplicate listeners.
+- The `refreshDerivationInfoIcon` helper and its two event listeners have been moved to `bindUI()` where they are registered exactly once at startup.
+
+**XRP Network Definition — Spurious Taproot Versions (HTML)**
+- The XRP network object incorrectly included a `p2tr` entry with Bitcoin xprv/xpub version bytes. XRP Ledger does not use Taproot. While this caused no runtime error (the script type for XRP is always `'xrp'`), it was misleading and inconsistent with the Dogecoin entry which correctly sets `p2tr: null`.
+- Fixed by setting `p2tr: null` in the XRP network definition.
+
+**Litecoin URI Regex — Ambiguous `3…` Prefix (HTML)**
+- The Litecoin branch in `toBip21Uri()` matched addresses starting with `3`, which is the Bitcoin P2SH prefix, not Litecoin. Litecoin P2SH addresses use an `M` prefix. The `3` branch was unreachable in practice (the Bitcoin rule above it fires first) but has been removed to eliminate the ambiguity.
+
+### Added
+
 **PDF Key Export (HTML)**
 - New `PDF` option in the Export format selector triggers a full key export as a landscape A4 PDF via jsPDF (loaded on demand from cdnjs; no network required unless PDF export is actually used).
 - Page 1 opens with a title block ("Arculus Key Export"), a meta line showing coin, app version, UTC timestamp, and root fingerprint, followed by an **Extended Keys** section and then the address table.
