@@ -1,0 +1,547 @@
+Arculus Recovery v1.5.0 — Recovery Procedures
+===============================================
+
+Scope
+-----
+
+This document defines the step-by-step procedures for recovering a BIP39 wallet
+using Arculus Recovery v1.5.0. It covers every supported recovery entry point:
+direct mnemonic entry, import from a .arc encrypted seed file, and CLI-based
+recovery. For each entry point it defines the inputs required, the verification
+steps that must be completed before any output is acted on, the decision tree for
+locating addresses when the originating wallet configuration is unknown, and the
+procedure for sweeping funds after a hardware wallet failure.
+
+This document describes what to do and in what order. It does not re-derive the
+cryptographic constructions underlying the derivation pipeline; those are defined
+in Derivation.txt. It does not re-specify the .arc file format or encryption
+scheme; those are defined in Encryption.txt and FileFormat.txt. It does not
+re-enumerate the threat model or operational security requirements; those are
+defined in OpSec.txt. All of those constraints apply during every recovery
+session described here. This document assumes they are satisfied.
+
+The procedures below are written for a user who has already prepared an airgapped
+machine and a live ephemeral operating system as specified in OpSec.txt. Do not
+begin any recovery procedure on a machine that does not meet the airgap and
+ephemeral OS requirements in that document.
+
+
+Prerequisites Checklist
+------------------------
+
+Before beginning any recovery session, confirm the following conditions are met.
+A session that proceeds without satisfying these conditions may produce output
+that is cryptographically correct but operationally unusable, or may expose seed
+material to a compromised environment.
+
+  [ ] The machine has no active network route. Physical cables are disconnected.
+      Wireless and Bluetooth interfaces are disabled at the hardware level.
+      The network status indicator in the tool title bar shows red (no route).
+      The indicator is a convenience check; physical confirmation is authoritative.
+
+  [ ] The operating system is live-booted and ephemeral. It writes nothing to
+      persistent disk. Hibernation is disabled. Swap is RAM-backed or disabled.
+
+  [ ] The Arculus Recovery file has been verified by SHA256 hash before use.
+      Expected hashes are published in the README. An unverified file must not
+      be used for any recovery session involving real key material.
+
+  [ ] You have identified all inputs required for this recovery: the mnemonic
+      or .arc file, the BIP39 passphrase if applicable, the originating wallet
+      software and derivation path if known, and the target coin.
+
+  [ ] You are in a private space with no cameras pointed at the screen and no
+      other persons with line of sight to the display.
+
+
+Inputs Required for a Complete Recovery
+-----------------------------------------
+
+A deterministic BIP39 wallet requires at most four inputs to fully recover:
+
+  Input 1 — Mnemonic (required):
+    The 12-word or 24-word BIP39 seed phrase. Every wallet address and private
+    key derives deterministically from this value. If the mnemonic is lost and
+    no .arc backup exists, the wallet is unrecoverable. The mnemonic must be
+    entered exactly as originally generated, with correct spelling and word order.
+    Partial mnemonics, mnemonics with transposed words, or mnemonics with one or
+    more words replaced produce a completely different key tree with no error or
+    warning other than BIP39 checksum failure, if the checksum happens to fail.
+    A mnemonic with a transposition error that passes the BIP39 checksum is
+    indistinguishable from a valid but wrong mnemonic.
+
+  Input 2 — BIP39 passphrase (required if used, otherwise omit):
+    An optional additional string that was entered at wallet setup time. It is
+    separate from the .arc encryption password. If a passphrase was used and
+    is omitted or entered incorrectly, the derived key tree is cryptographically
+    unrelated to the one that holds funds. The tool produces no error; it derives
+    valid-looking but wrong addresses and keys. There is no mechanism to detect
+    a wrong passphrase other than comparing derived addresses against known on-
+    chain history or against a previously recorded root fingerprint. If you are
+    uncertain whether a passphrase was used, refer to the passphrase decision
+    procedure in the Address Location section below.
+
+  Input 3 — Derivation path (required if non-standard):
+    The BIP32 account path that the originating wallet used to derive addresses.
+    If the originating wallet was an Arculus hardware wallet using the native
+    default, the path is m/0'. If the originating wallet used a standard BIP44/
+    49/84/86 path, the path follows the conventions in the derivation path table
+    below. If the originating wallet software is unknown, the path must be
+    determined by trial; the address location procedure in this document covers
+    this case.
+
+  Input 4 — Script type (required for UTXO coins if non-standard):
+    For Bitcoin, Litecoin, and Dogecoin, the script type determines the address
+    format and the encoding of derived addresses. If the script type is known
+    from the originating wallet, select it directly. If unknown, use the Auto
+    selector and try each standard path in turn. For Ethereum and XRP, the
+    script type is fixed and not selectable.
+
+All four inputs must be correct simultaneously for the derived output to match
+the addresses and keys associated with on-chain history. Errors in any single
+input produce silently wrong output. Verification against a known address or
+root fingerprint is mandatory before acting on any derived output.
+
+
+Standard Derivation Path Reference
+------------------------------------
+
+This table is the first lookup reference when the originating wallet software
+is known. Identify the row that matches the originating wallet, coin, and address
+format, and enter the path and script type exactly as shown.
+
+  Coin      Script type    Path              Address prefix  Notes
+  --------- -------------- ----------------- --------------- ----------------------
+  Bitcoin   P2PKH          m/44'/0'/0'       1...            Legacy BIP44
+  Bitcoin   P2WPKH-P2SH    m/49'/0'/0'       3...            Wrapped SegWit
+  Bitcoin   P2WPKH         m/84'/0'/0'       bc1q...         Native SegWit
+  Bitcoin   P2TR           m/86'/0'/0'       bc1p...         Taproot, BIP86
+  Bitcoin   P2WPKH         m/0'              bc1q...         Arculus native default
+  Litecoin  P2PKH          m/44'/2'/0'       L...            Legacy BIP44
+  Litecoin  P2WPKH-P2SH    m/49'/2'/0'       M...            Wrapped SegWit
+  Litecoin  P2WPKH         m/84'/2'/0'       ltc1q...        Native SegWit (tool default)
+  Litecoin  P2TR           m/86'/2'/0'       ltc1p...        Taproot-style output
+  Dogecoin  P2PKH          m/44'/3'/0'       D...            Default Dogecoin path
+  Dogecoin  P2WPKH-P2SH    m/49'/3'/0'       9... or A...    Supported; wallet support varies
+  Dogecoin  P2WPKH         m/84'/3'/0'       doge1q...       Supported; wallet support varies
+  Ethereum  Account        m/44'/60'/0'      0x...           ERC-20 tokens same address
+  XRP       Account        m/44'/144'/0'     r...            Destination tags not derived
+
+For the Arculus hardware wallet native path (m/0'), the tool displays an info
+tooltip beside the Derivation Path field as a reminder that this path differs
+from BIP44 convention. The tooltip is informational only and does not affect
+derivation behavior.
+
+If the originating wallet used a non-account-0 path (e.g. m/84'/0'/1' for a
+second account), change the trailing account index from 0 to the correct value.
+Account indices above 0 are uncommon but legal. Most wallet software creates
+only account 0 unless the user explicitly created additional accounts.
+
+
+Procedure 1 — Recovery from Direct Mnemonic Entry (HTML)
+----------------------------------------------------------
+
+Use this procedure when the mnemonic is available as a written or memorized
+phrase and no .arc file is involved.
+
+  1. Open Arculus_Recovery-5.html in the browser on the airgapped machine.
+     Confirm the network status indicator shows red before proceeding.
+
+  2. Select the word count radio button (12 or 24) that matches the mnemonic.
+
+  3. Enter each mnemonic word into its numbered word field. Each field provides
+     inline validation against the BIP39 word list; a word that is not in the
+     list is flagged immediately. Correct any flagged words before proceeding.
+     Note: a word that is in the word list but wrong for the position passes
+     inline validation silently. Inline validation confirms only that each word
+     exists in the BIP39 word list, not that the complete mnemonic is the
+     correct one.
+
+  4. After all words are entered, the tool performs full BIP39 validation
+     including checksum verification. If the checksum fails, the tool displays
+     a checksum error. A checksum failure means at least one word is incorrect,
+     or the word order is wrong, or both. Correct the mnemonic until the
+     checksum passes.
+     Note: some transcription errors produce a different valid mnemonic that
+     passes the BIP39 checksum. Checksum verification is a necessary but not
+     sufficient condition for mnemonic correctness.
+
+  5. If a BIP39 passphrase was used, enter it in the Passphrase field. If no
+     passphrase was used, leave the field empty. Do not guess. If you are
+     uncertain, proceed with the empty passphrase first and compare derived
+     addresses against known on-chain history. See the Address Location
+     Procedure section if the originating configuration is unknown.
+
+  6. Select the target coin from the Coin selector.
+
+  7. Select the script type. If the originating wallet software is known,
+     select the script type from the reference table above. If unknown, select
+     Auto and proceed to the Address Location Procedure section.
+
+  8. Enter the derivation path. If the originating wallet is known, enter the
+     path from the reference table. If the tool default is already correct
+     (m/0' for Arculus native, or the coin-appropriate standard path), no
+     change is required.
+
+  9. Set the Address Count to the number of addresses to derive. The default
+     of 5 covers most cases. If the target address is beyond index 4, increase
+     the count or use the Range input to target a specific index window.
+
+  10. Click Derive Keys + Addresses. Wait for the derivation progress bar to
+      complete. The output panel populates with derived addresses and keys.
+
+  11. Verify the root fingerprint displayed in the toolbar against a previously
+      recorded root fingerprint. If the fingerprints match, the mnemonic and
+      passphrase are correct. If they do not match, and you have a recorded
+      fingerprint from a prior session, the inputs are wrong; do not act on
+      the output.
+
+  12. Locate the target address in the output table. Confirm it appears in the
+      on-chain history of the blockchain explorer (performed offline by
+      comparison against a previously exported address list, or after the
+      session on a trusted device). Do not connect the airgapped machine to any
+      network at this step.
+
+  13. Export the output in the required format using the Export selector.
+      Transfer the file to a USB drive for handling on a separate trusted
+      machine. The export file contains private key material and must be handled
+      per the Category B requirements in OpSec.txt.
+
+  14. When the recovery session is complete, click Clear All to wipe all fields
+      and in-memory state. Close the browser tab. If the OS is ephemeral, power
+      off the machine to complete RAM clearance.
+
+
+Procedure 2 — Recovery from .arc Encrypted Seed File (HTML)
+-------------------------------------------------------------
+
+Use this procedure when the mnemonic is stored in a .arc backup file and is
+not available as a written phrase, or when importing a .arc backup to verify
+its integrity.
+
+  1. Complete the airgap and OS prerequisites as specified.
+
+  2. Transfer the .arc file to the airgapped machine via USB drive. Do not
+     connect the machine to any network for this transfer.
+
+  3. Open Arculus_Recovery-5.html in the browser.
+
+  4. Click Import Seed. In the file picker, select the .arc file from the USB
+     drive. The tool reads the file, detects its format version, and prompts
+     for the decryption password.
+
+  5. Enter the .arc decryption password. This is the password chosen at export
+     time. It is not the BIP39 passphrase. Click Decrypt. The tool performs
+     MAC verification followed by decryption. If MAC verification fails, the
+     file has been tampered with or the password is wrong. The tool does not
+     distinguish between these two failure modes in the error message; both
+     produce an authentication failure.
+
+  6. If decryption succeeds, the mnemonic is loaded into the hidden-seed
+     workflow. The word grid is populated with obfuscated placeholder bullets.
+     The root fingerprint display updates immediately. The mnemonic is held
+     in protected memory and is not displayed unless Show Seed is pressed and
+     held.
+
+  7. Verify the root fingerprint against a previously recorded value. If the
+     fingerprint matches, the .arc file contains the correct mnemonic and the
+     password was entered correctly. If the fingerprint does not match a recorded
+     value, do not proceed until the discrepancy is resolved.
+
+  8. Continue from step 5 of Procedure 1 (passphrase entry, coin selection,
+     derivation, and output verification). The derivation pipeline is identical
+     regardless of whether the mnemonic was entered directly or imported from
+     a .arc file.
+
+  9. The Show Seed button is available if visual confirmation of the full
+     mnemonic is needed. Press and hold to reveal the mnemonic temporarily.
+     Release to re-obscure. Minimize the duration for which the mnemonic is
+     visible.
+
+  10. Complete the session per steps 13 and 14 of Procedure 1.
+
+
+Procedure 3 — Recovery via Python CLI
+---------------------------------------
+
+Use this procedure when the HTML browser interface is not available or when
+scripted derivation of a large address range is required.
+
+  1. Copy Arculus_Recovery.py to a RAM-backed tmpfs location on the airgapped
+     machine before execution. Verify with the mount command that the target
+     directory is tmpfs-backed.
+
+  2. For direct mnemonic entry, invoke the CLI with the mnemonic, passphrase,
+     coin, derivation path, script type, and address count as required:
+
+     python Arculus_Recovery.py \
+       --mnemonic "word1 word2 ... word12" \
+       --passphrase "optional passphrase" \
+       --derivation "m/84'/0'/0'" \
+       --script-type p2wpkh \
+       --coin bitcoin \
+       --count 10 \
+       --output-format json
+
+  3. To derive all common paths for a coin in a single invocation when the
+     originating wallet is unknown:
+
+     python Arculus_Recovery.py \
+       --mnemonic "word1 word2 ... word12" \
+       --coin bitcoin \
+       --all-common \
+       --count 5 \
+       --output-format txt
+
+     The --all-common flag derives m/44', m/49', m/84', and m/86' purpose paths
+     for UTXO coins, and m/44' only for Ethereum and XRP.
+
+  4. Redirect output to a file on the tmpfs volume:
+
+     python Arculus_Recovery.py ... > /tmp/recovery_output.json
+
+     Do not write output to a persistent volume. The /tmp directory on a live
+     Linux environment is tmpfs-backed and writes to RAM only.
+
+  5. Verify the root_fingerprint field in the JSON output against a previously
+     recorded value before relying on any derived address or key.
+
+  6. Transfer the output file to a USB drive for handling on a separate trusted
+     machine per Category B requirements in OpSec.txt.
+
+  7. On session completion, remove the output file from /tmp and power off
+     the machine. RAM is cleared at power loss on an ephemeral OS.
+
+
+Address Location Procedure
+---------------------------
+
+Use this procedure when the originating wallet software, derivation path,
+script type, or passphrase usage is unknown. The goal is to systematically
+locate the derivation configuration that produces addresses matching known
+on-chain history. This procedure requires a reference address: at least one
+address that is known to have been funded from the wallet being recovered.
+
+If no reference address is available, the procedure below cannot definitively
+confirm a match. In that case, derive all standard paths and inspect each for
+plausible on-chain history after the airgapped session ends, on a separate
+trusted networked device.
+
+  Step 1 — Determine passphrase usage:
+
+    Derive with an empty passphrase on the most likely path for the coin and
+    script type (see reference table). Compare the derived addresses against
+    the reference address. If the reference address appears, the wallet used
+    no passphrase. Proceed to step 2.
+
+    If the reference address does not appear with an empty passphrase, the
+    wallet likely used a passphrase. Try each known or candidate passphrase
+    in turn, repeating the derivation. If none produce the reference address,
+    the passphrase is unknown and the funds may be inaccessible by this path.
+    Record the root fingerprint for each passphrase attempt for future reference.
+
+  Step 2 — Identify the derivation path and script type:
+
+    For Bitcoin, try the paths below in order. For each, derive at least 10
+    receiving branch (branch index 0) addresses and compare against the
+    reference address. The address prefix is a fast filter: if the reference
+    address starts with bc1p, test only m/86' paths; if it starts with bc1q,
+    test only m/84' and m/0' paths; if it starts with 1, test only m/44' paths;
+    if it starts with 3, test only m/49' paths.
+
+      1. m/84'/0'/0'  (P2WPKH, most common for modern Bitcoin wallets)
+      2. m/0'         (P2WPKH, Arculus native default)
+      3. m/44'/0'/0'  (P2PKH, legacy BIP44)
+      4. m/49'/0'/0'  (P2WPKH-P2SH, wrapped SegWit)
+      5. m/86'/0'/0'  (P2TR, Taproot)
+
+    For Litecoin, try in order: m/84'/2'/0', m/44'/2'/0', m/49'/2'/0',
+    m/86'/2'/0'.
+
+    For Dogecoin, try in order: m/44'/3'/0', m/49'/3'/0', m/84'/3'/0'.
+
+    For Ethereum and XRP, the path is fixed (m/44'/60'/0' and m/44'/144'/0'
+    respectively). Only the passphrase can vary.
+
+    Use --all-common in the CLI to derive all four Bitcoin purpose paths in one
+    invocation and inspect the combined output.
+
+  Step 3 — Extend the address window if needed:
+
+    If none of the receiving branch addresses at indices 0–9 match the reference
+    address, increase the address count to 25, then 50, then 100. A wallet that
+    has been in use for a long time or that uses a gap-aware derivation policy
+    may have funded addresses at high indices. The derivation is fast; a count
+    of 100 adds negligible time.
+
+    Also check the change branch (branch index 1) if the reference address is
+    a change output. Change addresses are commonly funded in UTXO wallets and
+    are on branch index 1 rather than branch index 0.
+
+  Step 4 — Check non-standard account indices:
+
+    If account index 0 does not produce the reference address, try account
+    index 1 and 2 (e.g. m/84'/0'/1', m/84'/0'/2'). Some wallet software
+    creates multiple accounts and the wallet in question may have used a
+    non-default account.
+
+  Step 5 — Record findings:
+
+    Once the correct path, script type, and passphrase are confirmed, record:
+      - The root fingerprint for this mnemonic and passphrase combination
+      - The derivation path
+      - The script type
+      - Whether a passphrase was used (but not the passphrase value itself,
+        unless it is stored in a separately secured location)
+
+    These four values are sufficient to reproduce the derivation configuration
+    in future sessions without repeating the discovery procedure.
+
+
+Sweeping Funds After Hardware Wallet Failure
+---------------------------------------------
+
+Use this procedure when a hardware wallet has failed, been lost, or been
+destroyed and funds must be moved to a new wallet. This procedure assumes the
+recovery session is complete (Procedure 1, 2, or 3) and the derived addresses
+and private keys have been exported to a file on an encrypted USB drive.
+
+This procedure involves importing private key material into a software wallet
+on a networked device. That device should be considered exposed to the private
+keys after this operation is complete. The hardware wallet and its mnemonic
+should be treated as compromised from the moment the private keys are imported
+into any networked software.
+
+  1. On the airgapped machine, complete the derivation and export the relevant
+     private keys in JSON or CSV format to an encrypted USB drive.
+
+  2. On a trusted, clean, networked device, open the software wallet of your
+     choice (Electrum for Bitcoin, MetaMask for Ethereum, etc.) in sweep or
+     watch-only mode.
+
+  3. Import the private key for each address that holds funds. Most software
+     wallets accept WIF (for UTXO coins) or hex private keys (for Ethereum)
+     for individual address sweeps. Do not import the extended private key into
+     a networked wallet; prefer per-address WIF imports to minimize exposure.
+
+  4. Construct a transaction from each funded address to an address in the new
+     hardware wallet. Broadcast all sweep transactions before considering the
+     old wallet retired.
+
+  5. Verify on-chain that each sweep transaction has confirmed before the next
+     step. Do not retire the old wallet backup until all funds have moved and
+     confirmed.
+
+  6. After all funds have swept and confirmed, the old mnemonic and its .arc
+     backup are no longer needed for fund access. They should be retained as
+     historical records of the old wallet or destroyed per your operational
+     policy for retired key material. A mnemonic that has been imported into
+     any networked device should be considered permanently exposed.
+
+  7. Generate a new mnemonic for the replacement hardware wallet using the
+     hardware wallet's own CSPRNG. Do not reuse the recovered mnemonic as a
+     new wallet seed. Do not use Arculus Recovery to generate the replacement
+     hardware wallet seed; use the hardware wallet's own generation mechanism.
+
+  8. Back up the new mnemonic and set up a new .arc file on the airgapped
+     machine following the backup verification procedure in OpSec.txt.
+
+
+Recovery Verification Checklist
+---------------------------------
+
+Before ending any recovery session and acting on derived output, confirm all
+of the following. Each unchecked item is a potential source of irreversible error.
+
+  [ ] The BIP39 checksum passed during mnemonic validation.
+
+  [ ] The root fingerprint matches a previously recorded value, OR this is
+      the first session for this mnemonic and the fingerprint has been recorded
+      for future reference.
+
+  [ ] At least one derived address has been confirmed to match known on-chain
+      history, either against a recorded address list or against a prior export.
+
+  [ ] The passphrase field contained the correct value (including empty if no
+      passphrase was used). A single character difference produces a completely
+      different key tree.
+
+  [ ] The derivation path and script type match the originating wallet.
+
+  [ ] The export file has been saved to an encrypted USB drive and has not been
+      written to any persistent or networked filesystem on the airgapped machine.
+
+  [ ] Clear All has been clicked or the session will be ended by powering off
+      the machine. In-memory seed state is not cleared by navigating away from
+      the tab or minimizing the window; it persists until Clear All is used or
+      the tab is closed.
+
+  [ ] The USB drive containing the export file is physically secured and will
+      be handled under Category B controls as defined in OpSec.txt.
+
+
+Common Recovery Failures and Resolutions
+-----------------------------------------
+
+The following failures account for the majority of unsuccessful recovery
+attempts. Each is listed with its diagnostic indicator and corrective action.
+
+Failure: No derived addresses match on-chain history.
+  Indicator: All derived addresses are unfamiliar. Root fingerprint does not
+    match any recorded value.
+  Most likely cause: Wrong passphrase, wrong mnemonic word, or wrong derivation
+    path. These three causes are indistinguishable by inspection of the output.
+  Resolution: Verify the BIP39 checksum passes. Try the empty passphrase if
+    passphrase usage is uncertain. Try each standard derivation path using the
+    address location procedure above. If the mnemonic was hand-transcribed,
+    check each word against the BIP39 word list for plausible transcription
+    errors.
+
+Failure: BIP39 checksum fails.
+  Indicator: The tool displays a checksum validation error.
+  Most likely cause: One or more mnemonic words are misspelled, in wrong order,
+    or from the wrong word list. The BIP39 English word list is the only
+    supported word list.
+  Resolution: Review each word against the BIP39 word list. The 2048-word list
+    is published in the BIP39 specification. Common errors include: visually
+    similar words (witch/which, right/light), words differing by one letter
+    (able/able), and words from non-English BIP39 word lists.
+
+Failure: .arc import fails with authentication error.
+  Indicator: The tool displays an authentication or MAC verification failure
+    after password entry.
+  Most likely cause: Wrong password, or the file was modified after export.
+    Both causes produce identical error messages.
+  Resolution: Re-enter the password carefully. If the password contains Unicode
+    characters, confirm they are entered in the same normalized form used at
+    export time. If the correct password is known with certainty and verification
+    still fails, the file has been corrupted or tampered with and cannot be
+    decrypted. Recover from an alternative backup.
+
+Failure: .arc import fails with format error before password prompt.
+  Indicator: The tool rejects the file immediately without prompting for a
+    password.
+  Most likely cause: The file is corrupted, truncated, or is not a .arc file.
+  Resolution: Verify the file is a valid UTF-8 text file beginning with
+    "ARCULUS-ARC-V2". Confirm the file transfer was complete and the USB drive
+    is readable. Try a second copy of the file from a separate USB drive if one
+    exists.
+
+Failure: Derived output matches the mnemonic but not the expected addresses.
+  Indicator: Root fingerprint matches a recorded value, but the specific
+    addresses in the output are unfamiliar.
+  Most likely cause: Wrong derivation path, wrong script type, wrong account
+    index, or wrong address count (the target address is beyond the derived
+    window).
+  Resolution: Try each standard derivation path. Increase the address count.
+    Check the change branch (branch index 1). Try account indices 1 and 2.
+
+Failure: Passphrase-derived addresses are correct but passphrase is forgotten.
+  Indicator: Derivation with the empty passphrase produces addresses with no
+    on-chain history. The passphrase-derived root fingerprint (recorded
+    previously) does not match the empty-passphrase fingerprint.
+  Resolution: There is no recovery path for a forgotten BIP39 passphrase from
+    the mnemonic alone. The passphrase is not stored in the .arc file; the .arc
+    file stores the mnemonic only. If the passphrase was written down separately,
+    locate that record. If no backup of the passphrase exists, the funds in the
+    passphrase-derived key tree are inaccessible.

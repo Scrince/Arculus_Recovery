@@ -1,0 +1,560 @@
+Arculus Recovery v1.5.0 — File Format Reference
+================================================
+
+Scope
+-----
+
+This document is the authoritative structural reference for every file format
+produced or consumed by Arculus Recovery v1.5.0. It covers the .arc encrypted
+seed file in all supported versions, the JSON derived-output format and its
+nested schema in full, the CSV and TXT flat export formats, the PDF export
+layout, and the plain-text export file naming conventions.
+
+This document is complementary to Encryption.txt, which specifies the
+cryptographic construction inside the .arc envelope at the byte level, and to
+Derivation.txt, which specifies the key material that populates the derived-
+output formats. Readers needing the cryptographic rationale for .arc encryption
+parameters, KDF selection, or MAC transcript construction should consult
+Encryption.txt. Readers needing derivation path semantics, script type
+resolution, or address encoding rules should consult Derivation.txt. This
+document is limited to the structural, schema, and serialization definitions
+of each format.
+
+All formats except PDF are UTF-8 encoded. No byte-order mark is written or
+expected. Line endings in plain-text formats are platform-dependent in Python
+output and LF-only in HTML output; importers should accept both. All formats
+are self-contained single files. No multi-file bundles or external schema
+references are required to read or write any format defined here.
+
+
+.arc Encrypted Seed Format
+---------------------------
+
+A .arc file stores a single BIP39 mnemonic phrase in an encrypted, integrity-
+authenticated envelope. The format exists in three generations. Only the current
+armored V2 format is produced by new exports. All three generations are accepted
+on import. The format is identical whether produced by the HTML or Python
+implementation.
+
+Version identifier summary:
+
+  Current export format:     ARCULUS-ARC-V2 (armored)
+  Legacy import — JSON V2:   arculus-encrypted-seed-v2 (raw JSON)
+  Legacy import — JSON V1:   arculus-encrypted-seed-v1 (HTML only)
+  Legacy import — Python V1: arculus-encrypted-seed-python-v1
+
+The version is detected automatically during import from structural indicators
+described in the format detection section below. No user selection is required.
+
+
+Current Format — ARCULUS-ARC-V2 (Armored)
+-------------------------------------------
+
+The armored V2 format is a three-line UTF-8 text file:
+
+  Line 1: "ARCULUS-ARC-V2"
+  Line 2: <base64-encoded compact JSON bundle>
+  Line 3: (empty, trailing newline)
+
+Line 1 is the armor header. It is a fixed ASCII string. Its presence as the
+first line is the sole trigger for armored V2 detection. No other format begins
+with this string.
+
+Line 2 is a standard base64 encoding (RFC 4648, alphabet A-Z/a-z/0-9/+/,
+with = padding) of the UTF-8 compact JSON bundle. The JSON is serialized with
+no indentation and no extraneous whitespace. Key ordering follows the field
+sequence documented in the bundle schema below.
+
+Line 3 is a trailing newline. Importers must accept files with or without the
+trailing newline.
+
+The base64 encoding on line 2 is not a security control. It provides a
+consistent single-line serialization and prevents casual inspection or accidental
+editing of the binary-embedded fields (salt, nonce, ciphertext, MAC). The
+security boundary is the MAC verification gate in the decryption procedure, not
+the base64 armor.
+
+
+V2 Bundle Schema (Internal JSON)
+----------------------------------
+
+After base64 decoding, the V2 bundle is a JSON object with the following fields.
+All fields are required. An importer that encounters a bundle missing any of
+these fields must reject the file with a structural validation error before
+attempting decryption.
+
+  Field           Type      Description
+  --------------- --------- -------------------------------------------------------
+  magic           string    Fixed value "ARCULUS-ARC". Identifies the file as an
+                            Arculus seed bundle. Not version-specific.
+  format          string    Fixed value "arculus-encrypted-seed-v2". Identifies
+                            the internal format variant.
+  version         integer   Fixed value 2. Integer, not string. Used to gate
+                            legacy importer dispatch.
+  created_at      string    UTC ISO 8601 timestamp of the export event, e.g.
+                            "2026-06-05T14:32:00.000Z". This field is a MAC-bound
+                            metadata commitment, not a user-editable annotation.
+                            Any modification to this field invalidates the MAC.
+  cipher          object    Cipher parameter block. Fields defined below.
+  kdf             object    KDF parameter block. Fields defined below.
+  ciphertext_b64  string    Base64-encoded ciphertext bytes. The ciphertext is
+                            the HMAC-SHA512-CTR keystream XOR of the UTF-8
+                            encoded plaintext JSON payload.
+  mac_b64         string    Base64-encoded 64-byte HMAC-SHA512 MAC over the
+                            versioned metadata transcript. See Encryption.txt for
+                            the exact transcript construction.
+
+The cipher sub-object:
+
+  Field       Type    Description
+  ----------- ------- ----------------------------------------------------------
+  name        string  Fixed value "HMAC-SHA512-CTR". Stream cipher identifier.
+  nonce_b64   string  Base64-encoded 24-byte cryptographically random nonce,
+                      generated fresh by CSPRNG on every export.
+
+The kdf sub-object:
+
+  Field       Type    Description
+  ----------- ------- ----------------------------------------------------------
+  name        string  Fixed value "PBKDF2".
+  hash        string  Fixed value "SHA-512".
+  iterations  integer KDF iteration count. 1,000,000 for new exports. Imports
+                      accept any value >= 600,000. Values below 600,000 are
+                      rejected as below the minimum hardening floor.
+  salt_b64    string  Base64-encoded 32-byte cryptographically random salt,
+                      generated fresh by CSPRNG on every export.
+
+
+V2 Plaintext Payload Schema
+-----------------------------
+
+After successful MAC verification and decryption, the recovered plaintext is a
+UTF-8 encoded JSON object. The current schema:
+
+  Field       Type    Required  Description
+  ----------- ------- --------- -----------------------------------------------
+  mnemonic    string  yes       Space-separated BIP39 mnemonic words, Unicode
+                                NFKD-normalized. 12 or 24 words.
+  word_count  integer yes       Integer word count. Must equal the number of
+                                space-delimited tokens in the mnemonic field.
+  created_at  string  yes       UTC ISO 8601 timestamp. Matches the outer bundle
+                                created_at field; included in the plaintext as a
+                                convenience cross-reference.
+
+Importers must ignore unknown fields at the top level of the plaintext payload.
+Future versions may add fields without changing the format version. An importer
+that rejects unknown plaintext fields will fail on files produced by future
+versions that add optional metadata.
+
+The mnemonic field value is Unicode NFKD-normalized before encryption. On
+decryption and import, the recovered string is used directly for BIP39 seed
+derivation without any additional normalization step by the importer.
+
+
+File Format Detection and Importer Dispatch
+--------------------------------------------
+
+The import pipeline applies the following detection sequence to determine which
+decryption path to invoke. Detection is structural and requires no password.
+
+  Step 1 — Check for armor header:
+    If the file text, after stripping leading and trailing whitespace, begins
+    with the exact string "ARCULUS-ARC-V2\n" or "ARCULUS-ARC-V2\r\n", dispatch
+    to the armored V2 import path. This is the current production format.
+
+  Step 2 — Attempt raw JSON parse:
+    If no armor header is detected, attempt to parse the file text as JSON.
+    If parsing fails, reject the file as unrecognized format.
+
+  Step 3 — Inspect parsed JSON for magic and version:
+    If the JSON object contains the field magic == "ARCULUS-ARC" and
+    version == 2, dispatch to the raw JSON V2 import path. This path is
+    identical to the armored V2 path after the armor-strip and base64-decode
+    steps; the bundle schema is the same.
+
+  Step 4 — Inspect for format field (legacy V1, HTML only):
+    If the JSON object contains format == "arculus-encrypted-seed-v1",
+    dispatch to the legacy V1 AES-GCM import path. This path is implemented
+    in the HTML version only. The Python implementation does not support V1.
+
+  Step 5 — Inspect for Python V1 sentinel field:
+    If the JSON object contains format == "arculus-encrypted-seed-python-v1"
+    or an equivalent Python-V1 sentinel, dispatch to the Python V1 legacy
+    import path.
+
+  Step 6 — Attempt legacy headerless import:
+    If none of the above conditions match, attempt decryption as a legacy
+    headerless PBKDF2-SHA256 + XOR-HMAC file. This covers the earliest export
+    format predating the format field and magic marker.
+
+  If all steps fail, the file is rejected with a format error before any
+  password is requested or any cryptographic operation is attempted.
+
+
+Legacy Formats — Import-Only
+------------------------------
+
+The following formats are accepted on import but are never produced by new
+exports. Users holding files in these formats should re-export to the current
+armored V2 format to apply current KDF hardening and standardize the storage
+representation.
+
+Legacy V2 raw JSON:
+  Structurally identical to the V2 bundle schema above but stored as a plain
+  JSON file rather than armored text. Detected by magic == "ARCULUS-ARC" and
+  version == 2 without the armor header. Produced by earlier builds before
+  the armored text envelope was introduced. Accepted without restriction
+  subject to the minimum KDF iterations floor of 600,000.
+
+Legacy V1 AES-GCM (HTML only):
+  An earlier HTML-only format that used the browser SubtleCrypto AES-GCM
+  primitive directly. Format field value: "arculus-encrypted-seed-v1".
+  Not supported by the Python implementation. Import is supported in the
+  HTML version for backward compatibility. Re-export to armored V2 is strongly
+  recommended because this format uses a different cipher construction with
+  shorter authentication tags and does not commit the KDF iteration count
+  into the MAC transcript.
+
+Legacy Python V1:
+  The earliest Python export format. Format field value:
+  "arculus-encrypted-seed-python-v1". Uses PBKDF2-HMAC-SHA256 and a
+  simpler XOR-HMAC authentication scheme with a different transcript
+  structure. Accepted for import only. Re-export to armored V2 applies the
+  current PBKDF2-HMAC-SHA512 construction and the full metadata MAC commitment.
+
+Legacy headerless format:
+  The oldest format, predating explicit format and magic fields. Detected as
+  a fallback after all named-format checks fail. Uses PBKDF2-HMAC-SHA256 with
+  a 32-byte salt and a simple XOR stream keyed on the full KDF output. The
+  authentication tag covers only the ciphertext, not KDF parameters. Accepted
+  for import only.
+
+In all legacy import paths, the decrypted mnemonic is surfaced in the same
+hidden-seed workflow as a current-format import. The import path is transparent
+to the user; the same password entry and root fingerprint verification procedure
+applies regardless of the underlying format.
+
+
+.arc File Naming
+-----------------
+
+The tool produces .arc files with the following default filename pattern:
+
+  arculus_seed_<YYYYMMDD_HHMMSS>.arc
+
+The timestamp component is derived from the export creation time in UTC.
+The filename is not security-relevant. The file may be renamed freely without
+affecting decryptability. The format is identified entirely by its internal
+structure and armor header, not by its filename or extension.
+
+The .arc extension is a project convention. The file is plain UTF-8 text and
+can be opened, copied, and transmitted like any other text file. The extension
+serves only as a visual indicator of the file type.
+
+
+Derived-Output JSON Format
+---------------------------
+
+JSON is the primary export format for derived keys and addresses. It is the
+default output format in all CLI invocations that do not specify --output-format.
+It is one of four format options in the HTML and Python GUI export selector.
+
+The JSON output is a single top-level object with the following structure:
+
+  Top-level object:
+
+    Field             Type    Description
+    ----------------- ------- -----------------------------------------------
+    coin              string  Coin identifier: "bitcoin", "litecoin",
+                              "dogecoin", "ethereum", or "xrp".
+    network           string  Network identifier: "mainnet" or "testnet".
+    mnemonic          string  The BIP39 mnemonic used for this derivation run.
+                              Present in JSON output. Treat as operationally
+                              sensitive; see security note at end of section.
+    word_count        integer Number of mnemonic words: 12 or 24.
+    derivation        string  The account-level derivation path used.
+    account_script_type_used  string  Resolved script type after auto-inference,
+                              if applicable. One of: p2pkh, p2wpkh-p2sh,
+                              p2wpkh, p2tr, xrp, ethereum.
+    root_fingerprint  string  4-byte hex fingerprint of the BIP32 master node.
+                              Derived from HASH160 of the master public key.
+    accounts          array   Array of one or more account objects. See below.
+
+  Account object (one entry per account path derived):
+
+    Field             Type    Description
+    ----------------- ------- -----------------------------------------------
+    account_path      string  Full BIP32 account path including hardened indices.
+    script_type       string  Script type for this account entry.
+    account_xprv      string  Account-level extended private key in base58check.
+    account_xpub      string  Account-level extended public key in base58check.
+    account_zprv      string  P2WPKH extended private key (zprvA... form).
+                              Present only when script type is p2wpkh or auto
+                              with m/84' purpose.
+    account_zpub      string  P2WPKH extended public key (zpub... form).
+    account_yprv      string  P2WPKH-P2SH extended private key (yprvA... form).
+                              Present only when script type is p2wpkh-p2sh or
+                              auto with m/49' purpose.
+    account_ypub      string  P2WPKH-P2SH extended public key (ypub... form).
+    account_trprv     string  Taproot extended private key (trprvA... form).
+                              Present only when script type is p2tr or auto
+                              with m/86' purpose.
+    account_trpub     string  Taproot extended public key (trpub... form).
+    root_xprv         string  Root-level master extended private key (xprv).
+    root_xpub         string  Root-level master extended public key (xpub).
+    root_zprv         string  Root-level P2WPKH extended private key.
+    root_zpub         string  Root-level P2WPKH extended public key.
+    root_yprv         string  Root-level P2WPKH-P2SH extended private key.
+    root_ypub         string  Root-level P2WPKH-P2SH extended public key.
+    root_trprv        string  Root-level Taproot extended private key.
+    root_trpub        string  Root-level Taproot extended public key.
+    receiving         array   Address records for branch index 0.
+    change            array   Address records for branch index 1.
+
+  Extended key fields that are not applicable to a given coin or script type
+  are omitted from the output rather than set to null. An importer that
+  requires a field not present for a given combination should treat absence as
+  equivalent to null.
+
+  Address record — UTXO coins (P2PKH, P2WPKH-P2SH, P2WPKH):
+
+    Field             Type    Description
+    ----------------- ------- -----------------------------------------------
+    path              string  Full child derivation path, e.g. m/84'/0'/0'/0/3
+    branch            integer Branch index: 0 for receiving, 1 for change.
+    address           string  Encoded address in the canonical format for the
+                              script type and coin.
+    public_key_hex    string  33-byte compressed public key as lowercase hex.
+    private_key_hex   string  32-byte private scalar as lowercase hex.
+    private_key_wif   string  Private key in Wallet Import Format (WIF).
+                              Base58check encoded with the coin-specific version
+                              byte and compression flag.
+
+  Address record — P2TR (Taproot), augmented:
+
+    All fields above, plus:
+
+    Field                       Type    Description
+    --------------------------- ------- ---------------------------------------
+    taproot_internal_public_key_hex   string  32-byte x-only internal public key hex.
+    taproot_internal_private_key_hex  string  32-byte internal private scalar hex.
+    taproot_tweak_hex                 string  32-byte TapTweak scalar hex.
+    taproot_output_public_key_hex     string  32-byte x-only output public key hex.
+    taproot_output_private_key_hex    string  32-byte tweaked output private scalar hex.
+    taproot_output_private_key_wif    string  Tweaked output private key in WIF.
+    taproot_output_key_parity         integer Y-parity of the output public key: 0 or 1.
+
+  Address record — Ethereum:
+
+    Field                   Type    Description
+    ----------------------- ------- -------------------------------------------
+    path                    string  Full child derivation path.
+    branch                  integer Branch index: 0 or 1.
+    address                 string  EIP-55 checksummed Ethereum address (0x...).
+    ethereum_public_key_hex string  33-byte compressed public key as hex.
+    private_key_hex         string  32-byte private scalar as hex.
+    erc20_address           string  Same value as address. ERC-20 tokens on
+                                    Ethereum share the same address space.
+    erc20_note              string  Advisory string confirming ERC-20 token
+                                    compatibility. Content is informational only.
+
+  Address record — XRP:
+
+    Field               Type    Description
+    ------------------- ------- -----------------------------------------------
+    path                string  Full child derivation path.
+    branch              integer Branch index: 0 or 1.
+    xrp_classic_address string  XRPL classic address (r...).
+    public_key_hex      string  33-byte compressed public key as hex.
+    private_key_hex     string  32-byte private scalar as hex.
+    xrp_note            string  Advisory string regarding destination tags.
+                                Content is informational only.
+
+Security note: The JSON export contains the source mnemonic in the mnemonic
+field and all derived private keys in their respective private_key_hex and
+private_key_wif fields. The JSON file is operationally equivalent in
+sensitivity to the mnemonic itself. It must be treated as Category B key
+material as defined in OpSec.txt and handled under the same storage and
+transfer controls. It must never be written to a networked filesystem or
+transmitted over any channel.
+
+
+Derived-Output CSV Format
+--------------------------
+
+The CSV export is a flat, row-per-address representation of the same data
+contained in the JSON export. It is intended for tabular inspection in a
+spreadsheet application or for programmatic filtering with standard text tools.
+
+Structure:
+
+  Row 1 is a typed header row. Column names match the field names in the JSON
+  address record schema. Account-level fields (derivation path, script type,
+  account xpub, account xprv, root xpub, root xprv, and all slip-0132
+  variants) are repeated on every row belonging to that account.
+
+  Rows 2 through N are one address record per row. Receiving and change branch
+  entries appear in derivation index order within each branch, with receiving
+  branch entries preceding change branch entries within each account block.
+
+  Field values containing commas, double-quote characters, or newlines are
+  wrapped in double quotes and internal double-quote characters are escaped as
+  two consecutive double-quote characters, per RFC 4180.
+
+  Null or absent fields for a given coin and script type are represented as
+  empty cells.
+
+The CSV export contains the same private key material as the JSON export and
+carries the same operational sensitivity classification. The same handling
+requirements apply.
+
+
+Derived-Output TXT Format
+--------------------------
+
+The TXT export is a human-readable, labeled-section document intended for
+offline visual inspection or printing. It does not preserve the nested JSON
+hierarchy. Instead, it organizes output into titled sections and subsections
+separated by blank lines.
+
+Structure:
+
+  A header block at the top of the file contains the coin name, network,
+  derivation path, script type, and root fingerprint. Each field appears on
+  its own labeled line with consistent left-column alignment.
+
+  Below the header, one titled section per account appears. Within each account
+  section, receiving and change addresses are grouped into labeled subsections.
+  Within each subsection, one address block per derived index appears, with each
+  field on its own labeled line.
+
+  Extended keys (xprv, xpub, zprv, zpub, yprv, ypub, trprv, trpub at both
+  root and account level) appear in a dedicated block at the start of each
+  account section before the address subsections.
+
+  Field labels are left-aligned and right-padded to a consistent column width.
+  Values begin at a fixed column offset. Long values (extended keys, hex strings)
+  are not wrapped or truncated; they appear on a single line.
+
+The TXT export contains the same private key material and carries the same
+operational sensitivity classification as the JSON and CSV exports.
+
+
+PDF Export Format
+-----------------
+
+The PDF export is produced by the jsPDF library loaded on demand from cdnjs
+in the HTML implementation. It is not available in the Python CLI. The PDF is
+intended as a printable hard-copy record. It is produced in landscape A4
+orientation.
+
+Page structure:
+
+  Every page begins with a title block containing:
+    - Title: "Arculus Key Export"
+    - Meta line: coin name, app version string, UTC export timestamp, and root
+      fingerprint, separated by center-dot (·) delimiters.
+
+  Page 1 contains, after the title block:
+    - An Extended Keys section listing all present root and account extended
+      keys vertically, one per line. Each entry has a left-column label and
+      the full key value spanning the remaining page width.
+    - A horizontal rule separating the extended keys section from the address
+      table.
+    - The address table header and as many rows as fit on the first page.
+
+  Continuation pages contain, after the title block:
+    - The address table header repeated.
+    - Address table rows continuing from the previous page.
+
+  The Extended Keys section does not repeat on continuation pages.
+
+Address table column layout:
+
+  UTXO coins (Bitcoin, Litecoin, Dogecoin):
+    Branch | Path | Address | Private Key WIF
+
+  Ethereum and XRP:
+    Branch | Path | Address | Private Key Hex
+
+  The Branch column uses color-coded text: green for receiving (branch index 0),
+  gray for change (branch index 1).
+
+  Rows use alternating background shading: white and a light gray, applied per
+  address row.
+
+  Column widths are fixed. No column is truncated. Extended keys in the Extended
+  Keys section wrap at the right page margin if the value exceeds the available
+  width, which does not occur for standard base58check-encoded keys at landscape
+  A4 dimensions.
+
+The PDF is saved to disk with the filename:
+
+  Arculus_Key_Export_<Coin>.pdf
+
+where <Coin> is the display-capitalized coin name: Bitcoin, Litecoin, Dogecoin,
+Ethereum, or XRP.
+
+The PDF export contains the same private key material as the other export
+formats. A printed PDF is a physical key document. It must be stored with the
+same physical security as a paper mnemonic backup and must not be printed on a
+networked printer. The PDF file itself, before printing, carries the same
+Category B sensitivity classification as JSON, CSV, and TXT exports.
+
+
+Export File Naming Conventions
+--------------------------------
+
+The default filenames produced by the HTML export controls:
+
+  JSON:   arculus_keys_<coin>.json
+  CSV:    arculus_keys_<coin>.csv
+  TXT:    arculus_keys_<coin>.txt
+  PDF:    Arculus_Key_Export_<Coin>.pdf
+
+where <coin> is lowercase (bitcoin, litecoin, dogecoin, ethereum, xrp) for
+JSON, CSV, and TXT, and display-capitalized for PDF.
+
+The Python CLI writes to stdout by default. When output is redirected to a file,
+the filename is at the user's discretion. No default filename is imposed by the
+CLI. The content and schema of the output are identical to the HTML export for
+the same format selector.
+
+Filenames are not structural identifiers. The format of a derived-output file
+is identified by its content, not its extension or name. A JSON export renamed
+to .txt is valid JSON. An importer that relies on the file extension rather than
+the content structure is non-conformant with this specification.
+
+
+Version History of Supported Formats
+--------------------------------------
+
+This table maps tool version to the set of formats that version can produce
+(write) or consume (read) on import.
+
+  Tool version           Write               Read (import)
+  ---------------------- ------------------- -----------------------------------
+  v1.5.0                 armored V2          armored V2, raw JSON V2, V1 (HTML),
+                                             Python V1, legacy headerless
+  v1.4.0-production      armored V2          armored V2, raw JSON V2, V1 (HTML),
+                                             Python V1, legacy headerless
+  v1.3.0-production      armored V2          armored V2, raw JSON V2, V1 (HTML),
+                                             Python V1, legacy headerless
+  v1.2.0-production      armored V2          armored V2, raw JSON V2, V1 (HTML),
+                                             Python V1, legacy headerless
+  v1.1.0-production      armored V2          armored V2, raw JSON V2, V1 (HTML),
+                                             Python V1, legacy headerless
+  Pre-v1.1.0             raw JSON V2 or V1   raw JSON V2, V1 (HTML),
+                                             Python V1, legacy headerless
+
+The armored V2 format was introduced in v1.1.0-production as the sole new-export
+format. All builds from v1.1.0-production onward write armored V2 exclusively
+and read all prior formats for backward compatibility. The -production channel
+suffix was dropped from the version string beginning with v1.5.0; the file
+format itself is unchanged between v1.4.0-production and v1.5.0.
+
+A .arc file produced by v1.5.0 is readable by any tool version at or above
+v1.1.0-production, provided the tool version implements the armored V2 import
+path and the decryption password is known. There are no version-specific
+extensions to the armored V2 bundle schema between v1.1.0-production and
+v1.5.0. The format has been stable since its introduction.

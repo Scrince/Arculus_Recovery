@@ -455,6 +455,54 @@
       border-radius: 0 6px 6px 6px;
       overflow: hidden;
     }
+
+    /* ── Expanded output overlay ── */
+    .output-expanded #outputTabs,
+    .output-expanded #outputWrap {
+      position: fixed;
+      left: 0;
+      right: 0;
+      z-index: 900;
+    }
+    .output-expanded #outputTabs {
+      top: 0;
+      margin: 0;
+      padding: 10px 12px 0;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      border-radius: 0;
+    }
+    .output-expanded #outputWrap {
+      top: 49px;
+      bottom: 0;
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+      border-bottom: none;
+      overflow: auto;
+    }
+    .output-expanded #derivedTable  { max-height: none; }
+    .output-expanded #output        { min-height: calc(100vh - 49px); }
+    .output-expanded #accountKeysPane { min-height: calc(100vh - 49px); }
+
+    /* Backdrop that sits behind the expanded panel */
+    #outputExpandBackdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 899;
+    }
+    .output-expanded #outputExpandBackdrop { display: block; }
+
+    /* Expand button — sits at the far right of the tab bar */
+    .output-tab-expand {
+      margin-left: auto;
+      color: var(--muted);
+      border-color: transparent;
+      background: transparent;
+    }
+    .output-tab-expand:hover { color: var(--text); border-color: var(--border); }
     #derivedTable {
       display: none;
       width: 100%;
@@ -648,7 +696,7 @@
   <div class="app">
     <div class="title-row">
       <h1>Arculus Recovery</h1>
-      <span class="app-version">v1.4.0-production</span>
+      <span class="app-version">v1.5.0</span>
       <button id="settingsBtn" type="button" class="settings-button" aria-label="Open settings" title="Settings"></button>
       <div id="networkStatus" class="network-status" title="Browser network status" aria-live="polite">
         <span class="network-dot" aria-hidden="true"></span>
@@ -706,7 +754,12 @@
       </select>
 
       <div class="label">Address Count</div>
-      <input id="count" type="number" min="1" step="1" value="5" />
+      <div style="display:flex;align-items:center;gap:12px;">
+        <input id="count" type="number" min="1" step="1" value="5" maxlength="15" style="width:100px;" />
+        <div class="label" style="padding-top:0;white-space:nowrap;">Range</div>
+        <input id="rangeInput" type="text" spellcheck="false" autocomplete="off"
+          maxlength="20" placeholder="e.g. 100-200" style="width:130px;" />
+      </div>
     </div>
 
     <div class="buttons">
@@ -729,10 +782,12 @@
     <div id="idleBanner" role="alert"></div>
     <div id="status" aria-live="polite">Ready</div>
     <div id="deriveProgress" aria-hidden="true"><div id="deriveProgressBar"></div></div>
+    <div id="outputExpandBackdrop"></div>
     <div class="output-tabs" id="outputTabs" style="display:none;">
       <button type="button" class="output-tab active" data-tab="table">Table View</button>
       <button type="button" class="output-tab" data-tab="raw">Raw JSON</button>
       <button type="button" class="output-tab" data-tab="keys">Extended Keys</button>
+      <button type="button" id="expandOutputBtn" class="output-tab output-tab-expand" title="Expand output panel">⤢ Expand</button>
     </div>
     <div id="outputWrap">
       <div id="derivedTable"></div>
@@ -747,16 +802,35 @@
           <h2 id="qrModalTitle">QR Export</h2>
           <button id="qrModalCloseBtn" type="button" class="settings-close" aria-label="Close QR">x</button>
         </div>
+        <!-- Step 1: address input (always shown) -->
         <div style="width:100%;display:flex;gap:8px;align-items:stretch;">
           <input id="qrAddressInput" type="text" spellcheck="false" autocomplete="off"
             placeholder="Paste address here..." style="flex:1;min-width:0;" />
           <button id="qrGenerateBtn" type="button" class="primary">Generate</button>
         </div>
+
+        <!-- Step 2: XRP memo prompt (shown only for XRP addresses, before QR renders) -->
+        <div id="qrMemoPrompt" style="display:none;width:100%;border:1px solid var(--border);border-radius:8px;padding:14px 16px;box-sizing:border-box;">
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px;">Destination Tag / Memo</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">
+            Some exchanges (e.g. Robinhood) require a destination tag to credit your account correctly.
+            Enter yours below, or skip to generate a plain address QR code.
+          </div>
+          <input id="qrMemoInput" type="text" inputmode="numeric" spellcheck="false" autocomplete="off"
+            placeholder="Destination tag (numbers only)" style="width:100%;box-sizing:border-box;margin-bottom:10px;" />
+          <div style="display:flex;gap:8px;">
+            <button id="qrMemoConfirmBtn" type="button" class="primary" style="flex:1;">Generate QR</button>
+            <button id="qrMemoSkipBtn" type="button" style="flex:1;">Skip — No Tag</button>
+          </div>
+        </div>
+
+        <!-- QR output -->
         <canvas id="qrCanvas" width="256" height="256" style="display:none;"></canvas>
         <div id="qrAddressLabel" class="qr-address-label" style="display:none;"></div>
         <div class="qr-actions" id="qrSaveRow" style="display:none;">
           <button id="qrSaveBtn" type="button">Save PNG</button>
           <button id="qrCopyAddrBtn" type="button">Copy Address</button>
+          <button id="qrEditBtn" type="button">Edit</button>
         </div>
       </div>
     </dialog>
@@ -781,12 +855,34 @@
             </label>
           </div>
         </div>
+
+        <!-- Advanced section -->
+        <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:0;padding-bottom:0;">
+          <button type="button" id="advancedToggleBtn" aria-expanded="false"
+            style="background:none;border:none;padding:4px 0;font-weight:600;font-size:14px;cursor:pointer;color:var(--text);display:flex;align-items:center;gap:6px;width:100%;">
+            <span id="advancedChevron" style="display:inline-block;transition:transform 0.18s;">▶</span>
+            Advanced
+          </button>
+        </div>
+        <div id="advancedSection" style="display:none;">
+          <div class="setting-row">
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              <span style="font-weight:600;">Auto-Derive on Settings Change</span>
+              <span style="font-size:12px;color:var(--muted);">Automatically re-derives when coin, path, count, or range changes after an initial derive.</span>
+            </div>
+            <label class="toggle" aria-label="Auto-derive on settings change">
+              <input type="checkbox" id="autoderiveToggle" />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+        </div>
+
       </div>
     </dialog>
   </div>
 
   <script>
-    const APP_VERSION = '1.4.0-production';
+    const APP_VERSION = '1.5.0';
     const BIP39_WORDS = ['abandon','ability','able','about','above','absent','absorb','abstract','absurd','abuse','access','accident','account','accuse','achieve','acid','acoustic','acquire','across','act','action','actor','actress','actual','adapt','add','addict','address','adjust','admit','adult','advance','advice','aerobic','affair','afford','afraid','again','age','agent','agree','ahead','aim','air','airport','aisle','alarm','album','alcohol','alert','alien','all','alley','allow','almost','alone','alpha','already','also','alter','always','amateur','amazing','among','amount','amused','analyst','anchor','ancient','anger','angle','angry','animal','ankle','announce','annual','another','answer','antenna','antique','anxiety','any','apart','apology','appear','apple','approve','april','arch','arctic','area','arena','argue','arm','armed','armor','army','around','arrange','arrest','arrive','arrow','art','artefact','artist','artwork','ask','aspect','assault','asset','assist','assume','asthma','athlete','atom','attack','attend','attitude','attract','auction','audit','august','aunt','author','auto','autumn','average','avocado','avoid','awake','aware','away','awesome','awful','awkward','axis','baby','bachelor','bacon','badge','bag','balance','balcony','ball','bamboo','banana','banner','bar','barely','bargain','barrel','base','basic','basket','battle','beach','bean','beauty','because','become','beef','before','begin','behave','behind','believe','below','belt','bench','benefit','best','betray','better','between','beyond','bicycle','bid','bike','bind','biology','bird','birth','bitter','black','blade','blame','blanket','blast','bleak','bless','blind','blood','blossom','blouse','blue','blur','blush','board','boat','body','boil','bomb','bone','bonus','book','boost','border','boring','borrow','boss','bottom','bounce','box','boy','bracket','brain','brand','brass','brave','bread','breeze','brick','bridge','brief','bright','bring','brisk','broccoli','broken','bronze','broom','brother','brown','brush','bubble','buddy','budget','buffalo','build','bulb','bulk','bullet','bundle','bunker','burden','burger','burst','bus','business','busy','butter','buyer','buzz','cabbage','cabin','cable','cactus','cage','cake','call','calm','camera','camp','can','canal','cancel','candy','cannon','canoe','canvas','canyon','capable','capital','captain','car','carbon','card','cargo','carpet','carry','cart','case','cash','casino','castle','casual','cat','catalog','catch','category','cattle','caught','cause','caution','cave','ceiling','celery','cement','census','century','cereal','certain','chair','chalk','champion','change','chaos','chapter','charge','chase','chat','cheap','check','cheese','chef','cherry','chest','chicken','chief','child','chimney','choice','choose','chronic','chuckle','chunk','churn','cigar','cinnamon','circle','citizen','city','civil','claim','clap','clarify','claw','clay','clean','clerk','clever','click','client','cliff','climb','clinic','clip','clock','clog','close','cloth','cloud','clown','club','clump','cluster','clutch','coach','coast','coconut','code','coffee','coil','coin','collect','color','column','combine','come','comfort','comic','common','company','concert','conduct','confirm','congress','connect','consider','control','convince','cook','cool','copper','copy','coral','core','corn','correct','cost','cotton','couch','country','couple','course','cousin','cover','coyote','crack','cradle','craft','cram','crane','crash','crater','crawl','crazy','cream','credit','creek','crew','cricket','crime','crisp','critic','crop','cross','crouch','crowd','crucial','cruel','cruise','crumble','crunch','crush','cry','crystal','cube','culture','cup','cupboard','curious','current','curtain','curve','cushion','custom','cute','cycle','dad','damage','damp','dance','danger','daring','dash','daughter','dawn','day','deal','debate','debris','decade','december','decide','decline','decorate','decrease','deer','defense','define','defy','degree','delay','deliver','demand','demise','denial','dentist','deny','depart','depend','deposit','depth','deputy','derive','describe','desert','design','desk','despair','destroy','detail','detect','develop','device','devote','diagram','dial','diamond','diary','dice','diesel','diet','differ','digital','dignity','dilemma','dinner','dinosaur','direct','dirt','disagree','discover','disease','dish','dismiss','disorder','display','distance','divert','divide','divorce','dizzy','doctor','document','dog','doll','dolphin','domain','donate','donkey','donor','door','dose','double','dove','draft','dragon','drama','drastic','draw','dream','dress','drift','drill','drink','drip','drive','drop','drum','dry','duck','dumb','dune','during','dust','dutch','duty','dwarf','dynamic','eager','eagle','early','earn','earth','easily','east','easy','echo','ecology','economy','edge','edit','educate','effort','egg','eight','either','elbow','elder','electric','elegant','element','elephant','elevator','elite','else','embark','embody','embrace','emerge','emotion','employ','empower','empty','enable','enact','end','endless','endorse','enemy','energy','enforce','engage','engine','enhance','enjoy','enlist','enough','enrich','enroll','ensure','enter','entire','entry','envelope','episode','equal','equip','era','erase','erode','erosion','error','erupt','escape','essay','essence','estate','eternal','ethics','evidence','evil','evoke','evolve','exact','example','excess','exchange','excite','exclude','excuse','execute','exercise','exhaust','exhibit','exile','exist','exit','exotic','expand','expect','expire','explain','expose','express','extend','extra','eye','eyebrow','fabric','face','faculty','fade','faint','faith','fall','false','fame','family','famous','fan','fancy','fantasy','farm','fashion','fat','fatal','father','fatigue','fault','favorite','feature','february','federal','fee','feed','feel','female','fence','festival','fetch','fever','few','fiber','fiction','field','figure','file','film','filter','final','find','fine','finger','finish','fire','firm','first','fiscal','fish','fit','fitness','fix','flag','flame','flash','flat','flavor','flee','flight','flip','float','flock','floor','flower','fluid','flush','fly','foam','focus','fog','foil','fold','follow','food','foot','force','forest','forget','fork','fortune','forum','forward','fossil','foster','found','fox','fragile','frame','frequent','fresh','friend','fringe','frog','front','frost','frown','frozen','fruit','fuel','fun','funny','furnace','fury','future','gadget','gain','galaxy','gallery','game','gap','garage','garbage','garden','garlic','garment','gas','gasp','gate','gather','gauge','gaze','general','genius','genre','gentle','genuine','gesture','ghost','giant','gift','giggle','ginger','giraffe','girl','give','glad','glance','glare','glass','glide','glimpse','globe','gloom','glory','glove','glow','glue','goat','goddess','gold','good','goose','gorilla','gospel','gossip','govern','gown','grab','grace','grain','grant','grape','grass','gravity','great','green','grid','grief','grit','grocery','group','grow','grunt','guard','guess','guide','guilt','guitar','gun','gym','habit','hair','half','hammer','hamster','hand','happy','harbor','hard','harsh','harvest','hat','have','hawk','hazard','head','health','heart','heavy','hedgehog','height','hello','helmet','help','hen','hero','hidden','high','hill','hint','hip','hire','history','hobby','hockey','hold','hole','holiday','hollow','home','honey','hood','hope','horn','horror','horse','hospital','host','hotel','hour','hover','hub','huge','human','humble','humor','hundred','hungry','hunt','hurdle','hurry','hurt','husband','hybrid','ice','icon','idea','identify','idle','ignore','ill','illegal','illness','image','imitate','immense','immune','impact','impose','improve','impulse','inch','include','income','increase','index','indicate','indoor','industry','infant','inflict','inform','inhale','inherit','initial','inject','injury','inmate','inner','innocent','input','inquiry','insane','insect','inside','inspire','install','intact','interest','into','invest','invite','involve','iron','island','isolate','issue','item','ivory','jacket','jaguar','jar','jazz','jealous','jeans','jelly','jewel','job','join','joke','journey','joy','judge','juice','jump','jungle','junior','junk','just','kangaroo','keen','keep','ketchup','key','kick','kid','kidney','kind','kingdom','kiss','kit','kitchen','kite','kitten','kiwi','knee','knife','knock','know','lab','label','labor','ladder','lady','lake','lamp','language','laptop','large','later','latin','laugh','laundry','lava','law','lawn','lawsuit','layer','lazy','leader','leaf','learn','leave','lecture','left','leg','legal','legend','leisure','lemon','lend','length','lens','leopard','lesson','letter','level','liar','liberty','library','license','life','lift','light','like','limb','limit','link','lion','liquid','list','little','live','lizard','load','loan','lobster','local','lock','logic','lonely','long','loop','lottery','loud','lounge','love','loyal','lucky','luggage','lumber','lunar','lunch','luxury','lyrics','machine','mad','magic','magnet','maid','mail','main','major','make','mammal','man','manage','mandate','mango','mansion','manual','maple','marble','march','margin','marine','market','marriage','mask','mass','master','match','material','math','matrix','matter','maximum','maze','meadow','mean','measure','meat','mechanic','medal','media','melody','melt','member','memory','mention','menu','mercy','merge','merit','merry','mesh','message','metal','method','middle','midnight','milk','million','mimic','mind','minimum','minor','minute','miracle','mirror','misery','miss','mistake','mix','mixed','mixture','mobile','model','modify','mom','moment','monitor','monkey','monster','month','moon','moral','more','morning','mosquito','mother','motion','motor','mountain','mouse','move','movie','much','muffin','mule','multiply','muscle','museum','mushroom','music','must','mutual','myself','mystery','myth','naive','name','napkin','narrow','nasty','nation','nature','near','neck','need','negative','neglect','neither','nephew','nerve','nest','net','network','neutral','never','news','next','nice','night','noble','noise','nominee','noodle','normal','north','nose','notable','note','nothing','notice','novel','now','nuclear','number','nurse','nut','oak','obey','object','oblige','obscure','observe','obtain','obvious','occur','ocean','october','odor','off','offer','office','often','oil','okay','old','olive','olympic','omit','once','one','onion','online','only','open','opera','opinion','oppose','option','orange','orbit','orchard','order','ordinary','organ','orient','original','orphan','ostrich','other','outdoor','outer','output','outside','oval','oven','over','own','owner','oxygen','oyster','ozone','pact','paddle','page','pair','palace','palm','panda','panel','panic','panther','paper','parade','parent','park','parrot','party','pass','patch','path','patient','patrol','pattern','pause','pave','payment','peace','peanut','pear','peasant','pelican','pen','penalty','pencil','people','pepper','perfect','permit','person','pet','phone','photo','phrase','physical','piano','picnic','picture','piece','pig','pigeon','pill','pilot','pink','pioneer','pipe','pistol','pitch','pizza','place','planet','plastic','plate','play','please','pledge','pluck','plug','plunge','poem','poet','point','polar','pole','police','pond','pony','pool','popular','portion','position','possible','post','potato','pottery','poverty','powder','power','practice','praise','predict','prefer','prepare','present','pretty','prevent','price','pride','primary','print','priority','prison','private','prize','problem','process','produce','profit','program','project','promote','proof','property','prosper','protect','proud','provide','public','pudding','pull','pulp','pulse','pumpkin','punch','pupil','puppy','purchase','purity','purpose','purse','push','put','puzzle','pyramid','quality','quantum','quarter','question','quick','quit','quiz','quote','rabbit','raccoon','race','rack','radar','radio','rail','rain','raise','rally','ramp','ranch','random','range','rapid','rare','rate','rather','raven','raw','razor','ready','real','reason','rebel','rebuild','recall','receive','recipe','record','recycle','reduce','reflect','reform','refuse','region','regret','regular','reject','relax','release','relief','rely','remain','remember','remind','remove','render','renew','rent','reopen','repair','repeat','replace','report','require','rescue','resemble','resist','resource','response','result','retire','retreat','return','reunion','reveal','review','reward','rhythm','rib','ribbon','rice','rich','ride','ridge','rifle','right','rigid','ring','riot','ripple','risk','ritual','rival','river','road','roast','robot','robust','rocket','romance','roof','rookie','room','rose','rotate','rough','round','route','royal','rubber','rude','rug','rule','run','runway','rural','sad','saddle','sadness','safe','sail','salad','salmon','salon','salt','salute','same','sample','sand','satisfy','satoshi','sauce','sausage','save','say','scale','scan','scare','scatter','scene','scheme','school','science','scissors','scorpion','scout','scrap','screen','script','scrub','sea','search','season','seat','second','secret','section','security','seed','seek','segment','select','sell','seminar','senior','sense','sentence','series','service','session','settle','setup','seven','shadow','shaft','shallow','share','shed','shell','sheriff','shield','shift','shine','ship','shiver','shock','shoe','shoot','shop','short','shoulder','shove','shrimp','shrug','shuffle','shy','sibling','sick','side','siege','sight','sign','silent','silk','silly','silver','similar','simple','since','sing','siren','sister','situate','six','size','skate','sketch','ski','skill','skin','skirt','skull','slab','slam','sleep','slender','slice','slide','slight','slim','slogan','slot','slow','slush','small','smart','smile','smoke','smooth','snack','snake','snap','sniff','snow','soap','soccer','social','sock','soda','soft','solar','soldier','solid','solution','solve','someone','song','soon','sorry','sort','soul','sound','soup','source','south','space','spare','spatial','spawn','speak','special','speed','spell','spend','sphere','spice','spider','spike','spin','spirit','split','spoil','sponsor','spoon','sport','spot','spray','spread','spring','spy','square','squeeze','squirrel','stable','stadium','staff','stage','stairs','stamp','stand','start','state','stay','steak','steel','stem','step','stereo','stick','still','sting','stock','stomach','stone','stool','story','stove','strategy','street','strike','strong','struggle','student','stuff','stumble','style','subject','submit','subway','success','such','sudden','suffer','sugar','suggest','suit','summer','sun','sunny','sunset','super','supply','supreme','sure','surface','surge','surprise','surround','survey','suspect','sustain','swallow','swamp','swap','swarm','swear','sweet','swift','swim','swing','switch','sword','symbol','symptom','syrup','system','table','tackle','tag','tail','talent','talk','tank','tape','target','task','taste','tattoo','taxi','teach','team','tell','ten','tenant','tennis','tent','term','test','text','thank','that','theme','then','theory','there','they','thing','this','thought','three','thrive','throw','thumb','thunder','ticket','tide','tiger','tilt','timber','time','tiny','tip','tired','tissue','title','toast','tobacco','today','toddler','toe','together','toilet','token','tomato','tomorrow','tone','tongue','tonight','tool','tooth','top','topic','topple','torch','tornado','tortoise','toss','total','tourist','toward','tower','town','toy','track','trade','traffic','tragic','train','transfer','trap','trash','travel','tray','treat','tree','trend','trial','tribe','trick','trigger','trim','trip','trophy','trouble','truck','true','truly','trumpet','trust','truth','try','tube','tuition','tumble','tuna','tunnel','turkey','turn','turtle','twelve','twenty','twice','twin','twist','two','type','typical','ugly','umbrella','unable','unaware','uncle','uncover','under','undo','unfair','unfold','unhappy','uniform','unique','unit','universe','unknown','unlock','until','unusual','unveil','update','upgrade','uphold','upon','upper','upset','urban','urge','usage','use','used','useful','useless','usual','utility','vacant','vacuum','vague','valid','valley','valve','van','vanish','vapor','various','vast','vault','vehicle','velvet','vendor','venture','venue','verb','verify','version','very','vessel','veteran','viable','vibrant','vicious','victory','video','view','village','vintage','violin','virtual','virus','visa','visit','visual','vital','vivid','vocal','voice','void','volcano','volume','vote','voyage','wage','wagon','wait','walk','wall','walnut','want','warfare','warm','warrior','wash','wasp','waste','water','wave','way','wealth','weapon','wear','weasel','weather','web','wedding','weekend','weird','welcome','west','wet','whale','what','wheat','wheel','when','where','whip','whisper','wide','width','wife','wild','will','win','window','wine','wing','wink','winner','winter','wire','wisdom','wise','wish','witness','wolf','woman','wonder','wood','wool','word','work','world','worry','worth','wrap','wreck','wrestle','wrist','write','wrong','yard','year','yellow','you','young','youth','zebra','zero','zone','zoo'];
     const BIP39_SET = new Set(BIP39_WORDS);
     const BIP39_INDEX = Object.fromEntries(BIP39_WORDS.map((w, i) => [w, i]));
@@ -872,6 +968,7 @@
       derivation: document.getElementById('derivation'),
       scriptType: document.getElementById('scriptType'),
       count: document.getElementById('count'),
+      rangeInput: document.getElementById('rangeInput'),
       status: document.getElementById('status'),
       output: document.getElementById('output'),
       settingsBtn: document.getElementById('settingsBtn'),
@@ -1042,16 +1139,20 @@
         btn.textContent = '▦';
         btn.title = 'Show QR code';
         btn.addEventListener('click', function() {
-          const input = document.getElementById('qrAddressInput');
-          const dlg   = document.getElementById('qrModal');
-          // Reset modal state first
-          document.getElementById('qrCanvas').style.display = 'none';
-          document.getElementById('qrAddressLabel').style.display = 'none';
-          document.getElementById('qrSaveRow').style.display = 'none';
-          input.value = address;
+          const input     = document.getElementById('qrAddressInput');
+          const memoInput = document.getElementById('qrMemoInput');
+          const dlg       = document.getElementById('qrModal');
+          resetQrOutput();
+          input.value     = address;
+          memoInput.value = '';
           if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
-          // Render immediately
-          renderQrFromAddress(address);
+          if (isXrpAddress(address)) {
+            // XRP: show memo prompt step before rendering
+            document.getElementById('qrMemoPrompt').style.display = '';
+            setTimeout(() => memoInput.focus(), 50);
+          } else {
+            renderQrFromAddress(address, '');
+          }
         });
         return btn;
       }
@@ -2170,7 +2271,17 @@
     async function deriveOutput() {
       const mnemonic = getActiveMnemonic();
       const passphrase = els.passphrase.value;
-      const count = Math.max(1, Number(els.count.value || 5));
+      const countRaw = Math.max(1, Number(els.count.value || 5));
+      const rangeRaw = (els.rangeInput.value || '').trim();
+      let startIdx = 0, endIdx = countRaw - 1;
+      if (rangeRaw) {
+        const rangeParts = rangeRaw.match(/^(\d+)\s*-\s*(\d+)$/);
+        if (rangeParts) {
+          startIdx = Math.max(0, parseInt(rangeParts[1], 10));
+          endIdx   = Math.max(startIdx, parseInt(rangeParts[2], 10));
+        }
+      }
+      const count = endIdx - startIdx + 1;
       const scriptMap = { Auto: 'auto', P2PKH: 'p2pkh', 'P2WPKH-P2SH': 'p2wpkh-p2sh', P2WPKH: 'p2wpkh', P2TR: 'p2tr' };
       const requested = scriptMap[els.scriptType.value] || 'p2wpkh';
       const coinMap = { Bitcoin: 'bitcoin', Litecoin: 'litecoin', Dogecoin: 'dogecoin', 'Ethereum / ERC-20': 'ethereum', XRP: 'xrp' };
@@ -2236,13 +2347,13 @@
       for (const [branch, key] of [[0, 'receiving'], [1, 'change']]) {
         const branchNode = await ckdPriv(account, branch);
         for (let i = 0; i < count; i++) {
-          const child = await ckdPriv(branchNode, i);
+          const child = await ckdPriv(branchNode, startIdx + i);
           addressesDerived++;
           setProgress(10 + Math.round((addressesDerived / totalAddresses) * 80));
           if (addressesDerived % 3 === 0) await new Promise(r => setTimeout(r, 0));
           const pub = serPub(pointMul(child.k, G));
           const item = {
-            path: `${derivation}/${branch}/${i}`,
+            path: `${derivation}/${branch}/${startIdx + i}`,
             address: st === 'p2tr' || isEthereum || isXrp ? null : await pubToAddress(pub, st, net),
             public_key_hex: bytesToHex(pub),
             private_key_hex: bytesToHex(ser256(child.k))
@@ -2950,6 +3061,62 @@
         }
       });
 
+      // Range input — blank the count box while a range is active, restore when cleared.
+      els.rangeInput.addEventListener('input', () => {
+        const hasRange = els.rangeInput.value.trim() !== '';
+        els.count.value    = hasRange ? '' : (els.count._saved || 5);
+        els.count.disabled = hasRange;
+        els.count.style.opacity = hasRange ? '0.4' : '';
+      });
+      // Persist the last manual count value so we can restore it when range is cleared.
+      els.count.addEventListener('input', () => {
+        if (!els.rangeInput.value.trim()) els.count._saved = els.count.value;
+      });
+
+      // Auto-re-derive — when the user changes coin, script type, derivation path,
+      // address count, or range AFTER a successful derive has already run, re-run
+      // automatically after a short debounce so the output stays in sync with the
+      // settings without requiring a manual button press.
+      let _autoderiveTimer = null;
+      function scheduleAutoderive() {
+        if (!lastDerivedOutput) return; // nothing derived yet — don't fire
+        if (!document.getElementById('autoderiveToggle').checked) return; // disabled in settings
+        clearTimeout(_autoderiveTimer);
+        _autoderiveTimer = setTimeout(async () => {
+          try {
+            uiStatus('Re-deriving…');
+            setProgress(5);
+            const data = await deriveOutput();
+            setProgress(95);
+            lastDerivedOutput = data;
+            els.output.value = JSON.stringify(data, null, 2);
+            setProgress(100);
+            setTimeout(hideProgress, 400);
+            showDerivedTable(data);
+            uiStatus('Derivation complete.', 'valid');
+          } catch (e) {
+            hideProgress();
+            uiStatus(`Error: ${e.message}`, 'invalid');
+          }
+        }, 600);
+      }
+      els.coin.addEventListener('change', scheduleAutoderive);
+      els.scriptType.addEventListener('change', scheduleAutoderive);
+      els.derivation.addEventListener('input', scheduleAutoderive);
+      els.count.addEventListener('input', scheduleAutoderive);
+      els.rangeInput.addEventListener('input', scheduleAutoderive);
+
+      // Advanced section — expand/collapse toggle
+      document.getElementById('advancedToggleBtn').addEventListener('click', () => {
+        const section  = document.getElementById('advancedSection');
+        const chevron  = document.getElementById('advancedChevron');
+        const btn      = document.getElementById('advancedToggleBtn');
+        const expanded = section.style.display !== 'none';
+        section.style.display  = expanded ? 'none' : '';
+        chevron.style.transform = expanded ? '' : 'rotate(90deg)';
+        btn.setAttribute('aria-expanded', String(!expanded));
+      });
+
       els.deriveBtn.addEventListener('click', async () => {
         try {
           uiStatus('Deriving...');
@@ -3020,9 +3187,34 @@
       els.showSeedBtn.addEventListener('touchend', stopShowSeed);
       els.showSeedBtn.addEventListener('touchcancel', stopShowSeed);
       scheduleRootFingerprintRefresh();
-      // Output tab switching
-      document.querySelectorAll('.output-tab').forEach(function(btn) {
+      // Output tab switching — exclude the expand button from tab logic
+      document.querySelectorAll('.output-tab:not(#expandOutputBtn)').forEach(function(btn) {
         btn.addEventListener('click', function() { setOutputTab(btn.dataset.tab); });
+      });
+
+      // Expand / minimize output panel
+      document.getElementById('expandOutputBtn').addEventListener('click', function() {
+        const isExpanded = document.body.classList.toggle('output-expanded');
+        this.textContent = isExpanded ? '⤡ Minimize' : '⤢ Expand';
+        this.title       = isExpanded ? 'Minimize output panel' : 'Expand output panel';
+        // Prevent page scroll while expanded
+        document.body.style.overflow = isExpanded ? 'hidden' : '';
+      });
+      // Click backdrop to minimize
+      document.getElementById('outputExpandBackdrop').addEventListener('click', function() {
+        document.body.classList.remove('output-expanded');
+        document.getElementById('expandOutputBtn').textContent = '⤢ Expand';
+        document.getElementById('expandOutputBtn').title = 'Expand output panel';
+        document.body.style.overflow = '';
+      });
+      // Esc key to minimize
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.body.classList.contains('output-expanded')) {
+          document.body.classList.remove('output-expanded');
+          document.getElementById('expandOutputBtn').textContent = '⤢ Expand';
+          document.getElementById('expandOutputBtn').title = 'Expand output panel';
+          document.body.style.overflow = '';
+        }
       });
     }
 
@@ -3293,60 +3485,60 @@
 
     // ── QR UI ────────────────────────────────────────────────────────────────
 
+    // Returns true if the address looks like an XRP classic r-address.
+    function isXrpAddress(a) {
+      return /^r[1-9A-HJ-NP-Za-km-z]{24,}/.test(a.trim());
+    }
+
     // Detect the correct BIP21/URI scheme for a given address and return the
     // full URI string that wallet apps expect to scan.
-    function toBip21Uri(address) {
+    // For XRP, an optional numeric destination tag is appended as ?dt=NNNN —
+    // the format used by Robinhood, Coinbase, Binance, and XUMM/Xaman.
+    function toBip21Uri(address, memo) {
       const a = address.trim();
-      // Already has a scheme — leave it alone
+      const m = (memo || '').trim();
       if (/^[a-z]+:/i.test(a)) return a;
-      // Bitcoin: bech32 (bc1), P2PKH (1), P2SH (3)
       if (/^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,}/.test(a)) return 'bitcoin:' + a;
-      // Litecoin: bech32 (ltc1), P2PKH (L/M), P2SH (3/M)
-      if (/^(ltc1|[LM3])[a-zA-HJ-NP-Z0-9]{25,}/.test(a)) return 'litecoin:' + a;
-      // Dogecoin: P2PKH (D), P2SH (9/A)
+      if (/^(ltc1|[LM])[a-zA-HJ-NP-Z0-9]{25,}/.test(a)) return 'litecoin:' + a;
       if (/^[DA9][a-zA-HJ-NP-Z0-9]{25,}/.test(a)) return 'dogecoin:' + a;
-      // Ethereum / ERC-20: 0x hex
       if (/^0x[0-9a-fA-F]{40}$/.test(a)) return 'ethereum:' + a;
-      // XRP classic address — no URI scheme prefix; bare r… address is the only
-      // format accepted universally across XUMM/Xaman, Trust Wallet, Coinbase, etc.
-      // 'xrp:' is not a recognised standard; 'xrpl:' (XLS-7d) has inconsistent support.
-      if (/^r[1-9A-HJ-NP-Za-km-z]{24,}/.test(a)) return a;
-      // Unknown — encode as-is
+      if (isXrpAddress(a)) return m ? a + '?dt=' + encodeURIComponent(m) : a;
       return a;
     }
 
-    function renderQrFromAddress(address) {
-      const canvas = document.getElementById('qrCanvas');
-      const label = document.getElementById('qrAddressLabel');
-      const saveRow = document.getElementById('qrSaveRow');
-      // Always render black-on-white for maximum wallet scanner compatibility.
-      // Coloured QR codes fail on many wallet camera decoders.
+    function renderQrFromAddress(address, memo) {
+      const canvas   = document.getElementById('qrCanvas');
+      const label    = document.getElementById('qrAddressLabel');
+      const saveRow  = document.getElementById('qrSaveRow');
       try {
-        const uri = toBip21Uri(address);
+        const uri = toBip21Uri(address, memo);
         const matrix = QRGen.generate(uri);
         QRGen.render(matrix, canvas, { size: 256, quiet: 4, dark: '#000000', light: '#ffffff' });
-        canvas.style.display = '';
-        label.textContent = uri;
-        label.style.display = '';
-        saveRow.style.display = '';
+        canvas.style.display   = '';
+        label.textContent      = uri;
+        label.style.display    = '';
+        saveRow.style.display  = '';
       } catch(e) {
-        canvas.style.display = 'none';
-        label.textContent = 'Error: ' + e.message;
-        label.style.display = '';
-        saveRow.style.display = 'none';
+        canvas.style.display   = 'none';
+        label.textContent      = 'Error: ' + e.message;
+        label.style.display    = '';
+        saveRow.style.display  = 'none';
       }
     }
 
+    function resetQrOutput() {
+      document.getElementById('qrCanvas').style.display      = 'none';
+      document.getElementById('qrAddressLabel').style.display = 'none';
+      document.getElementById('qrSaveRow').style.display     = 'none';
+      document.getElementById('qrMemoPrompt').style.display  = 'none';
+    }
+
     function openQrModal() {
-      // Reset state
-      const canvas = document.getElementById('qrCanvas');
-      const label = document.getElementById('qrAddressLabel');
-      const saveRow = document.getElementById('qrSaveRow');
-      const input = document.getElementById('qrAddressInput');
-      canvas.style.display = 'none';
-      label.style.display = 'none';
-      saveRow.style.display = 'none';
-      input.value = '';
+      resetQrOutput();
+      const input     = document.getElementById('qrAddressInput');
+      const memoInput = document.getElementById('qrMemoInput');
+      input.value     = '';
+      memoInput.value = '';
       const dlg = document.getElementById('qrModal');
       if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open','');
       setTimeout(() => input.focus(), 50);
@@ -3355,24 +3547,51 @@
     function bindQrUI() {
       document.getElementById('qrAddressesBtn').addEventListener('click', openQrModal);
       document.getElementById('qrModalCloseBtn').addEventListener('click', () => document.getElementById('qrModal').close());
-      document.getElementById('qrModal').addEventListener('click', e => { if (e.target === document.getElementById('qrModal')) document.getElementById('qrModal').close(); });
-      document.getElementById('qrGenerateBtn').addEventListener('click', () => {
+      document.getElementById('qrModal').addEventListener('click', e => {
+        if (e.target === document.getElementById('qrModal')) document.getElementById('qrModal').close();
+      });
+
+      // Main Generate button — for XRP: show memo prompt; for all others: render immediately.
+      function handleGenerate() {
         const address = document.getElementById('qrAddressInput').value.trim();
         if (!address) return;
-        renderQrFromAddress(address);
-      });
-      document.getElementById('qrAddressInput').addEventListener('keydown', e => {
-        if (e.key === 'Enter') {
-          const address = e.target.value.trim();
-          if (address) renderQrFromAddress(address);
+        resetQrOutput();
+        if (isXrpAddress(address)) {
+          document.getElementById('qrMemoInput').value  = '';
+          document.getElementById('qrMemoPrompt').style.display = '';
+          setTimeout(() => document.getElementById('qrMemoInput').focus(), 50);
+        } else {
+          renderQrFromAddress(address, '');
         }
+      }
+
+      document.getElementById('qrGenerateBtn').addEventListener('click', handleGenerate);
+      document.getElementById('qrAddressInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') handleGenerate();
       });
-      document.getElementById('qrSaveBtn').addEventListener('click', () => {
-        const canvas = document.getElementById('qrCanvas');
+
+      // XRP memo prompt — confirm (with tag) or skip (without tag)
+      document.getElementById('qrMemoConfirmBtn').addEventListener('click', () => {
         const address = document.getElementById('qrAddressInput').value.trim();
+        const memo    = document.getElementById('qrMemoInput').value.trim();
+        document.getElementById('qrMemoPrompt').style.display = 'none';
+        renderQrFromAddress(address, memo);
+      });
+      document.getElementById('qrMemoSkipBtn').addEventListener('click', () => {
+        const address = document.getElementById('qrAddressInput').value.trim();
+        document.getElementById('qrMemoPrompt').style.display = 'none';
+        renderQrFromAddress(address, '');
+      });
+      document.getElementById('qrMemoInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('qrMemoConfirmBtn').click();
+      });
+
+      document.getElementById('qrSaveBtn').addEventListener('click', () => {
+        const canvas   = document.getElementById('qrCanvas');
+        const address  = document.getElementById('qrAddressInput').value.trim();
         const safeName = address.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40) || 'address';
         const a = document.createElement('a');
-        a.href = canvas.toDataURL('image/png');
+        a.href     = canvas.toDataURL('image/png');
         a.download = `qr_${safeName}.png`;
         a.click();
       });
@@ -3380,10 +3599,23 @@
         const address = document.getElementById('qrAddressInput').value.trim();
         if (!address) return;
         await copyTextToClipboard(address);
-        const btn = document.getElementById('qrCopyAddrBtn');
+        const btn  = document.getElementById('qrCopyAddrBtn');
         const orig = btn.textContent;
         btn.textContent = 'Copied!';
         setTimeout(() => btn.textContent = orig, 1500);
+      });
+
+      // Edit — collapse back to the address input step, keeping the current value,
+      // so the user can adjust the address or memo without reopening the modal.
+      document.getElementById('qrEditBtn').addEventListener('click', () => {
+        resetQrOutput();
+        const address = document.getElementById('qrAddressInput').value.trim();
+        if (isXrpAddress(address)) {
+          document.getElementById('qrMemoPrompt').style.display = '';
+          setTimeout(() => document.getElementById('qrMemoInput').focus(), 50);
+        } else {
+          setTimeout(() => document.getElementById('qrAddressInput').focus(), 50);
+        }
       });
     }
 

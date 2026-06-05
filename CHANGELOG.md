@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Changes on `main` not yet tagged in a formal release.
 
+---
+
+## [1.5.0] — 2026-06-05
+
 ### Added
 
 **QR Code — BIP21 / URI Scheme Auto-Detection (HTML)**
@@ -105,9 +109,56 @@ Changes on `main` not yet tagged in a formal release.
 **Export Format Selector — Renamed PDF Option (HTML)**
 - The export option previously labelled "Dump" is now labelled "PDF".
 
+**QR Code — XRP Destination Tag / Memo Prompt (HTML)**
+- Generating a QR code for an XRP address now triggers a two-step flow instead of rendering immediately.
+- After clicking **Generate** (or pressing Enter), a prompt appears explaining what a destination tag is and when exchanges such as Robinhood require one. The user can enter a numeric tag and click **Generate QR**, or click **Skip — No Tag** to encode the bare address without a tag.
+- When a tag is provided the QR encodes `rADDRESS?dt=TAGNUMBER`, the `?dt=` query parameter format recognised by Robinhood, Coinbase, Binance, and XUMM/Xaman. When skipped, the bare `rADDRESS` is encoded as before.
+- The same prompt appears when the **▦** QR button is clicked directly from a table row for an XRP address, keeping both entry points consistent.
+- All non-XRP coins (Bitcoin, Ethereum, Litecoin, Dogecoin) are unaffected — their QR codes continue to render immediately on Generate with no extra step.
+- A new `isXrpAddress()` helper and `resetQrOutput()` utility have been extracted from the QR UI logic to support the two-step flow cleanly and avoid duplicated state-reset code.
+
+**Address Count — 15-Character Input Limit (HTML)**
+- The Address Count input is now capped at `maxlength="15"` characters.
+
+**Address Count — Range Input (HTML)**
+- A **Range** label and accompanying text input (max 20 characters) have been added inline to the right of the Address Count field.
+- Entering a range in `START-END` format (e.g. `100-200`) causes the Derive Keys + Addresses button to derive addresses starting at the `START` index and ending at the `END` index on the active derivation path.
+- The Path column in the output table reflects the actual child indices derived (e.g. `m/84'/0'/0'/0/100` through `m/84'/0'/0'/0/200`), not a loop counter starting from zero.
+- When the Range input is active the Address Count box is blanked, disabled, and dimmed to 40% opacity to make it clear it is not in use. The last manually entered count value is saved and restored automatically when the Range input is cleared.
+- If the Range input is empty the tool falls back to the Address Count value, deriving from index `0` as before.
+- The Range label uses the same `font-weight: 600` style as the Address Count label for visual consistency.
+
+**Settings — Advanced Section (HTML)**
+- A collapsible **Advanced** section has been added at the bottom of the Settings dialog, below the Theme row.
+- The section is collapsed by default and toggled open by clicking the **Advanced** heading, which displays a ▶ chevron that rotates to ▼ when expanded. The `aria-expanded` attribute updates accordingly for accessibility.
+- Keeping it collapsed by default avoids cluttering the settings for users who do not need these options.
+
+**Settings — Auto-Derive on Settings Change (HTML)**
+- An **Auto-Derive on Settings Change** toggle has been added inside the Advanced section of Settings.
+- When enabled, changing the Coin, Script Type, Derivation Path, Address Count, or Range field after an initial derive has run automatically triggers a re-derive after a 600 ms debounce, keeping the output in sync without requiring a manual button press.
+- The toggle is **off by default**, making the feature strictly opt-in. When off, `scheduleAutoderive()` exits immediately without scheduling any work.
+- The toggle uses the same `.toggle` / `.toggle-track` component already used elsewhere in the UI for visual consistency.
+- The status bar shows "Re-deriving…" while the automatic derive is in progress, and reverts to "Derivation complete." on success or an error message on failure, identical to a manual derive.
+
+**Output Panel — Expand / Minimize (HTML)**
+- A **⤢ Expand** button has been added as a fourth item in the output tab bar, positioned at the far right and visually distinguished from the three content tabs with a transparent border and muted colour.
+- Clicking it expands the output panel to fill the full viewport: the tab bar fixes to the top of the screen and the content area stretches to fill everything below it, with a solid backdrop covering the rest of the page.
+- The button label and title change to **⤡ Minimize** while expanded. Clicking it again restores the panel to its normal inline position.
+- All three content tabs (Table View, Raw JSON, Extended Keys) remain fully switchable while the panel is expanded.
+- In expanded state, `max-height` is removed from the Table View so it uses the full available height rather than being capped at 420 px; the Raw JSON textarea and Extended Keys pane also stretch to fill the viewport.
+- Three ways to minimize: clicking **⤡ Minimize**, clicking the backdrop, or pressing **Escape**. All three restore normal page scroll.
+- Page scroll is locked (`overflow: hidden` on `<body>`) while the panel is expanded to prevent the underlying content from scrolling behind it.
+
+**QR Modal — Edit Button (HTML)**
+- A **Edit** button has been added alongside Save PNG and Copy Address in the QR actions row, visible after a QR code has been generated.
+- Clicking it collapses back to the appropriate input step without closing the modal or clearing any values: for XRP addresses it returns to the destination tag prompt with focus on the memo field; for all other addresses it restores focus to the address input.
+- This allows the user to adjust the address or memo and regenerate without re-pasting or reopening the modal.
+
 ---
 
-## [1.4.0-production] — 2026-06-03
+---
+
+## [1.4.0] — 2026-06-03
 
 ### Added
 
@@ -146,7 +197,7 @@ Changes on `main` not yet tagged in a formal release.
 ### Changed
 
 **Version bump (HTML)**
-- `APP_VERSION` and the title-bar badge updated from `1.3.0-production` to `1.4.0-production`.
+- `APP_VERSION` and the title-bar badge updated from `1.4.0-production` to `1.5.0`.
 
 **Passphrase Field Default Type (HTML)**
 - Changed from `type="text"` to `type="password"` so the value is hidden on load. The visibility toggle restores previous behavior when needed.
@@ -156,7 +207,7 @@ Changes on `main` not yet tagged in a formal release.
 
 ---
 
-## [1.3.0-production] — 2026-06-02
+## [1.3.0] — 2026-06-02
 
 ### Added
 
@@ -202,7 +253,7 @@ Changes on `main` not yet tagged in a formal release.
 
 ---
 
-## [1.2.0-production] — 2026-06-02
+## [1.2.0] — 2026-06-02
 
 ### Added
 
@@ -236,7 +287,7 @@ Changes on `main` not yet tagged in a formal release.
 
 ---
 
-## [1.1.0-production] — 2026-06-01
+## [1.1.0] — 2026-06-01
 
 ### Added
 
@@ -323,4 +374,4 @@ Tagged release commit `e7cc84e`. First formal GitHub release.
 
 ## Notes on Versioning
 
-The project uses a `major.minor.patch-channel` version string (e.g. `1.3.0-production`), surfaced in the UI title bar and via `--version` on the CLI. The README includes SHA256 hashes for `Arculus_Recovery.html` and `Arculus_Recovery.py` so users can verify the exact file state they are running, independent of the version string.
+The project uses a `major.minor.patch` version string (e.g. `1.5.0`), surfaced in the UI title bar and via `--version` on the CLI. The `-production` channel suffix used in versions 1.1.0 through 1.4.0 has been dropped from 1.5.0 onwards. The README includes SHA256 hashes for `Arculus_Recovery-5.html` and `Arculus_Recovery.py` so users can verify the exact file state they are running, independent of the version string.

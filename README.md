@@ -2,7 +2,7 @@
 
 Offline BIP39/BIP32 recovery and key-derivation tool with both:
 
-- a browser-based interface in `Arculus_Recovery.html`
+- a browser-based interface in `Arculus_Recovery-5.html`
 - a Python desktop/CLI version in `Arculus_Recovery.py`
 
 This project is designed to run fully offline and uses only local computation. No external libraries or network requests are required.
@@ -118,13 +118,13 @@ Recommended usage:
 Verify the SHA256 hashes before using the recovery tool:
 
 ```bash
-shasum -a 256 Arculus_Recovery.html Arculus_Recovery.py
+shasum -a 256 Arculus_Recovery-5.html Arculus_Recovery.py
 ```
 
 Expected hashes:
 
 ```text
-<hash for current Arculus_Recovery.html>  Arculus_Recovery.html
+0d27e9dadd7bb4c42c42d188fcca1179d1935d77aed52c88beae9931c2ce58cf  Arculus_Recovery-5.html
 <hash for current Arculus_Recovery.py>    Arculus_Recovery.py
 ```
 
@@ -164,7 +164,7 @@ The project supports encrypted seed backup and export using the `.arc` file exte
 
 ### Compatibility
 
-New `.arc` exports work in both `Arculus_Recovery.html` and `Arculus_Recovery.py`.
+New `.arc` exports work in both `Arculus_Recovery-5.html` and `Arculus_Recovery.py`.
 
 ### File Format
 
@@ -207,13 +207,13 @@ Supported import formats:
 
 ## Files
 
-- `Arculus_Recovery.html` — browser-based offline recovery tool
+- `Arculus_Recovery-5.html` — browser-based offline recovery tool
 - `Arculus_Recovery.py` — Python version with GUI and CLI support
 - `docs/screenshots/` — README screenshots
 
 ## HTML Version
 
-Open `Arculus_Recovery.html` directly in a browser. No installation required.
+Open `Arculus_Recovery-5.html` directly in a browser. No installation required.
 
 ### HTML Features
 

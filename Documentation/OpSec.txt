@@ -1,4 +1,4 @@
-Arculus Recovery v1.2.0-production — Operational Security Guide
+Arculus Recovery v1.5.0 — Operational Security Guide
 ================================================================
 
 Scope
