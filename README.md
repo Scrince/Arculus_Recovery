@@ -2,7 +2,7 @@
 
 Offline BIP39/BIP32 recovery and key-derivation tool with both:
 
-- a browser-based interface in `Arculus_Recovery-5.html`
+- a browser-based interface in `Arculus_Recovery.html`
 - a Python desktop/CLI version in `Arculus_Recovery.py`
 
 This project is designed to run fully offline and uses only local computation. No external libraries or network requests are required.
