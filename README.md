@@ -332,3 +332,15 @@ Local Windows artifacts are copied to:
 In the Tauri app, browser-style exports such as PDF, JSON, CSV, TXT, encrypted seed files, and QR PNGs are routed through an injected native export bridge. The bridge exposes `window.arculusTauriSaveExport` inside the WebView and calls the Rust `save_export` command, which opens a native Save dialog with the app's suggested filename before writing the file. The generated Tauri HTML copy keeps a WebView download fallback for native save failures, while user-cancelled Save dialogs are treated as cancellations. The Tauri v2 export bridge depends on `src-tauri/capabilities/default.json` and `src-tauri/permissions/export.toml`; keep both files in place when rebuilding desktop artifacts.
 
 macOS and Linux Tauri artifacts must be built on their native platforms. The workflow at `.github/workflows/tauri-build.yml` builds Windows, macOS, and Linux artifacts in GitHub Actions.
+
+## GitHub Release Assets
+
+Use `v1.5.0` as the release tag for this version.
+
+Upload these Windows assets to the GitHub release:
+
+- `releases/tauri/windows/arculus-recovery.exe`
+- `releases/tauri/windows/Arculus Recovery_1.5.0_x64-setup.exe`
+- `releases/tauri/windows/Arculus Recovery_1.5.0_x64_en-US.msi`
+
+GitHub automatically attaches `Source code (zip)` and `Source code (tar.gz)` for the tagged commit. Those generated archives include `Arculus_Recovery.html`, `Arculus_Recovery.py`, and the rest of the committed source tree, so the HTML and Python files do not need to be uploaded separately unless direct single-file downloads are desired.
