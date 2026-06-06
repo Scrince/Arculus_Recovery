@@ -1,4 +1,4 @@
-# Security Policy
+﻿# Security Policy
 
 ## Overview
 
@@ -18,7 +18,7 @@ The current derivation surface includes UTXO-style outputs for Bitcoin, Litecoin
 | 1.1.0-production (latest) | Active |
 | Older copies | Not supported |
 
-Use the latest `Arculus_Recovery.html`, `index.html`, and `Arculus_Recovery.py` files together. The README includes SHA256 hashes so users can verify the exact files they are running.
+Use the latest project folder together, including `Arculus_Recovery.html`, `Arculus_Recovery.py`, `src/`, and `vendor/`. The README includes SHA256 hashes so users can verify the exact files they are running.
 
 ## Threat Model
 
@@ -69,15 +69,16 @@ Recommended browser posture:
 
 ### Python Version
 
-The Python version uses only the Python standard library. The GUI is implemented with Tkinter, and CLI mode can derive output without opening the desktop interface.
+The Python CLI core uses the Python standard library. The GUI is implemented with PySide6 WebEngine and renders the same local `Arculus_Recovery.html` file as the browser version. CLI mode can derive output without opening the desktop interface.
 
 Security properties:
 
-- No external Python packages are required.
+- PySide6 is required only for GUI mode.
+- The PySide6 GUI injects a local vendored jsPDF bundle for PDF export rather than fetching the CDN copy at runtime.
 - No network APIs are used.
 - Random mnemonic generation uses `os.urandom`, the OS CSPRNG.
 - File import/export happens through local filesystem dialogs or CLI output.
-- GUI dark mode and settings are local UI state only.
+- GUI themes and settings are local HTML application state.
 
 Recommended Python posture:
 
@@ -215,3 +216,6 @@ If private vulnerability reporting is available for the repository, use it. Othe
 ## Disclaimer
 
 No recovery tool can make unsafe handling of seed material safe. Arculus Recovery is provided as-is. Users are responsible for running it in a trusted environment and protecting all seed phrases, passphrases, private keys, and exported files.
+
+
+

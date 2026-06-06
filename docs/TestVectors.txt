@@ -5,7 +5,7 @@ Scope
 -----
 
 This document is the authoritative, machine-verifiable test vector suite for
-Arculus Recovery v1.2.0-production. It defines a complete set of known-good
+Arculus Recovery v1.5.0. It defines a complete set of known-good
 input/output pairs for every cryptographic pipeline stage the engine implements:
 BIP39 entropy and checksum derivation, PBKDF2 seed stretching, BIP32 master
 node construction, CKDpriv child derivation, all supported script types and
@@ -890,7 +890,7 @@ Cross-Implementation Compliance Criterion
 ------------------------------------------
 
 An implementation is considered specification-equivalent to Arculus Recovery
-v1.2.0-production if and only if all of the following conditions are met:
+v1.5.0 if and only if all of the following conditions are met:
 
   1. All address strings in the Bitcoin, Ethereum, XRP, Litecoin, and Dogecoin
      derivation vectors above match exactly, character for character, including
@@ -921,3 +921,26 @@ Condition 1 is necessary but not sufficient. An implementation that produces
 correct addresses but incorrect private keys has a bug in its scalar arithmetic
 that may only manifest in keys it happens to generate correctly by coincidence.
 All conditions must be met simultaneously.
+
+
+Packaging Regression Checks
+-----------------------------
+
+The following checks cover packaging changes that do not alter the deterministic
+cryptographic vectors above but can affect user-visible behavior:
+
+  1. The standalone Arculus_Recovery.html file must contain the inline jsPDF
+     script block and must not require a network request for PDF export.
+
+  2. The packaged HTML asset under src/arculus_recovery/assets/ must match the
+     canonical root HTML file when a release is prepared.
+
+  3. The PySide6 GUI must preserve CLI behavior: python Arculus_Recovery.py
+     --help must remain available, and python -m compileall over
+     Arculus_Recovery.py and src/ must pass.
+
+  4. The Tauri project must include src-tauri/capabilities/default.json and
+     src-tauri/permissions/export.toml. These files are required for the
+     injected WebView export bridge and native save_export command. Packaged
+     release checks must confirm PDF, JSON, TXT, CSV, .arc, and QR PNG exports
+     save to disk through the native bridge.

@@ -305,7 +305,9 @@ Passphrase Entry in the HTML Interface
 
 The Passphrase field in Arculus Recovery v1.5.0 is a password-type input that
 masks its contents by default. This behavior was introduced in v1.4.0 to prevent
-shoulder-surfing exposure of the passphrase during session setup.
+shoulder-surfing exposure of the passphrase during session setup. The behavior
+is shared by the standalone HTML application and GUI surfaces that render the
+same HTML asset, including the PySide6 desktop GUI and the Tauri wrapper.
 
 Visibility toggle:
 

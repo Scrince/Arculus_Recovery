@@ -1,4 +1,4 @@
-# Migration Guide — Arculus Recovery
+﻿# Migration Guide â€” Arculus Recovery
 
 This document covers how to upgrade between versions of Arculus Recovery and how to migrate encrypted seed files (`.arc`) and derived-output exports across format changes.
 
@@ -6,25 +6,25 @@ This document covers how to upgrade between versions of Arculus Recovery and how
 
 ## Upgrading to the Current Release
 
-### Step 1 — Download the new files
+### Step 1 â€” Download the new files
 
-Obtain the latest `Arculus_Recovery.html`, `index.html`, and `Arculus_Recovery.py` from the repository.
+Obtain the latest project folder from the repository, including `Arculus_Recovery.html`, `Arculus_Recovery.py`, `src/`, `vendor/`, `requirements.txt`, and `pyproject.toml`.
 
-### Step 2 — Verify SHA256 hashes
+### Step 2 â€” Verify SHA256 hashes
 
 Always verify file integrity before use. Run:
 
 ```bash
-shasum -a 256 Arculus_Recovery.html index.html Arculus_Recovery.py
+shasum -a 256 Arculus_Recovery.html Arculus_Recovery.py src/arculus_recovery/*.py src/arculus_recovery/assets/* vendor/jspdf/jspdf.umd.min.js
 ```
 
 Compare the output against the expected hashes published in the README. Do not proceed if any hash does not match.
 
-### Step 3 — Replace old files
+### Step 3 â€” Replace old files
 
-Replace your previous copies of `Arculus_Recovery.html`, `index.html`, and `Arculus_Recovery.py` with the verified new files. The HTML and Python versions are designed to be used together; always update all three files at the same time.
+Replace your previous project folder with the verified new folder. The HTML file, Python launcher, `src/` package, and vendored assets are designed to be used together; always update them as a set.
 
-### Step 4 — Test with a known mnemonic
+### Step 4 â€” Test with a known mnemonic
 
 Before relying on the updated tool for real seed recovery work, validate it with a known-good test mnemonic (e.g., the BIP39 test vector `abandon abandon ... about`) and confirm that derived addresses match expected values.
 
@@ -82,22 +82,23 @@ If you need Taproot-derived addresses from a seed you previously derived without
 
 ## Python Environment Migration
 
-The Python version uses only the Python standard library. No migration of dependencies is required when upgrading. The tool has been tested on Python 3.x; Python 2 is not supported.
+The Python CLI core uses the Python standard library. The desktop GUI now requires PySide6 because it renders the canonical HTML interface in a Qt WebEngine window. The tool has been tested on Python 3.x; Python 2 is not supported.
 
 If you are moving the tool to a new machine:
 
-1. Transfer `Arculus_Recovery.py` to the new machine via encrypted media.
+1. Transfer the project folder to the new machine via encrypted media.
 2. Verify the SHA256 hash matches the expected value from the README.
 3. Confirm Python 3 is available: `python3 --version`.
-4. Run `python3 Arculus_Recovery.py --gui` or the appropriate CLI command.
+4. Install GUI dependencies if needed: `python3 -m pip install -r requirements.txt`.
+5. Run `python3 Arculus_Recovery.py --gui` or the appropriate CLI command.
 
 ---
 
 ## HTML Version Migration
 
-`Arculus_Recovery.html` and `index.html` are identical in content (same SHA256 hash). The `index.html` copy is provided for convenience in certain local-file workflows. Always update both files together.
+`Arculus_Recovery.html` is the canonical browser app. The current repository does not ship a separate `index.html` copy.
 
-Browser storage is used only to persist the dark-mode preference. There is no stored seed data to migrate. When updating the HTML file, the dark-mode preference in browser storage will be carried forward automatically.
+Browser storage is used only to persist the theme preference. There is no stored seed data to migrate. When updating the HTML file, the theme preference in browser storage will be carried forward automatically.
 
 ---
 
@@ -105,10 +106,10 @@ Browser storage is used only to persist the dark-mode preference. There is no st
 
 | Exporting version | Current armored `.arc` | JSON v2 `.arc` | Legacy formats |
 |---|---|---|---|
-| Current release (HTML) | ✅ Reads | ✅ Reads | ✅ Reads |
-| Current release (Python) | ✅ Reads | ✅ Reads | ✅ Reads |
-| Older HTML (v1 AES-GCM) | ❌ Cannot read current | — | Reads own format only |
-| Older Python (v1) | ❌ Cannot read current | — | Reads own format only |
+| Current release (HTML) | âœ… Reads | âœ… Reads | âœ… Reads |
+| Current release (Python) | âœ… Reads | âœ… Reads | âœ… Reads |
+| Older HTML (v1 AES-GCM) | âŒ Cannot read current | â€” | Reads own format only |
+| Older Python (v1) | âŒ Cannot read current | â€” | Reads own format only |
 
 Recommendation: always use the current release for both exporting and importing. Older versions cannot read files produced by the current release.
 
@@ -116,10 +117,12 @@ Recommendation: always use the current release for both exporting and importing.
 
 ## Summary Checklist for Upgrading
 
-- [ ] Download new `Arculus_Recovery.html`, `index.html`, and `Arculus_Recovery.py`
+- [ ] Download the new project folder, including `Arculus_Recovery.html`, `Arculus_Recovery.py`, `src/`, and `vendor/`
 - [ ] Verify SHA256 hashes against the README on an offline machine
-- [ ] Replace all three files together (never mix versions)
+- [ ] Replace the HTML, Python launcher, source package, and vendored assets together (never mix versions)
 - [ ] Re-import and re-export any old `.arc` files to migrate them to the current armored format
 - [ ] Verify re-exported `.arc` files can be imported before deleting old copies
 - [ ] Store updated `.arc` files on encrypted removable media
 - [ ] Test with a known mnemonic to confirm derivation output is correct
+
+

@@ -1,14 +1,14 @@
-# Threat Model — Arculus Recovery
+﻿# Threat Model â€” Arculus Recovery
 
 **Version:** 1.1.0-production  
 **Last Updated:** 2026-06-01  
-**Scope:** `Arculus_Recovery.html`, `index.html`, `Arculus_Recovery.py`
+**Scope:** `Arculus_Recovery.html`, `Arculus_Recovery.py`, `src/`, `vendor/`
 
 ---
 
 ## 1. Overview
 
-Arculus Recovery is an offline BIP39/BIP32 seed recovery and key-derivation utility. It is available as a self-contained HTML file opened directly in a browser and as a Python script with both a desktop GUI (Tkinter) and a CLI. The tool performs all computation locally. It requires no server, cloud API, network request, telemetry endpoint, or external package.
+Arculus Recovery is an offline BIP39/BIP32 seed recovery and key-derivation utility. It is available as a self-contained HTML file opened directly in a browser and as a Python script with both a PySide6 desktop GUI and a CLI. The GUI renders the local HTML file; the CLI uses the Python recovery core. The tool performs all computation locally and requires no server, cloud API, network request, or telemetry endpoint.
 
 The current derivation scope includes Bitcoin, Litecoin, Dogecoin, Ethereum / ERC-20, and XRP. Ethereum and XRP support are account-address derivation features; they do not query balances, inspect tokens, or fetch ledger data.
 
@@ -43,34 +43,34 @@ The following assets are considered sensitive and are the primary targets of any
 ## 3. Trust Boundaries
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                   USER'S MACHINE                        │
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │         Arculus Recovery Application             │   │
-│  │   (HTML in browser  /  Python GUI or CLI)        │   │
-│  │                                                  │   │
-│  │  • BIP39 validation     • Key derivation         │   │
-│  │  • Random seed gen      • .arc encrypt/decrypt   │   │
-│  │  • Word-grid input      • Export (JSON/CSV/TXT)  │   │
-│  └──────────────────────────────────────────────────┘   │
-│            │                       │                    │
-│   OS CSPRNG (os.urandom /          │                    │
-│   crypto.getRandomValues)          │                    │
-│   (entropy input only;       Local filesystem only      │
-│    no network)               (file open/save dialogs    │
-│                               or CLI paths)             │
-│  ┌───────────────────┐   ┌───────────────────────────┐  │
-│  │  Browser storage  │   │  OS clipboard / memory    │  │
-│  │  (dark-mode pref  │   │  (ephemeral; shared with  │  │
-│  │   only — no seeds)│   │   other processes)        │  │
-│  └───────────────────┘   └───────────────────────────┘  │
-└─────────────────────────────────────────────────────────┘
-         ║
-         ║  ← No network traffic crosses this boundary
-         ║     during normal tool operation
-         ▼
-    [ Internet / Remote Services ]   ← Out of scope for this tool
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                   USER'S MACHINE                        â”‚
+â”‚                                                         â”‚
+â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”‚
+â”‚  â”‚         Arculus Recovery Application             â”‚   â”‚
+â”‚  â”‚   (HTML in browser  /  Python GUI or CLI)        â”‚   â”‚
+â”‚  â”‚                                                  â”‚   â”‚
+â”‚  â”‚  â€¢ BIP39 validation     â€¢ Key derivation         â”‚   â”‚
+â”‚  â”‚  â€¢ Random seed gen      â€¢ .arc encrypt/decrypt   â”‚   â”‚
+â”‚  â”‚  â€¢ Word-grid input      â€¢ Export (JSON/CSV/TXT)  â”‚   â”‚
+â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â”‚
+â”‚            â”‚                       â”‚                    â”‚
+â”‚   OS CSPRNG (os.urandom /          â”‚                    â”‚
+â”‚   crypto.getRandomValues)          â”‚                    â”‚
+â”‚   (entropy input only;       Local filesystem only      â”‚
+â”‚    no network)               (file open/save dialogs    â”‚
+â”‚                               or CLI paths)             â”‚
+â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”‚
+â”‚  â”‚  Browser storage  â”‚   â”‚  OS clipboard / memory    â”‚  â”‚
+â”‚  â”‚  (dark-mode pref  â”‚   â”‚  (ephemeral; shared with  â”‚  â”‚
+â”‚  â”‚   only â€” no seeds)â”‚   â”‚   other processes)        â”‚  â”‚
+â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+         â•‘
+         â•‘  â† No network traffic crosses this boundary
+         â•‘     during normal tool operation
+         â–¼
+    [ Internet / Remote Services ]   â† Out of scope for this tool
 ```
 
 ---
@@ -126,7 +126,7 @@ The following assets are considered sensitive and are the primary targets of any
 | A-2 | MAC bypass attack against the `.arc` format | Very Low | Critical | HMAC-SHA512 covers all versioned metadata, KDF parameters, nonce, and ciphertext |
 | A-3 | Nonce reuse in HMAC-SHA512 counter stream | Very Low | High | A 24-byte random nonce is generated fresh per export |
 | A-4 | `.arc` file stored in an insecure location (cloud sync, email) | High | High | Store `.arc` files on encrypted removable media only; never cloud-sync them |
-| A-5 | Older format imports (≥600,000 iterations) accepted alongside current exports | Low | Low | Legacy imports are accepted for compatibility; users should re-export to current format when possible |
+| A-5 | Older format imports (â‰¥600,000 iterations) accepted alongside current exports | Low | Low | Legacy imports are accepted for compatibility; users should re-export to current format when possible |
 
 ### 5.5 Supply-Chain Threats
 
@@ -134,7 +134,7 @@ The following assets are considered sensitive and are the primary targets of any
 |---|---|---|---|---|
 | S-1 | Malicious commit to repository injects backdoor or biases CSPRNG output | Low | Critical | Verify SHA256 hashes from the README on every download |
 | S-2 | GitHub account compromise leads to backdoored release | Low | Critical | Hash verification is independent of GitHub trust |
-| S-3 | Python standard library vulnerability exploited | Very Low | Medium | The tool uses only stdlib; keep the Python runtime patched |
+| S-3 | Python runtime or PySide6 vulnerability exploited | Very Low | Medium | Keep the Python runtime and PySide6 dependency patched; use CLI mode when GUI dependencies are unnecessary |
 
 ### 5.6 Operational Threats
 
@@ -158,7 +158,7 @@ The following assets are considered sensitive and are the primary targets of any
 | `.arc` KDF | PBKDF2-HMAC-SHA512 | 1,000,000 iterations, 32-byte random salt |
 | `.arc` encryption | HMAC-SHA512 counter stream | 24-byte random nonce |
 | `.arc` authentication | HMAC-SHA512 | Covers versioned metadata, KDF params, nonce, and ciphertext |
-| Key separation | Domain-specific HMAC-SHA512 labels | Encryption key ≠ authentication key |
+| Key separation | Domain-specific HMAC-SHA512 labels | Encryption key â‰  authentication key |
 | Password normalization | Unicode NFKD | Applied before KDF in both mnemonic and `.arc` contexts |
 | Ethereum address formatting | Keccak-256 + EIP-55 | Uses uncompressed secp256k1 public key material and checksum casing |
 | XRP classic address formatting | SHA256 + RIPEMD160 + XRPL base58check | Uses XRPL base58 alphabet and `0x00` account prefix |
@@ -194,7 +194,7 @@ Even with all recommended mitigations applied, the following residual risks rema
 
 1. Use the tool on an air-gapped machine, ideally booted from a live OS.
 2. Verify SHA256 hashes from the README before every use.
-3. Disconnect from the internet before opening the HTML file or running the Python script — this applies equally to seed recovery and seed generation.
+3. Disconnect from the internet before opening the HTML file or running the Python script â€” this applies equally to seed recovery and seed generation.
 4. Use a clean browser profile with all extensions disabled.
 5. Use a strong, unique password for `.arc` exports.
 6. Store `.arc` files and derived-output exports on encrypted removable media.
@@ -202,3 +202,5 @@ Even with all recommended mitigations applied, the following residual risks rema
 8. Avoid copying seed phrases, passphrases, or private keys to the clipboard.
 9. Close the application promptly when done.
 10. When generating a new seed, write it down on paper immediately after revealing it; do not store it digitally in plaintext.
+
+

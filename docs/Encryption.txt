@@ -5,7 +5,7 @@ Scope
 -----
 
 This document is the authoritative byte-level specification of the encrypted
-seed storage subsystem as implemented in Arculus Recovery v1.1.0-production. It
+seed storage subsystem as implemented in Arculus Recovery v1.5.0. It
 defines the .arc file format in complete structural detail, the PBKDF2-based
 key schedule, domain-separated key derivation, the HMAC-SHA512 counter-mode
 keystream construction, the authenticated metadata transcript, the full export
@@ -25,15 +25,16 @@ Design Objectives
 The .arc format was designed under three non-negotiable engineering constraints
 that admit no exceptions:
 
-  1. Zero external runtime dependencies.
+  1. Zero external cryptographic runtime dependencies.
      Python uses exclusively hashlib, hmac, os.urandom, json, and base64 from
      the Python standard library. The HTML version uses browser built-ins
      exclusively: SubtleCrypto (PBKDF2, HMAC, SHA-512),
      crypto.getRandomValues, TextEncoder, TextDecoder, btoa, and atob. No
      third-party cryptographic package, compiled extension, or WebAssembly
-     module is introduced under any circumstances. The constraint is absolute
-     and applies retroactively: any proposed change that introduces an external
-     dependency is rejected by design, not by policy.
+     module is introduced for .arc encryption under any circumstances. The
+     constraint is absolute for seed encryption and applies retroactively: any
+     proposed change that introduces an external cryptographic dependency is
+     rejected by design, not by policy.
 
   2. Cross-platform byte-level compatibility.
      A .arc file produced by the HTML version must be decryptable by the Python
@@ -756,3 +757,20 @@ a constant value in either implementation must be propagated to the other with
 identical byte representation, or cross-implementation compatibility breaks
 silently — .arc files produced by the modified implementation will fail MAC
 verification when imported into the unmodified one, and vice versa.
+
+
+Application Surface Notes
+--------------------------
+
+The standalone HTML application performs .arc export and import entirely with
+browser built-ins and embedded application code. The PySide6 GUI renders the
+same HTML application inside Qt WebEngine and therefore uses the same browser-
+side .arc implementation for GUI import/export. The Python CLI uses the Python
+implementation directly.
+
+The Tauri wrapper also renders the canonical HTML application, but its desktop
+file-save path is routed through a native export bridge and Tauri v2
+capability/permission files. This file-save bridge is outside the .arc
+cryptographic construction: a Tauri save failure does not imply a cryptographic
+format failure, but the final packaged Tauri export path must be verified before
+it is relied upon during an operational recovery session.

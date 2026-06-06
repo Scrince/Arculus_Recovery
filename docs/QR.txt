@@ -1,4 +1,4 @@
-Arculus Recovery v1.5.0 — QR Export Subsystem Reference
+Arculus Recovery v1.5.0 ? QR Export Subsystem Reference
 =========================================================
 
 Scope
@@ -18,9 +18,12 @@ addresses are handled apply equally here and are defined in OpSec.txt. This
 document does not repeat those requirements except where they have direct
 consequences specific to QR code use.
 
-The QR Export subsystem is implemented in the HTML version only. It is not
-available in the Python CLI or Python GUI. All behavior described in this
-document refers exclusively to Arculus_Recovery-5.html.
+The QR Export subsystem is implemented in the HTML application surface. It is
+not available in the Python CLI. It is available in GUI surfaces that render the
+canonical HTML application, including the standalone browser version and the
+PySide6 desktop GUI. The Tauri wrapper packages the same QR code generation
+logic, but its desktop save-to-file path is subject to the Tauri export bridge
+described later in this document and in FileFormat.txt.
 
 
 Design Constraints
@@ -47,7 +50,7 @@ mode may select a higher QR version for the same input length due to the longer
 mode indicator length.
 
 
-QR Code Encoder — Technical Specification
+QR Code Encoder ? Technical Specification
 -------------------------------------------
 
 The encoder is implemented as the QRGen module, an immediately-invoked function
@@ -148,7 +151,7 @@ Mask selection:
   penalty score is selected as the final mask. The penalty scorer applies all
   four QR standard penalty rules: runs of five or more identical modules in a
   row or column, 2x2 blocks of identical modules, patterns resembling finder
-  patterns, and proportion of dark modules outside the 45–55% band.
+  patterns, and proportion of dark modules outside the 45?55% band.
 
 Format information:
 
@@ -196,18 +199,18 @@ a payment QR code, rather than a bare address string which some wallets reject.
 Detection is applied in the following order. The first rule that matches wins.
 All pattern tests are applied to the trimmed address string.
 
-  Rule 1 — Pass-through for existing scheme:
+  Rule 1 ? Pass-through for existing scheme:
     If the address already contains a URI scheme prefix (matches /^[a-z]+:/i),
     the address is returned unchanged. A manually typed URI such as
     "bitcoin:1abc..." is passed through without modification or re-prefixing.
 
-  Rule 2 — Bitcoin:
+  Rule 2 ? Bitcoin:
     Pattern: /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,}/
     Matches: bc1q... (P2WPKH native SegWit), bc1p... (P2TR Taproot), 1...
     (P2PKH legacy), 3... (P2SH wrapped SegWit).
     URI produced: "bitcoin:" + address
 
-  Rule 3 — Litecoin:
+  Rule 3 ? Litecoin:
     Pattern: /^(ltc1|[LM])[a-zA-HJ-NP-Z0-9]{25,}/
     Matches: ltc1q... (P2WPKH native SegWit), ltc1p... (Taproot-style),
     L... (P2PKH legacy), M... (P2SH wrapped SegWit).
@@ -217,14 +220,14 @@ All pattern tests are applied to the trimmed address string.
     The absence of "3" in the Litecoin rule prevents ambiguity with the Bitcoin
     rule, which is evaluated first and matches 3... addresses as Bitcoin P2SH.
 
-  Rule 4 — Dogecoin:
+  Rule 4 ? Dogecoin:
     Pattern: /^[DA9][a-zA-HJ-NP-Z0-9]{25,}/
     Matches: D... (P2PKH, the standard Dogecoin address format), A... and 9...
     (P2SH, used for wrapped SegWit; wallet support for these Dogecoin formats
     varies; see the derivation path table in Derivation.txt).
     URI produced: "dogecoin:" + address
 
-  Rule 5 — Ethereum:
+  Rule 5 ? Ethereum:
     Pattern: /^0x[0-9a-fA-F]{40}$/
     Matches: EIP-55 checksummed or unchecksummed Ethereum addresses of exactly
     42 characters (0x prefix plus 40 hex digits). ERC-20 token addresses use
@@ -235,20 +238,20 @@ All pattern tests are applied to the trimmed address string.
     address scanning. Amount and token parameters defined in EIP-681 are not
     added by this tool; only the base address URI is produced.
 
-  Rule 6 — XRP:
+  Rule 6 ? XRP:
     Detection: isXrpAddress(a), which tests /^r[1-9A-HJ-NP-Z0-9]{24,}/
     Matches: XRPL classic r-addresses of 25 or more base58-alphabet characters
     beginning with r.
     URI produced (without destination tag): the bare address, no scheme prefix.
-    URI produced (with destination tag):    address + "?dt=" + tag
+    URI produced (with destination tag):    address + "dt=" + tag
     The XRP rule does not prepend a scheme prefix. The xrp: URI scheme is not
     an IETF-registered standard, and xrpl: (XLS-7d) has inconsistent support
-    across wallet software. The bare address format with the optional ?dt= query
+    across wallet software. The bare address format with the optional dt= query
     parameter for destination tags is the most broadly compatible representation
     across Coinbase, Robinhood, Binance, and XUMM/Xaman. See the XRP Destination
     Tag Workflow section below for the full two-step generation procedure.
 
-  Rule 7 — Fallback:
+  Rule 7 ? Fallback:
     If no rule above matches, the address is encoded as entered. No scheme is
     prepended. This covers custom or non-standard address formats not recognized
     by the detection rules.
@@ -272,29 +275,29 @@ contacting the exchange's support and is not guaranteed.
 Because of this risk, the QR Export modal implements a two-step workflow for
 XRP addresses rather than rendering immediately on Generate.
 
-Step 1 — Address entry and detection:
+Step 1 ? Address entry and detection:
   The user pastes or types an XRP address into the address input field and
   clicks Generate (or presses Enter). isXrpAddress() tests the input. If the
   input matches an XRP r-address, the QR canvas is not rendered yet. Instead,
   the destination tag prompt panel is shown and focus moves to the tag input.
 
-Step 2a — Generate with destination tag:
+Step 2a ? Generate with destination tag:
   If a destination tag is required, the user enters the numeric tag value into
   the tag input field and clicks Generate QR. The QR is encoded from the URI:
 
-    rADDRESS?dt=TAGNUMBER
+    rADDRESSdt=TAGNUMBER
 
   where TAGNUMBER is the destination tag value passed through
   encodeURIComponent(). For a purely numeric tag, encodeURIComponent produces
-  no escaping. The ?dt= parameter format is recognized by Coinbase, Robinhood,
+  no escaping. The dt= parameter format is recognized by Coinbase, Robinhood,
   Binance, and XUMM/Xaman. The address label below the canvas displays the full
-  URI including the ?dt= parameter so the user can verify the tag was included.
+  URI including the dt= parameter so the user can verify the tag was included.
 
-Step 2b — Generate without destination tag:
+Step 2b ? Generate without destination tag:
   If no destination tag is needed (for example, the address is a self-custodied
   XRP wallet rather than an exchange deposit address), the user clicks
-  Skip — No Tag. The QR is encoded from the bare address string with no scheme
-  prefix and no ?dt= parameter.
+  Skip ? No Tag. The QR is encoded from the bare address string with no scheme
+  prefix and no dt= parameter.
 
 The two-step flow is triggered for any input that matches the XRP address
 pattern, regardless of whether a destination tag is actually required for that
@@ -314,7 +317,7 @@ The QR modal is accessible from two independent entry points. Both entry points
 invoke the same generation pipeline and produce identical output for the same
 inputs.
 
-Entry point 1 — QR Export button:
+Entry point 1 ? QR Export button:
   The QR Export button in the action toolbar opens the modal in a blank state.
   The address input is empty and focused. The user must type or paste an address
   manually. This entry point is independent of any prior derivation run; it
@@ -322,9 +325,9 @@ Entry point 1 — QR Export button:
   entry point for generating a receive QR code from any known address, whether
   or not it was derived in the current session.
 
-Entry point 2 — Per-row QR button in Table View:
+Entry point 2 ? Per-row QR button in Table View:
   Each row in the Table View output panel includes a small QR trigger button
-  (▦) in the address column. Clicking it opens the QR modal with the address
+  (?) in the address column. Clicking it opens the QR modal with the address
   field pre-populated from that row's address value. For XRP rows, the
   destination tag prompt is shown immediately because the address is already
   known to be an XRP address; the user proceeds directly to step 2 of the
@@ -343,10 +346,14 @@ After a QR code has been generated and rendered, three action buttons appear
 below the canvas.
 
 Save PNG:
-  Downloads the canvas content as a PNG image file. The filename is constructed
-  as qr_<sanitized_address>.png, where the sanitized address is the address
-  string with all non-alphanumeric characters replaced by underscores, truncated
-  to 40 characters. The image is the raw canvas at its computed pixel dimensions
+  Saves or downloads the canvas content as a PNG image file. In a normal browser
+  this uses the standard Blob download path. In the PySide6 GUI it uses the
+  WebEngine download/save path. In the Tauri wrapper it uses the injected
+  window.arculusTauriSaveExport bridge and native save_export command before any
+  browser-style download path. The filename is constructed as
+  qr_<sanitized_address>.png, where the sanitized address is the address string
+  with all non-alphanumeric characters replaced by underscores, truncated to 40
+  characters. The image is the raw canvas at its computed pixel dimensions
   (at most 256 pixels wide, adjusted to the nearest multiple of the module size).
   The PNG contains a black-on-white QR code with a 4-module quiet zone.
 
@@ -393,7 +400,7 @@ Practical byte lengths of addresses and URIs generated by the tool:
   Dogecoin P2PKH (D...):        34 chars bare / 43 chars with dogecoin: prefix
   Ethereum (0x...):             42 chars bare / 51 chars with ethereum: prefix
   XRP classic (r...):           25-35 chars bare (no scheme prefix)
-  XRP with destination tag:     25-35 chars + "?dt=" + up to 10 digits
+  XRP with destination tag:     25-35 chars + "dt=" + up to 10 digits
 
 All of the above are well within the 180-byte capacity ceiling at level Q.
 None require a QR version above 3 or 4. The encoder will not be capacity-limited
@@ -500,3 +507,4 @@ Helper functions:
       Address button, and Edit button. Called once at page load as part of the
       main UI initialization. Listener registration is not repeated on subsequent
       modal opens.
+

@@ -1,4 +1,4 @@
-Arculus Recovery v1.5.0 — Operational Security Guide
+Arculus Recovery v1.5.0 ? Operational Security Guide
 ================================================================
 
 Scope
@@ -26,7 +26,7 @@ Threat Model
 The engine is designed to resist the following adversary classes under the
 stated conditions.
 
-Adversary class 1 — Offline file acquisition:
+Adversary class 1 ? Offline file acquisition:
   An adversary who obtains a .arc file without the decryption password gains
   no access to the mnemonic. The PBKDF2-HMAC-SHA512 construction at 1,000,000
   iterations is the resistance barrier. This barrier is linear in iteration
@@ -34,7 +34,7 @@ Adversary class 1 — Offline file acquisition:
   GPU acceleration. See the password entropy requirements section below for the
   minimum entropy threshold that makes this barrier meaningful.
 
-Adversary class 2 — Network adversary:
+Adversary class 2 ? Network adversary:
   The engine performs no network I/O of any kind. A network adversary who
   intercepts traffic to and from a machine running the engine observes nothing
   related to the mnemonic, its derived keys, or the .arc file contents.
@@ -42,36 +42,36 @@ Adversary class 2 — Network adversary:
   being fully disconnected before mnemonic input begins. It does not hold if
   the machine is connected to any network while seed material is in memory.
 
-Adversary class 3 — Post-session disk forensics:
+Adversary class 3 ? Post-session disk forensics:
   An adversary who performs disk forensics on a machine after a recovery session
   may recover mnemonic material from swap space, hibernation files, crash dumps,
   or unwiped free space. This risk is addressed by the airgap and ephemeral OS
   requirements below. It is not mitigated by the engine itself; it must be
   mitigated operationally.
 
-Adversary class 4 — .arc file tampering:
+Adversary class 4 ? .arc file tampering:
   The encrypt-then-MAC construction ensures that any modification to any field
-  of a .arc file — including KDF parameters, nonce, ciphertext, or MAC — is
+  of a .arc file ? including KDF parameters, nonce, ciphertext, or MAC ? is
   detected at import time as an authentication failure. An adversary who obtains
   a .arc file cannot modify it in any way without the MAC verification gate
   detecting the tampering. This protection is unconditional and does not depend
   on password strength.
 
-Adversary class 5 — Clipboard and screen interception:
+Adversary class 5 ? Clipboard and screen interception:
   An adversary with access to clipboard contents or screen capture can observe
   mnemonic material directly. This risk exists during any session in which the
   mnemonic is displayed or copied. Mitigations are operational only: minimize
   display duration, avoid clipboard use for seed material, do not capture
   screenshots during a session.
 
-Adversary class 6 — Physical access during a live session:
+Adversary class 6 ? Physical access during a live session:
   An adversary with physical access to a machine during an active session can
   observe the screen, photograph keyboard input, or perform a cold boot attack
   to extract RAM contents. This risk is addressed by physical access controls
   during the session: closed private room, no cameras pointed at the screen,
   session duration minimized.
 
-Out-of-scope adversaries — The following are explicitly outside the threat
+Out-of-scope adversaries ? The following are explicitly outside the threat
 model. No operational procedure in this document provides protection against them:
 
   - An adversary with full root access to the operating system before the
@@ -127,21 +127,27 @@ swap files, hibernation images, crash dumps, browser caches (in the HTML
 version), and the filesystem journal. The only complete mitigation is to conduct
 the session from an operating system that writes nothing to persistent storage.
 
-Recommended approach — Live bootable OS:
+Recommended approach ? Live bootable OS:
 
   Boot the machine from a live USB drive running a read-only operating system
   such as Tails or a standard Linux live environment. A live environment that
   has not been configured to persist writes to the USB drive operates entirely
   from RAM. When the machine is powered off after the session, all in-memory
-  state — including mnemonic, derived keys, swap contents, and any temporary
-  files — is destroyed at power loss, provided the machine does not hibernate.
+  state ? including mnemonic, derived keys, swap contents, and any temporary
+  files ? is destroyed at power loss, provided the machine does not hibernate.
   Hibernation must be disabled. Suspend-to-RAM is acceptable if the machine
   will not leave physical control during the session.
 
-  For the Python implementation: copy Arculus_Recovery.py to a RAM-backed
-  tmpfs (e.g. /tmp on most Linux live environments) before running. Do not
-  execute it from a persistent volume mounted read-write. Verify with the
-  mount command that /tmp is tmpfs-backed before proceeding.
+  For Python CLI use from the repository launcher: copy Arculus_Recovery.py
+  and the src/ directory to a RAM-backed tmpfs (e.g. /tmp on most Linux live
+  environments) before running. For Python GUI use, copy the full project
+  folder, including Arculus_Recovery.html, src/, pyproject.toml,
+  requirements.txt, and the packaged assets under src/arculus_recovery/assets/.
+  The vendor/ tree is a source copy used for regeneration and fallback
+  packaging; the current standalone HTML file embeds jsPDF inline and does not
+  require vendor/ at runtime. Do not execute the tool from a persistent volume
+  mounted read-write. Verify with the mount command that /tmp is tmpfs-backed
+  before proceeding.
 
   For the HTML implementation: open the local HTML file from the live
   environment's file manager or browser. Verify that the browser is not
@@ -150,7 +156,7 @@ Recommended approach — Live bootable OS:
   this state is discarded at shutdown regardless, but explicit clearing is
   good practice.
 
-Alternative — Dedicated offline machine:
+Alternative ? Dedicated offline machine:
 
   A machine purchased new and never connected to any network provides a stronger
   baseline than a machine that has previously been online. However, a dedicated
@@ -163,12 +169,21 @@ Alternative — Dedicated offline machine:
   A live USB approach does not have this limitation.
 
 Python version requirement:
-  The engine requires Python 3.9 or later. It uses no third-party packages.
-  The standard library modules it imports — hashlib, hmac, os, json, base64,
-  unicodedata, argparse, csv, io, re, socket, sys, dataclasses, datetime,
-  typing — are available in any standard CPython distribution. A minimal Python
-  installation without Tkinter is sufficient for CLI use; Tkinter is required
-  only for the --gui flag.
+  The CLI engine requires Python 3.10 or later and uses the Python standard
+  library. GUI mode additionally requires PySide6, which provides the Qt
+  WebEngine window used to render the local HTML interface. A minimal Python
+  installation is sufficient for CLI use; install requirements.txt only when
+  the --gui flag is needed.
+
+Desktop wrapper requirement:
+  The Tauri desktop wrapper is a separately built native package around the
+  canonical HTML application. It adds an injected WebView export bridge, a
+  native save command, and Tauri v2 capability/permission files for desktop
+  exports. Validate the final packaged application before relying on it for an
+  operational recovery session. If Tauri export behavior is uncertain on a
+  specific host, use the standalone HTML application or the PySide6 GUI for GUI
+  exports, or use the Python CLI with redirected stdout for JSON, CSV, and TXT
+  output.
 
 
 Session Execution Procedure
@@ -224,8 +239,9 @@ During session:
      produced when a correct mnemonic is derived with a wrong path; the engine
      produces valid key material for whatever path is specified.
 
-  9. If exporting derived key material (JSON, CSV, TXT), do so to a RAM-backed
-     location. Do not write to a persistent volume unless the persistent volume
+  9. If exporting derived key material (JSON, CSV, TXT, PDF, or QR PNGs that
+     encode sensitive material), do so to a RAM-backed location. Do not write
+     to a persistent volume unless the persistent volume
      will be explicitly wiped after the session. Recognize that any export file
      containing private_key_hex, private_key_wif, or any extended private key
      field is operationally equivalent in sensitivity to the mnemonic itself.
@@ -325,14 +341,14 @@ Output Handling and Storage
 Derived key material falls into two categories with fundamentally different
 handling requirements.
 
-Category A — Addresses only (public information):
+Category A ? Addresses only (public information):
   P2PKH, P2WPKH-P2SH, P2WPKH, P2TR, Ethereum, and XRP addresses are public by
   construction; they are published on-chain for every transaction. Recording,
   storing, or transmitting addresses does not require any special handling. Use
   addresses freely for the purpose of verifying that derivation matches
   expectations or for sharing with counterparties for payment.
 
-Category B — Private keys and seeds (funds-controlling secrets):
+Category B ? Private keys and seeds (funds-controlling secrets):
   private_key_hex, private_key_wif, internal_private_key_hex, output_private_
   key_hex, extended private keys (xprv, yprv, zprv, tprv), and the mnemonic
   itself are all funds-controlling secrets. Any of these, in any form, provides
@@ -424,12 +440,12 @@ compromises recovery capability.
 
 Recommended minimum architecture:
 
-  Component 1 — Hardware wallet (primary):
+  Component 1 ? Hardware wallet (primary):
     The production signing device. Located where it is used. Secured by PIN and,
     if the wallet supports it, a passphrase. Loss or destruction of this device
     triggers recovery from one of the components below.
 
-  Component 2 — Mnemonic paper backup (primary recovery path):
+  Component 2 ? Mnemonic paper backup (primary recovery path):
     A physical record of the mnemonic words written in permanent ink on archival
     paper or engraved on metal. Stored in a fire-resistant container at a
     different physical location from the hardware wallet. This backup is
@@ -437,7 +453,7 @@ Recommended minimum architecture:
     is required; if the wallet uses a BIP39 passphrase, the passphrase must be
     stored separately and is required for full recovery.
 
-  Component 3 — .arc encrypted digital backup (redundant recovery path):
+  Component 3 ? .arc encrypted digital backup (redundant recovery path):
     A .arc file stored on one or more USB drives at one or more physical
     locations. The .arc password is stored separately from the USB drive,
     either as a second paper backup or in a separate physical location.
@@ -445,7 +461,7 @@ Recommended minimum architecture:
     to be intact, and survives scenarios where the paper backup is destroyed but
     the USB drive is intact.
 
-  Component 4 — BIP39 passphrase backup (if applicable):
+  Component 4 ? BIP39 passphrase backup (if applicable):
     If a BIP39 wallet passphrase is in use, it must be backed up independently
     of the mnemonic. A mnemonic backed up without its passphrase recovers only
     the empty-passphrase key tree, not the passphrase-derived tree where funds
@@ -456,8 +472,8 @@ Recommended minimum architecture:
 No single physical location should hold both the mnemonic (in any form) and the
 means to access funds: the hardware wallet, a device with the .arc password, or
 any private key material. Geographic separation between backup components
-substantially reduces the probability that any single event — fire, flood,
-theft, or natural disaster — results in total loss.
+substantially reduces the probability that any single event ? fire, flood,
+theft, or natural disaster ? results in total loss.
 
 
 Common Operational Errors and Their Consequences
@@ -516,3 +532,5 @@ Error: Storing the .arc file and its decryption password in the same location.
   to the storage location) yields both the encrypted file and the key to decrypt
   it. The .arc encryption provides no protection in this scenario. The password
   and the file must be stored at physically separate locations.
+
+

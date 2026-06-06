@@ -1,4 +1,4 @@
-Arculus Recovery v1.5.0 — Recovery Procedures
+Arculus Recovery v1.5.0 ? Recovery Procedures
 ===============================================
 
 Scope
@@ -59,7 +59,7 @@ Inputs Required for a Complete Recovery
 
 A deterministic BIP39 wallet requires at most four inputs to fully recover:
 
-  Input 1 — Mnemonic (required):
+  Input 1 ? Mnemonic (required):
     The 12-word or 24-word BIP39 seed phrase. Every wallet address and private
     key derives deterministically from this value. If the mnemonic is lost and
     no .arc backup exists, the wallet is unrecoverable. The mnemonic must be
@@ -70,7 +70,7 @@ A deterministic BIP39 wallet requires at most four inputs to fully recover:
     A mnemonic with a transposition error that passes the BIP39 checksum is
     indistinguishable from a valid but wrong mnemonic.
 
-  Input 2 — BIP39 passphrase (required if used, otherwise omit):
+  Input 2 ? BIP39 passphrase (required if used, otherwise omit):
     An optional additional string that was entered at wallet setup time. It is
     separate from the .arc encryption password. If a passphrase was used and
     is omitted or entered incorrectly, the derived key tree is cryptographically
@@ -81,7 +81,7 @@ A deterministic BIP39 wallet requires at most four inputs to fully recover:
     uncertain whether a passphrase was used, refer to the passphrase decision
     procedure in the Address Location section below.
 
-  Input 3 — Derivation path (required if non-standard):
+  Input 3 ? Derivation path (required if non-standard):
     The BIP32 account path that the originating wallet used to derive addresses.
     If the originating wallet was an Arculus hardware wallet using the native
     default, the path is m/0'. If the originating wallet used a standard BIP44/
@@ -90,7 +90,7 @@ A deterministic BIP39 wallet requires at most four inputs to fully recover:
     determined by trial; the address location procedure in this document covers
     this case.
 
-  Input 4 — Script type (required for UTXO coins if non-standard):
+  Input 4 ? Script type (required for UTXO coins if non-standard):
     For Bitcoin, Litecoin, and Dogecoin, the script type determines the address
     format and the encoding of derived addresses. If the script type is known
     from the originating wallet, select it directly. If unknown, use the Auto
@@ -138,14 +138,16 @@ Account indices above 0 are uncommon but legal. Most wallet software creates
 only account 0 unless the user explicitly created additional accounts.
 
 
-Procedure 1 — Recovery from Direct Mnemonic Entry (HTML)
+Procedure 1 ? Recovery from Direct Mnemonic Entry (HTML)
 ----------------------------------------------------------
 
 Use this procedure when the mnemonic is available as a written or memorized
 phrase and no .arc file is involved.
 
-  1. Open Arculus_Recovery-5.html in the browser on the airgapped machine.
+  1. Open Arculus_Recovery.html in the browser on the airgapped machine.
      Confirm the network status indicator shows red before proceeding.
+     The same HTML workflow is used by the PySide6 GUI because it renders the
+     packaged HTML application inside Qt WebEngine.
 
   2. Select the word count radio button (12 or 24) that matches the mnemonic.
 
@@ -206,13 +208,18 @@ phrase and no .arc file is involved.
       Transfer the file to a USB drive for handling on a separate trusted
       machine. The export file contains private key material and must be handled
       per the Category B requirements in OpSec.txt.
+      If using the Tauri desktop wrapper, verify the specific packaged build's
+      export behavior before relying on it during a recovery session. The Tauri
+      package routes PDF, JSON, CSV, TXT, encrypted seed, and QR PNG exports
+      through an injected WebView bridge and native save_export command that
+      writes to the user's Downloads directory.
 
   14. When the recovery session is complete, click Clear All to wipe all fields
       and in-memory state. Close the browser tab. If the OS is ephemeral, power
       off the machine to complete RAM clearance.
 
 
-Procedure 2 — Recovery from .arc Encrypted Seed File (HTML)
+Procedure 2 ? Recovery from .arc Encrypted Seed File (HTML)
 -------------------------------------------------------------
 
 Use this procedure when the mnemonic is stored in a .arc backup file and is
@@ -224,7 +231,7 @@ its integrity.
   2. Transfer the .arc file to the airgapped machine via USB drive. Do not
      connect the machine to any network for this transfer.
 
-  3. Open Arculus_Recovery-5.html in the browser.
+  3. Open Arculus_Recovery.html in the browser.
 
   4. Click Import Seed. In the file picker, select the .arc file from the USB
      drive. The tool reads the file, detects its format version, and prompts
@@ -261,15 +268,18 @@ its integrity.
   10. Complete the session per steps 13 and 14 of Procedure 1.
 
 
-Procedure 3 — Recovery via Python CLI
+Procedure 3 ? Recovery via Python CLI
 ---------------------------------------
 
 Use this procedure when the HTML browser interface is not available or when
 scripted derivation of a large address range is required.
 
-  1. Copy Arculus_Recovery.py to a RAM-backed tmpfs location on the airgapped
-     machine before execution. Verify with the mount command that the target
-     directory is tmpfs-backed.
+  1. Copy Arculus_Recovery.py and the src/ directory to a RAM-backed tmpfs
+     location on the airgapped machine before execution. Verify with the mount
+     command that the target directory is tmpfs-backed. For GUI recovery, copy
+     the full project folder, including Arculus_Recovery.html, src/,
+     pyproject.toml, requirements.txt, and packaged assets. The current HTML
+     file embeds jsPDF inline and does not require vendor/ at runtime.
 
   2. For direct mnemonic entry, invoke the CLI with the mnemonic, passphrase,
      coin, derivation path, script type, and address count as required:
@@ -327,7 +337,7 @@ confirm a match. In that case, derive all standard paths and inspect each for
 plausible on-chain history after the airgapped session ends, on a separate
 trusted networked device.
 
-  Step 1 — Determine passphrase usage:
+  Step 1 ? Determine passphrase usage:
 
     Derive with an empty passphrase on the most likely path for the coin and
     script type (see reference table). Compare the derived addresses against
@@ -340,7 +350,7 @@ trusted networked device.
     the passphrase is unknown and the funds may be inaccessible by this path.
     Record the root fingerprint for each passphrase attempt for future reference.
 
-  Step 2 — Identify the derivation path and script type:
+  Step 2 ? Identify the derivation path and script type:
 
     For Bitcoin, try the paths below in order. For each, derive at least 10
     receiving branch (branch index 0) addresses and compare against the
@@ -366,9 +376,9 @@ trusted networked device.
     Use --all-common in the CLI to derive all four Bitcoin purpose paths in one
     invocation and inspect the combined output.
 
-  Step 3 — Extend the address window if needed:
+  Step 3 ? Extend the address window if needed:
 
-    If none of the receiving branch addresses at indices 0–9 match the reference
+    If none of the receiving branch addresses at indices 0?9 match the reference
     address, increase the address count to 25, then 50, then 100. A wallet that
     has been in use for a long time or that uses a gap-aware derivation policy
     may have funded addresses at high indices. The derivation is fast; a count
@@ -378,14 +388,14 @@ trusted networked device.
     a change output. Change addresses are commonly funded in UTXO wallets and
     are on branch index 1 rather than branch index 0.
 
-  Step 4 — Check non-standard account indices:
+  Step 4 ? Check non-standard account indices:
 
     If account index 0 does not produce the reference address, try account
     index 1 and 2 (e.g. m/84'/0'/1', m/84'/0'/2'). Some wallet software
     creates multiple accounts and the wallet in question may have used a
     non-default account.
 
-  Step 5 — Record findings:
+  Step 5 ? Record findings:
 
     Once the correct path, script type, and passphrase are confirmed, record:
       - The root fingerprint for this mnemonic and passphrase combination
@@ -545,3 +555,5 @@ Failure: Passphrase-derived addresses are correct but passphrase is forgotten.
     file stores the mnemonic only. If the passphrase was written down separately,
     locate that record. If no backup of the passphrase exists, the funds in the
     passphrase-derived key tree are inaccessible.
+
+

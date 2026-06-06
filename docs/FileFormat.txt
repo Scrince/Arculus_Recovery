@@ -1,4 +1,4 @@
-Arculus Recovery v1.5.0 — File Format Reference
+Arculus Recovery v1.5.0 ? File Format Reference
 ================================================
 
 Scope
@@ -39,15 +39,15 @@ implementation.
 Version identifier summary:
 
   Current export format:     ARCULUS-ARC-V2 (armored)
-  Legacy import — JSON V2:   arculus-encrypted-seed-v2 (raw JSON)
-  Legacy import — JSON V1:   arculus-encrypted-seed-v1 (HTML only)
-  Legacy import — Python V1: arculus-encrypted-seed-python-v1
+  Legacy import ? JSON V2:   arculus-encrypted-seed-v2 (raw JSON)
+  Legacy import ? JSON V1:   arculus-encrypted-seed-v1 (HTML only)
+  Legacy import ? Python V1: arculus-encrypted-seed-python-v1
 
 The version is detected automatically during import from structural indicators
 described in the format detection section below. No user selection is required.
 
 
-Current Format — ARCULUS-ARC-V2 (Armored)
+Current Format ? ARCULUS-ARC-V2 (Armored)
 -------------------------------------------
 
 The armored V2 format is a three-line UTF-8 text file:
@@ -157,32 +157,32 @@ File Format Detection and Importer Dispatch
 The import pipeline applies the following detection sequence to determine which
 decryption path to invoke. Detection is structural and requires no password.
 
-  Step 1 — Check for armor header:
+  Step 1 ? Check for armor header:
     If the file text, after stripping leading and trailing whitespace, begins
     with the exact string "ARCULUS-ARC-V2\n" or "ARCULUS-ARC-V2\r\n", dispatch
     to the armored V2 import path. This is the current production format.
 
-  Step 2 — Attempt raw JSON parse:
+  Step 2 ? Attempt raw JSON parse:
     If no armor header is detected, attempt to parse the file text as JSON.
     If parsing fails, reject the file as unrecognized format.
 
-  Step 3 — Inspect parsed JSON for magic and version:
+  Step 3 ? Inspect parsed JSON for magic and version:
     If the JSON object contains the field magic == "ARCULUS-ARC" and
     version == 2, dispatch to the raw JSON V2 import path. This path is
     identical to the armored V2 path after the armor-strip and base64-decode
     steps; the bundle schema is the same.
 
-  Step 4 — Inspect for format field (legacy V1, HTML only):
+  Step 4 ? Inspect for format field (legacy V1, HTML only):
     If the JSON object contains format == "arculus-encrypted-seed-v1",
     dispatch to the legacy V1 AES-GCM import path. This path is implemented
     in the HTML version only. The Python implementation does not support V1.
 
-  Step 5 — Inspect for Python V1 sentinel field:
+  Step 5 ? Inspect for Python V1 sentinel field:
     If the JSON object contains format == "arculus-encrypted-seed-python-v1"
     or an equivalent Python-V1 sentinel, dispatch to the Python V1 legacy
     import path.
 
-  Step 6 — Attempt legacy headerless import:
+  Step 6 ? Attempt legacy headerless import:
     If none of the above conditions match, attempt decryption as a legacy
     headerless PBKDF2-SHA256 + XOR-HMAC file. This covers the earliest export
     format predating the format field and magic marker.
@@ -191,7 +191,7 @@ decryption path to invoke. Detection is structural and requires no password.
   password is requested or any cryptographic operation is attempted.
 
 
-Legacy Formats — Import-Only
+Legacy Formats ? Import-Only
 ------------------------------
 
 The following formats are accepted on import but are never produced by new
@@ -316,7 +316,7 @@ The JSON output is a single top-level object with the following structure:
   requires a field not present for a given combination should treat absence as
   equivalent to null.
 
-  Address record — UTXO coins (P2PKH, P2WPKH-P2SH, P2WPKH):
+  Address record ? UTXO coins (P2PKH, P2WPKH-P2SH, P2WPKH):
 
     Field             Type    Description
     ----------------- ------- -----------------------------------------------
@@ -330,7 +330,7 @@ The JSON output is a single top-level object with the following structure:
                               Base58check encoded with the coin-specific version
                               byte and compression flag.
 
-  Address record — P2TR (Taproot), augmented:
+  Address record ? P2TR (Taproot), augmented:
 
     All fields above, plus:
 
@@ -344,7 +344,7 @@ The JSON output is a single top-level object with the following structure:
     taproot_output_private_key_wif    string  Tweaked output private key in WIF.
     taproot_output_key_parity         integer Y-parity of the output public key: 0 or 1.
 
-  Address record — Ethereum:
+  Address record ? Ethereum:
 
     Field                   Type    Description
     ----------------------- ------- -------------------------------------------
@@ -358,7 +358,7 @@ The JSON output is a single top-level object with the following structure:
     erc20_note              string  Advisory string confirming ERC-20 token
                                     compatibility. Content is informational only.
 
-  Address record — XRP:
+  Address record ? XRP:
 
     Field               Type    Description
     ------------------- ------- -----------------------------------------------
@@ -443,8 +443,13 @@ operational sensitivity classification as the JSON and CSV exports.
 PDF Export Format
 -----------------
 
-The PDF export is produced by the jsPDF library loaded on demand from cdnjs
-in the HTML implementation. It is not available in the Python CLI. The PDF is
+The PDF export is produced by the jsPDF library. In the standalone HTML
+implementation, jsPDF is statically embedded inside Arculus_Recovery.html so PDF
+export works from a raw local file with no network access, no cdnjs request, no
+vendor directory at runtime, and no package installation. The PySide6 desktop
+GUI renders the packaged HTML copy and may retain a local vendored jsPDF
+injection fallback for older HTML assets, but current HTML assets already carry
+the PDF library inline. The Python CLI does not produce PDF output. The PDF is
 intended as a printable hard-copy record. It is produced in landscape A4
 orientation.
 
@@ -453,7 +458,7 @@ Page structure:
   Every page begins with a title block containing:
     - Title: "Arculus Key Export"
     - Meta line: coin name, app version string, UTC export timestamp, and root
-      fingerprint, separated by center-dot (·) delimiters.
+      fingerprint, separated by center-dot (?) delimiters.
 
   Page 1 contains, after the title block:
     - An Extended Keys section listing all present root and account extended
@@ -520,6 +525,20 @@ the filename is at the user's discretion. No default filename is imposed by the
 CLI. The content and schema of the output are identical to the HTML export for
 the same format selector.
 
+The PySide6 GUI uses a native save dialog for GUI exports. PDF exports default
+to the PDF file filter and append .pdf when the extension is omitted. JSON, CSV,
+TXT, encrypted seed, and QR PNG exports retain their format-appropriate default
+extensions.
+
+The Tauri wrapper packages the same HTML export serializers and includes a Rust
+save_export command that writes browser-generated Blob bytes to the user's
+Downloads directory. The packaged WebView receives an injected
+window.arculusTauriSaveExport bridge during initialization and uses that bridge
+before any browser-style download path. The Tauri v2 bridge is represented by
+src-tauri/capabilities/default.json and src-tauri/permissions/export.toml. These
+files are required for packaged desktop exports and must remain present when
+building Tauri artifacts.
+
 Filenames are not structural identifiers. The format of a derived-output file
 is identified by its content, not its extension or name. A JSON export renamed
 to .txt is valid JSON. An importer that relies on the file extension rather than
@@ -558,3 +577,4 @@ v1.1.0-production, provided the tool version implements the armored V2 import
 path and the decryption password is known. There are no version-specific
 extensions to the armored V2 bundle schema between v1.1.0-production and
 v1.5.0. The format has been stable since its introduction.
+

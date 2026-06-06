@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-save-export"
+description = "Allow the main window to save generated export files through the bundled Rust command."
+commands.allow = ["save_export"]

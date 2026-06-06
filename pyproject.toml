@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arculus-recovery"
+version = "1.5.0"
+description = "Offline Arculus-compatible BIP39/BIP32 recovery tool with PySide6 GUI and CLI."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE.md" }
+
+[project.optional-dependencies]
+gui = ["PySide6>=6.7"]
+
+[project.scripts]
+arculus-recovery = "arculus_recovery.cli:safe_main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"arculus_recovery.assets" = ["*.html", "*.js"]
