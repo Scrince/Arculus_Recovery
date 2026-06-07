@@ -3,16 +3,19 @@
 Offline BIP39/BIP32 recovery and key-derivation tool with:
 
 - a standalone browser-based interface in `Arculus_Recovery.html`
+- a working next-release Beta build in `Arculus_Recovery_Beta.html`
 - a PySide6 desktop wrapper and Python CLI in `Arculus_Recovery.py`
 - a Tauri desktop package that wraps the same canonical HTML application
 
 This project is designed to run fully offline and uses only local computation. The HTML app remains self-contained; the Python desktop GUI now depends on PySide6 so it can render that exact HTML interface.
 
+## Beta Build
+
+`Arculus_Recovery_Beta.html` is the working build for the next release. Use it for current next-release validation while keeping `Arculus_Recovery.html` as the main release HTML until Beta is promoted.
+
 ## User Guide
 
 The current PDF manual is [docs/Arculus_Recovery_Manual.pdf](docs/Arculus_Recovery_Manual.pdf). It includes the practical user guide, interface screenshots, recovery procedures, operational security guidance, file-format details, encryption notes, derivation reference, QR export behavior, passphrase guidance, and test vectors.
-
-The technical white paper is [docs/WhitePaper.pdf](docs/WhitePaper.pdf). It covers the architecture, cryptographic model, security posture, operational controls, release process, limitations, and assurance model for the application suite.
 
 The manual is generated from the text sources in `docs/` and the screenshot images in `docs/screenshots/`. Rebuilding the PDF requires ReportLab:
 
@@ -147,7 +150,7 @@ Verify the SHA256 hashes before using the recovery tool:
 
 ```bash
 find Arculus_Recovery.html Arculus_Recovery.py src/arculus_recovery vendor/jspdf scripts/prepare_tauri_assets.py src-tauri/tauri.conf.json src-tauri/icons \
-  docs/Arculus_Recovery_Manual.pdf docs/WhitePaper.pdf \
+  docs/Arculus_Recovery_Manual.pdf \
   -type f ! -name '._*' -print0 | sort -z | xargs -0 shasum -a 256
 ```
 
@@ -157,7 +160,6 @@ Expected source, documentation, and build-support hashes:
 efe027e2e0cc2862dd881b98a4e559aebdeb17e609ff6fc5be9210028b2a98f9  Arculus_Recovery.html
 a976e8903e13ab4b8d119178a7e66a41492e96d9c47df141afc081ee0601ae00  Arculus_Recovery.py
 30ed88d1a7fb3e490ff5d484fcfe463f233da792b711c01719d47f4ff90b6ce7  docs/Arculus_Recovery_Manual.pdf
-d32368b2796115675e261fbb7bec4ff65bbd08960dcb6973ec81e31458f3262e  docs/WhitePaper.pdf
 2ff7cc0c97ca91636beca45a652e135d37738044209a751f2e77d11b016f9322  scripts/prepare_tauri_assets.py
 f8138f3c298a75658a2f1164ad22a97dee71593ca93b97e62d5431bdce84b478  src-tauri/icons/icon.icns
 acfd39b73c563b5619ead02613d5408a541ae2293957801a9ec3c41edf675246  src-tauri/icons/icon.ico

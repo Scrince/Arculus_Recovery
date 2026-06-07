@@ -12,6 +12,9 @@ Changes on `main` not yet tagged in a formal release.
 
 ### Changed
 
+**Beta Build**
+- Renamed the next-release working build to `Arculus_Recovery_Beta.html` and documented it as the Beta validation target before promotion to the main HTML.
+
 **Python GUI - PySide6 HTML Shell**
 - Replaced the legacy Tkinter GUI with a PySide6 WebEngine desktop shell that loads the canonical `Arculus_Recovery.html` interface unchanged.
 - Kept CLI derivation mode available through `Arculus_Recovery.py` and added package entry points under `src/arculus_recovery/`.

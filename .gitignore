@@ -1,1 +1,82 @@
+# OS and editor noise
 .DS_Store
+._*
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python caches and environments
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.codex-tools/
+
+# Python packaging/build outputs
+build/
+dist/
+*.egg-info/
+*.spec
+
+# Node/Tauri frontend dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Rust/Tauri build outputs
+target/
+/src-tauri/target/
+src-tauri/gen/
+tauri-dist/
+
+# Generated installers and release binaries
+releases/
+*.msi
+*.exe
+*.app
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+!releases/
+!releases/tauri/
+!releases/tauri/windows/
+!releases/tauri/windows/*.exe
+!releases/tauri/windows/*.msi
+!releases/tauri/macos/
+!releases/tauri/macos/*.app/
+!releases/tauri/macos/*.dmg
+!releases/tauri/linux/
+!releases/tauri/linux/arculus-recovery
+!releases/tauri/linux/*.AppImage
+!releases/tauri/linux/*.deb
+!releases/tauri/linux/*.rpm
+releases/**/._*
+
+# Local/generated documents and exports
+/favicon.png
+/settings-icon.png
+RepoTree.txt
+Arculus_Key_Export_*.pdf
+Arculus_Recovery_export*
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.bak-*
