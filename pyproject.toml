@@ -20,4 +20,4 @@ arculus-recovery = "arculus_recovery.cli:safe_main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"arculus_recovery.assets" = ["*.html", "*.js"]
+"arculus_recovery.assets" = ["*.html", "*.js", "*.png"]

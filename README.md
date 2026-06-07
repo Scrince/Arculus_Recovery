@@ -1,25 +1,51 @@
 # Arculus Recovery
 
-Offline BIP39/BIP32 recovery and key-derivation tool with both:
+Offline BIP39/BIP32 recovery and key-derivation tool with:
 
-- a browser-based interface in `Arculus_Recovery.html`
+- a standalone browser-based interface in `Arculus_Recovery.html`
 - a PySide6 desktop wrapper and Python CLI in `Arculus_Recovery.py`
+- a Tauri desktop package that wraps the same canonical HTML application
 
 This project is designed to run fully offline and uses only local computation. The HTML app remains self-contained; the Python desktop GUI now depends on PySide6 so it can render that exact HTML interface.
 
+## User Guide
+
+The current PDF manual is [docs/Arculus_Recovery_Manual.pdf](docs/Arculus_Recovery_Manual.pdf). It includes the practical user guide, interface screenshots, recovery procedures, operational security guidance, file-format details, encryption notes, derivation reference, QR export behavior, passphrase guidance, and test vectors.
+
+The manual is generated from the text sources in `docs/` and the screenshot images in `docs/screenshots/`. Rebuilding the PDF requires ReportLab:
+
+```bash
+python -m pip install reportlab
+python scripts/build_manual_pdf.py
+```
+
 ## Screenshots
 
-Light mode:
+Main recovery workspace:
+
+![Arculus Recovery main recovery workspace](docs/screenshots/arculus-main-recovery.png)
+
+Derived output table:
+
+![Arculus Recovery derived output table](docs/screenshots/arculus-derived-output.png)
+
+QR Export:
+
+![Arculus Recovery QR export modal](docs/screenshots/arculus-qr-export.png)
+
+Settings:
+
+![Arculus Recovery settings dialog](docs/screenshots/arculus-settings.png)
+
+Theme examples:
 
 ![Arculus Recovery light mode](docs/screenshots/arculus-light.png)
 
-Dark mode:
-
 ![Arculus Recovery dark mode](docs/screenshots/arculus-dark.png)
 
-Dark+ mode:
-
 ![Arculus Recovery dark+ mode](docs/screenshots/arculus-dark-plus.png)
+
+![Arculus Recovery terminal mode](docs/screenshots/arculus-terminal.png)
 
 ## Features
 
@@ -27,7 +53,7 @@ Dark+ mode:
 - Generate a cryptographically random 12-word or 24-word mnemonic
 - Individual word-entry grid with 12/24 selector and inline validation
 - Word slots 13-24 hidden automatically in 12-word mode, revealed on switch to 24 words
-- Seed mask character displayed as bullets (`••••`) rather than asterisks
+- Seed mask character displayed as bullet mask characters rather than asterisks
 - Detailed validation output:
   - Word count
   - Wordlist validity
@@ -143,15 +169,16 @@ Update these hashes in your own copy of the README after each release.
 
 The HTML version includes four themes selectable from the Settings dialog:
 
-- **Light** ? default white/gray palette
-- **Dark** ? dark gray backgrounds with light text
-- **Dark+** ? near-black backgrounds with the Claude orange (`#e86926`) as the accent color, applied to focus rings, the online network indicator, status messages, toggles, and primary buttons
+- **Light** - default white/gray palette
+- **Dark** - dark gray backgrounds with light text
+- **Dark+** - near-black backgrounds with the Claude orange (`#e86926`) as the accent color, applied to focus rings, the online network indicator, status messages, toggles, and primary buttons
+- **Terminal** - high-contrast terminal-style palette for offline recovery sessions
 
 Theme preference is saved to `localStorage` and restored on the next page load.
 
 ## QR Export
 
-The `QR Export` button opens a modal where you can paste any address and generate a scannable QR code. The encoder is entirely self-contained ? no external libraries or network requests are used.
+The `QR Export` button opens a modal where you can paste any address and generate a scannable QR code. The encoder is entirely self-contained; no external libraries or network requests are used.
 
 - Paste an address into the input field and click **Generate** or press **Enter**
 - **Save PNG** downloads the QR code as an image
@@ -233,20 +260,20 @@ Open `Arculus_Recovery.html` directly in a browser. No installation required. Th
 ### HTML Features
 
 - Offline mnemonic validation
-- Individual word-entry grid with 12/24-word radio selector; words 13?24 hidden in 12-word mode
+- Individual word-entry grid with 12/24-word radio selector; words 13-24 hidden in 12-word mode
 - Generate a cryptographically random 12-word or 24-word mnemonic
 - Key and address derivation
 - Export derived keys and addresses as JSON, CSV, TXT, or PDF (PDF is the default; includes root fingerprint, extended keys, and full address table)
 - Table View shows public key hex and private key hex columns in full with inline copy buttons; no truncation applied
-- QR Export ? generate a QR code from any pasted address, no external dependencies
+- QR Export - generate a QR code from any pasted address, no external dependencies
 - Encrypt/export seed to `.arc`
 - Import encrypted seed from `.arc`
 - Hold-to-show hidden imported seed
 - Clear All button to wipe all fields and protected seed state
 - Root fingerprint display in the action toolbar
 - Derivation path info tooltip when using the Arculus-native `m/0'` path
-- Settings dialog with Light / Dark / Dark+ theme selector
-- Responsive layout with a laptop breakpoint (?1280px) for compact display on 13" screens
+- Settings dialog with Light / Dark / Dark+ / Terminal theme selector
+- Responsive layout with a laptop breakpoint around 1280px for compact display on 13" screens
 
 ## Python Version
 

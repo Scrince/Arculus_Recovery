@@ -1,0 +1,202 @@
+Arculus Recovery v1.5.0 User Guide
+===================================
+
+Purpose
+-------
+
+Arculus Recovery is an offline BIP39/BIP32 recovery and key-derivation tool for
+users who need to verify or recover wallet addresses after an Arculus hardware
+wallet failure, backup audit, or controlled migration. The application derives
+addresses and private keys locally from a mnemonic or encrypted .arc backup. It
+does not require a network connection and does not call remote services.
+
+The standalone HTML application is the canonical graphical interface. The
+PySide6 Python GUI and the Tauri desktop package render the same HTML
+application, so the controls and recovery workflow are intentionally identical
+across those three GUI surfaces. The Python CLI exposes the same derivation
+engine for scripted or text-only recovery sessions.
+
+
+Application Editions
+--------------------
+
+Standalone HTML:
+  Open Arculus_Recovery.html directly in a browser on an offline machine. The
+  HTML file contains its PDF export library inline, so it does not need npm,
+  Python, Tauri, vendor files, cdnjs, or any network resource at runtime.
+
+Python GUI:
+  Run "python Arculus_Recovery.py --gui" after installing the GUI dependency.
+  The PySide6 shell opens the packaged HTML application in Qt WebEngine. This
+  mode is useful when a native desktop window is preferred but the same browser
+  workflow should be preserved.
+
+Python CLI:
+  Run "python Arculus_Recovery.py" with --mnemonic, --derivation, --coin,
+  --script-type, --count, and --output-format flags. CLI output is written to
+  stdout, making it suitable for controlled redirection to a RAM-backed file.
+  The CLI supports JSON, CSV, and TXT output.
+
+Tauri desktop package:
+  The Tauri build packages the same HTML application as a native desktop app.
+  Browser-style exports are routed through an injected WebView bridge named
+  window.arculusTauriSaveExport and the Rust save_export command. The bridge is
+  governed by the Tauri v2 files src-tauri/capabilities/default.json and
+  src-tauri/permissions/export.toml. Validate the final packaged build on the
+  target operating system before relying on it for an operational recovery.
+
+
+Before You Begin
+----------------
+
+Use Arculus Recovery only on a trusted offline machine. Disconnect Ethernet,
+disable wireless networking and Bluetooth at the hardware level, and prefer a
+live ephemeral operating system that writes nothing to persistent storage. The
+network indicator in the application is a convenience check; physical
+confirmation of disconnection is authoritative.
+
+Verify the release hash before using the tool with real seed material. Expected
+hashes are maintained in README.md. If any file hash is unexpected, stop and
+obtain a trusted copy before continuing.
+
+Have the following inputs ready before the session begins:
+
+  - The 12-word or 24-word BIP39 mnemonic, or a .arc encrypted seed file.
+  - The BIP39 passphrase if the wallet used one. Leave it empty if no
+    passphrase was used.
+  - The target coin.
+  - The derivation path and script type if they are known.
+  - At least one known address or a recorded root fingerprint for verification.
+
+Do not continue past derivation until the output has been verified against a
+known address or root fingerprint. A wrong passphrase, path, script type, or
+mnemonic can produce valid-looking but unrelated keys.
+
+
+Quick Recovery Workflow
+-----------------------
+
+1. Open the standalone HTML app, Python GUI, or Tauri desktop app on the
+   offline machine.
+
+2. Select 12 words or 24 words, then enter the mnemonic in the text area or
+   numbered word fields. Alternatively, click Import Seed and decrypt a .arc
+   backup.
+
+3. Click Validate Mnemonic. Resolve any word-list or checksum errors before
+   deriving addresses.
+
+4. Enter the BIP39 passphrase only if the wallet used one. The .arc decryption
+   password and the BIP39 passphrase are different secrets.
+
+5. Choose the coin, script type, derivation path, and address count. Use Auto
+   script type when testing standard BIP44, BIP49, BIP84, or BIP86 paths.
+
+6. Click Derive Keys + Addresses. Review the Table View first, then use Raw JSON
+   or Extended Keys when those outputs are needed.
+
+7. Verify the root fingerprint and at least one derived address before
+   exporting or sweeping funds.
+
+8. Export only the format you need. JSON, CSV, TXT, and PDF exports contain
+   private key material and must be handled as funds-controlling secrets.
+
+9. Click Clear All at the end of the session, close the app, and power off the
+   live environment.
+
+
+Main Controls
+-------------
+
+Mnemonic entry:
+  Paste a full mnemonic into the main text area or enter words into the numbered
+  word grid. The 12/24 selector controls which word slots are active. Generate
+  Random Seed creates a test or backup mnemonic with browser cryptographic
+  randomness, then hides it until Show Seed is held.
+
+Passphrase:
+  Optional BIP39 passphrase input. This field affects the BIP39 seed and root
+  fingerprint. It is not used to decrypt .arc files.
+
+Coin:
+  Select Bitcoin, Litecoin, Dogecoin, Ethereum / ERC-20, or XRP. Changing the
+  coin updates the default derivation behavior.
+
+Derivation path:
+  Account-level BIP32 path. Arculus-native Bitcoin recovery defaults to m/0'.
+  Standard wallet paths include m/44'/0'/0', m/49'/0'/0', m/84'/0'/0', and
+  m/86'/0'/0'. If m/0' is active, the interface displays an informational
+  reminder that this path differs from BIP44 convention.
+
+Script type:
+  Controls UTXO address encoding for Bitcoin, Litecoin, and Dogecoin. Auto
+  infers the type from standard BIP purpose numbers when possible. Ethereum and
+  XRP ignore UTXO script type.
+
+Address count and range:
+  Address Count controls how many receiving and change addresses are derived.
+  Range can target a specific index window such as 0-9 or 25-50.
+
+Output tabs:
+  Table View provides a scannable row layout with copy controls. Raw JSON shows
+  the complete structured output. Extended Keys isolates account and root
+  extended-key material.
+
+Export controls:
+  Export writes derived output in JSON, CSV, TXT, or PDF. The HTML app uses
+  browser downloads. The PySide6 GUI uses native save behavior where available.
+  The Tauri app uses its injected native export bridge before falling back to
+  WebView download behavior.
+
+Encrypted seed controls:
+  Encrypt/Export Seed stores the active mnemonic in an authenticated .arc file.
+  Import Seed decrypts a .arc file and loads the mnemonic into a hidden-seed
+  workflow. Imported seeds remain hidden unless Show Seed is pressed and held.
+
+QR Export:
+  Opens a modal for generating a QR code from an address. XRP addresses may
+  prompt for a destination tag. Save PNG exports the rendered QR image.
+
+Settings:
+  Theme selection supports Light, Dark, Dark+, and Terminal. Auto-Derive on
+  Settings Change can re-run derivation automatically after supported settings
+  are changed, but only after a successful derivation already exists.
+
+
+Supported Default Paths
+-----------------------
+
+  Coin      Default path       Notes
+  --------- ------------------ -----------------------------------------------
+  Bitcoin   m/0'               Arculus-native default
+  Litecoin  m/84'/2'/0'        Native SegWit default
+  Dogecoin  m/44'/3'/0'        Legacy BIP44 default
+  Ethereum  m/44'/60'/0'       Also used by ERC-20 tokens
+  XRP       m/44'/144'/0'      Destination tags are not derived
+
+When recovering a wallet created by software other than Arculus, change the
+path to match that wallet's convention before relying on any output.
+
+
+Export Sensitivity
+------------------
+
+Treat every export that contains private keys, extended private keys, or a
+mnemonic as funds-controlling material. The .arc format encrypts only the
+mnemonic backup. It does not encrypt derived-output JSON, CSV, TXT, or PDF
+files. Store those files only on media intended to hold private key material.
+
+Printed PDFs are physical key documents. Do not print them on a networked
+printer. Do not photograph them with a cloud-connected device.
+
+
+End-of-Session Checklist
+------------------------
+
+  [ ] The BIP39 checksum passed.
+  [ ] The root fingerprint or a known address was verified.
+  [ ] The coin, derivation path, script type, passphrase, count, and range were
+      checked before export.
+  [ ] Any export file was stored according to Category B handling requirements.
+  [ ] Clear All was clicked before closing the app.
+  [ ] The live or offline machine was powered down after the session.

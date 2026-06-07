@@ -1,0 +1,83 @@
+Arculus_Recovery/
+|   .gitignore
+|   Arculus_Recovery.html
+|   Arculus_Recovery.py
+|   CHANGELOG.md
+|   CONTRIBUTING.md
+|   LICENSE.md
+|   MIGRATION.md
+|   package.json
+|   pyproject.toml
+|   README.md
+|   requirements.txt
+|   SECURITY.md
+|   THREAT_MODEL.md
+|
++---.github
+|   \---workflows
+|           tauri-build.yml
+|
++---docs
+|   |   Arculus_Recovery_Manual.pdf
+|   |   Derivation.txt
+|   |   Encryption.txt
+|   |   FileFormat.txt
+|   |   OpSec.txt
+|   |   Passphrase.txt
+|   |   QR.txt
+|   |   Recovery.txt
+|   |   TestVectors.txt
+|   |
+|   \---screenshots
+|           arculus-dark-plus.png
+|           arculus-dark.png
+|           arculus-light.png
+|
++---releases
+|   \---tauri
+|       \---windows
+|               Arculus Recovery_1.5.0_x64-setup.exe
+|               Arculus Recovery_1.5.0_x64_en-US.msi
+|               arculus-recovery.exe
+|
++---scripts
+|       build_manual_pdf.py
+|       prepare-tauri-assets.ps1
+|
++---src
+|   \---arculus_recovery
+|       |   cli.py
+|       |   core.py
+|       |   gui.py
+|       |   __init__.py
+|       |   __main__.py
+|       |
+|       \---assets
+|               Arculus_Recovery.html
+|               favicon.png
+|               jspdf.umd.min.js
+|               settings-icon.png
+|               __init__.py
+|
++---src-tauri
+|   |   build.rs
+|   |   Cargo.lock
+|   |   Cargo.toml
+|   |   tauri.conf.json
+|   |
+|   +---capabilities
+|   |       default.json
+|   |
+|   +---icons
+|   |       icon.ico
+|   |
+|   +---permissions
+|   |       export.toml
+|   |
+|   \---src
+|           lib.rs
+|           main.rs
+|
+\---vendor
+    \---jspdf
+            jspdf.umd.min.js

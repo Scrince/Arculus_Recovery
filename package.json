@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "tauri": "tauri",
-    "build:tauri": "tauri build"
+    "prepare:tauri": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/prepare-tauri-assets.ps1",
+    "build:tauri": "npm run prepare:tauri && tauri build"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0"

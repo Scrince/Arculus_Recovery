@@ -51,9 +51,28 @@ def find_vendored_jspdf() -> Optional[Path]:
     return None
 
 
+def find_packaged_asset(name: str) -> Optional[Path]:
+    candidates = [
+        Path.cwd() / name,
+        Path(__file__).resolve().parents[2] / name,
+        Path(sys.argv[0]).resolve().parent / name,
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    packaged = resources.files("arculus_recovery.assets").joinpath(name)
+    if packaged.is_file():
+        context = resources.as_file(packaged)
+        asset_path = context.__enter__()
+        _PACKAGED_ASSET_CONTEXTS.append(context)
+        return asset_path
+    return None
+
+
 def launch_gui() -> None:
     try:
         from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QIcon
         from PySide6.QtWidgets import QApplication, QFileDialog, QMainWindow
         from PySide6.QtWebEngineCore import QWebEngineScript, QWebEngineUrlRequestInterceptor
         from PySide6.QtWebEngineWidgets import QWebEngineView
@@ -75,8 +94,13 @@ def launch_gui() -> None:
     os.environ.setdefault("QTWEBENGINE_DISABLE_SANDBOX", "1")
 
     app = QApplication.instance() or QApplication(sys.argv)
+    icon_path = find_packaged_asset("favicon.png")
+    if icon_path:
+        app.setWindowIcon(QIcon(str(icon_path)))
     window = QMainWindow()
     window.setWindowTitle(f"Arculus Recovery v{APP_VERSION}")
+    if icon_path:
+        window.setWindowIcon(QIcon(str(icon_path)))
     window.resize(1180, 860)
 
     view = QWebEngineView(window)

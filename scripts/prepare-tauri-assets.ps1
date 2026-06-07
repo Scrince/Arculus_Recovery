@@ -12,7 +12,17 @@ $htmlSource = Join-Path $root "Arculus_Recovery.html"
 $htmlOut = Join-Path $dist "index.html"
 Copy-Item -LiteralPath $htmlSource -Destination $htmlOut -Force
 
+foreach ($assetName in @("favicon.png", "settings-icon.png")) {
+  $assetSource = Join-Path $root "src\arculus_recovery\assets\$assetName"
+  if (-not (Test-Path -LiteralPath $assetSource)) {
+    throw "Could not find required Tauri asset: $assetSource"
+  }
+  Copy-Item -LiteralPath $assetSource -Destination (Join-Path $dist $assetName) -Force
+}
+
 $html = Get-Content -LiteralPath $htmlOut -Raw -Encoding UTF8
+$html = $html.Replace("src/arculus_recovery/assets/favicon.png", "favicon.png")
+$html = $html.Replace("src/arculus_recovery/assets/settings-icon.png", "settings-icon.png")
 $old = @'
         } catch (err) {
           const message = err && err.message ? err.message : String(err);

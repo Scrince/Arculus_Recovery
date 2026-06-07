@@ -1,1 +1,0 @@
-{"default":{"identifier":"default","description":"Allow the main Arculus Recovery window to invoke the bundled export save command.","local":true,"windows":["main"],"permissions":["core:default","allow-save-export"]}}

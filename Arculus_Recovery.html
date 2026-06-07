@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Arculus Recovery</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F511;</text></svg>" />
+  <link rel="icon" type="image/png" href="src/arculus_recovery/assets/favicon.png" />
   <style>
 	    :root {
 	      --bg: #f7f8fa;
@@ -76,97 +76,94 @@
 	    }
 	    body.dark-plus .network-status.online .network-dot { background: #e86926; }
 	    body.terminal-mode {
-	      --bg: #020403;
+	      --bg: #000000;
 	      --page-top: #000000;
-	      --card: #050b07;
-	      --field: #000000;
-	      --button: #07140d;
-	      --primary: #00ff66;
-	      --primary-text: #001006;
-	      --text: #39ff14;
-	      --muted: #00c8ff;
-	      --ok: #00ff66;
-	      --bad: #ff2bd6;
-	      --border: #00a83b;
-	      --focus: #00f5ff;
-	      --shadow: rgba(0, 255, 102, 0.2);
-	      --accent: #fffb00;
+	      --card: #0b0b0d;
+	      --field: #111113;
+	      --button: #1a1a1d;
+	      --primary: #facc15;
+	      --primary-text: #111111;
+	      --text: #f5f5f5;
+	      --muted: #d6b84a;
+	      --ok: #3ddc97;
+	      --bad: #ff6b7a;
+	      --border: #2e2e33;
+	      --focus: #facc15;
+	      --shadow: rgba(0, 0, 0, 0.45);
+	      --accent: #facc15;
 	    }
 	    body.terminal-mode {
-	      font-family: "Cascadia Mono", "Consolas", "Lucida Console", "Courier New", monospace;
-	      background:
-	        linear-gradient(rgba(57, 255, 20, 0.035) 50%, rgba(0, 0, 0, 0.035) 50%),
-	        radial-gradient(circle at 50% 0%, rgba(0, 255, 102, 0.18), transparent 42%),
-	        #000000;
-	      background-size: 100% 4px, 100% 100%, auto;
-	      text-shadow: 0 0 8px rgba(57, 255, 20, 0.32);
+	      font-family: "Segoe UI", Tahoma, Helvetica, Arial, sans-serif;
+	      background: #000000;
+	      color: var(--text);
 	    }
 	    body.terminal-mode .app {
-	      border-color: #00ff66;
-	      box-shadow: 0 0 0 1px rgba(0, 255, 102, 0.28), 0 0 28px rgba(0, 255, 102, 0.2);
+	      border-color: #34343a;
+	      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55);
 	    }
-	    body.terminal-mode h1::before {
-	      content: "> ";
-	      color: var(--focus);
+	    body.terminal-mode .label,
+	    body.terminal-mode .label-with-tip .label,
+	    body.terminal-mode .settings-panel span[style*="font-weight:600"] {
+	      color: #facc15;
 	    }
 	    body.terminal-mode textarea,
 	    body.terminal-mode input,
 	    body.terminal-mode select,
 	    body.terminal-mode .button-field,
 	    body.terminal-mode .network-status {
-	      box-shadow: inset 0 0 12px rgba(0, 255, 102, 0.08);
+	      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 	    }
 	    body.terminal-mode button {
-	      border-color: #00ff66;
-	      text-transform: uppercase;
+	      border-color: #3b3b42;
 	      letter-spacing: 0;
-	      box-shadow: 0 0 10px rgba(0, 255, 102, 0.12);
+	      color: #facc15;
+	      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
 	    }
 	    body.terminal-mode button.primary,
 	    body.terminal-mode button.generate-seed {
-	      background: #00ff66;
-	      border-color: #00ff66;
-	      color: #001006;
-	      text-shadow: none;
+	      background: #202024;
+	      border-color: #facc15;
+	      color: #facc15;
 	    }
 	    body.terminal-mode button:hover {
 	      filter: none;
-	      background: #092314;
-	      color: #00ff66;
-	      box-shadow: 0 0 16px rgba(0, 255, 102, 0.35);
+	      background: #242428;
+	      border-color: #facc15;
+	      color: #ffe680;
+	      box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.18);
 	    }
 	    body.terminal-mode button.primary:hover,
 	    body.terminal-mode button.generate-seed:hover {
-	      background: #00f5ff;
-	      border-color: #00f5ff;
-	      color: #001014;
+	      background: #2b2b30;
+	      border-color: #ffe680;
+	      color: #ffe680;
 	    }
 	    body.terminal-mode #status.valid,
 	    body.terminal-mode .valid {
-	      color: #00ff66 !important;
+	      color: #3ddc97 !important;
 	    }
 	    body.terminal-mode #status.invalid,
 	    body.terminal-mode .invalid {
-	      color: #ff2bd6 !important;
+	      color: #ff6b7a !important;
 	    }
 	    body.terminal-mode textarea:focus,
 	    body.terminal-mode input:focus,
 	    body.terminal-mode select:focus {
-	      outline-color: #00f5ff;
-	      border-color: #00f5ff;
-	      box-shadow: 0 0 0 1px #00f5ff, 0 0 18px rgba(0, 245, 255, 0.35);
+	      outline-color: #facc15;
+	      border-color: #facc15;
+	      box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.5), 0 0 0 4px rgba(250, 204, 21, 0.12);
 	    }
 	    body.terminal-mode .toggle input:checked + .toggle-track {
-	      background: #00ff66;
-	      border-color: #00ff66;
+	      background: #facc15;
+	      border-color: #facc15;
 	    }
 	    body.terminal-mode .toggle input:checked + .toggle-track::after {
-	      background: #001006;
+	      background: #111111;
 	    }
 	    body.terminal-mode .network-status.online .network-dot,
 	    body.terminal-mode #deriveProgressBar {
-	      background: #00ff66;
-	      box-shadow: 0 0 10px rgba(0, 255, 102, 0.75);
+	      background: #3ddc97;
+	      box-shadow: 0 0 0 3px rgba(61, 220, 151, 0.16);
 	    }
 	    body.terminal-mode .ak-title,
 	    body.terminal-mode .ak-copy,
@@ -283,9 +280,7 @@
 	      content: "";
 	      width: 18px;
 	      height: 18px;
-	      border: 2px solid currentColor;
-	      border-radius: 50%;
-	      box-shadow: 0 -7px 0 -5px currentColor, 0 7px 0 -5px currentColor, 7px 0 0 -5px currentColor, -7px 0 0 -5px currentColor, 5px 5px 0 -5px currentColor, -5px 5px 0 -5px currentColor, 5px -5px 0 -5px currentColor, -5px -5px 0 -5px currentColor;
+	      background: url("src/arculus_recovery/assets/settings-icon.png") center / contain no-repeat;
 	    }
 	    .seed-row button {
 	      display: inline-flex;
