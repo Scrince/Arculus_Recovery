@@ -17,7 +17,9 @@
     "active": true,
     "targets": "all",
     "icon": [
-      "icons/icon.ico"
+      "icons/icon.ico",
+      "icons/icon.png",
+      "icons/icon.icns"
     ],
     "category": "Utility",
     "shortDescription": "Offline BIP39/BIP32 recovery and key-derivation tool",

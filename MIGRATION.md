@@ -1,4 +1,4 @@
-﻿# Migration Guide â€” Arculus Recovery
+# Migration Guide - Arculus Recovery
 
 This document covers how to upgrade between versions of Arculus Recovery and how to migrate encrypted seed files (`.arc`) and derived-output exports across format changes.
 
@@ -6,11 +6,11 @@ This document covers how to upgrade between versions of Arculus Recovery and how
 
 ## Upgrading to the Current Release
 
-### Step 1 â€” Download the new files
+### Step 1 - Download the new files
 
 Obtain the latest project folder from the repository, including `Arculus_Recovery.html`, `Arculus_Recovery.py`, `src/`, `vendor/`, `requirements.txt`, and `pyproject.toml`.
 
-### Step 2 â€” Verify SHA256 hashes
+### Step 2 - Verify SHA256 hashes
 
 Always verify file integrity before use. Run:
 
@@ -18,13 +18,26 @@ Always verify file integrity before use. Run:
 shasum -a 256 Arculus_Recovery.html Arculus_Recovery.py src/arculus_recovery/*.py src/arculus_recovery/assets/* vendor/jspdf/jspdf.umd.min.js
 ```
 
+Or, from the current repository layout:
+
+```bash
+find Arculus_Recovery.html Arculus_Recovery.py src/arculus_recovery vendor/jspdf scripts/prepare_tauri_assets.py src-tauri/tauri.conf.json src-tauri/icons \
+  docs/Arculus_Recovery_Manual.pdf \
+  -type f ! -name '._*' -print0 | sort -z | xargs -0 shasum -a 256
+```
+
 Compare the output against the expected hashes published in the README. Do not proceed if any hash does not match.
 
-### Step 3 â€” Replace old files
+If you are migrating to a packaged desktop build, also verify the installer or
+DMG hash published in the README. On macOS, choose the universal DMG for both
+Apple Silicon and Intel Macs, or choose the architecture-specific DMG when you
+need a smaller single-architecture package.
+
+### Step 3 - Replace old files
 
 Replace your previous project folder with the verified new folder. The HTML file, Python launcher, `src/` package, and vendored assets are designed to be used together; always update them as a set.
 
-### Step 4 â€” Test with a known mnemonic
+### Step 4 - Test with a known mnemonic
 
 Before relying on the updated tool for real seed recovery work, validate it with a known-good test mnemonic (e.g., the BIP39 test vector `abandon abandon ... about`) and confirm that derived addresses match expected values.
 
@@ -106,10 +119,10 @@ Browser storage is used only to persist the theme preference. There is no stored
 
 | Exporting version | Current armored `.arc` | JSON v2 `.arc` | Legacy formats |
 |---|---|---|---|
-| Current release (HTML) | âœ… Reads | âœ… Reads | âœ… Reads |
-| Current release (Python) | âœ… Reads | âœ… Reads | âœ… Reads |
-| Older HTML (v1 AES-GCM) | âŒ Cannot read current | â€” | Reads own format only |
-| Older Python (v1) | âŒ Cannot read current | â€” | Reads own format only |
+| Current release (HTML) | Reads | Reads | Reads |
+| Current release (Python) | Reads | Reads | Reads |
+| Older HTML (v1 AES-GCM) | Cannot read current | - | Reads own format only |
+| Older Python (v1) | Cannot read current | - | Reads own format only |
 
 Recommendation: always use the current release for both exporting and importing. Older versions cannot read files produced by the current release.
 

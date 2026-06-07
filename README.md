@@ -12,6 +12,8 @@ This project is designed to run fully offline and uses only local computation. T
 
 The current PDF manual is [docs/Arculus_Recovery_Manual.pdf](docs/Arculus_Recovery_Manual.pdf). It includes the practical user guide, interface screenshots, recovery procedures, operational security guidance, file-format details, encryption notes, derivation reference, QR export behavior, passphrase guidance, and test vectors.
 
+The technical white paper is [docs/WhitePaper.pdf](docs/WhitePaper.pdf). It covers the architecture, cryptographic model, security posture, operational controls, release process, limitations, and assurance model for the application suite.
+
 The manual is generated from the text sources in `docs/` and the screenshot images in `docs/screenshots/`. Rebuilding the PDF requires ReportLab:
 
 ```bash
@@ -144,26 +146,48 @@ Recommended usage:
 Verify the SHA256 hashes before using the recovery tool:
 
 ```bash
-shasum -a 256 Arculus_Recovery.html Arculus_Recovery.py src/arculus_recovery/*.py src/arculus_recovery/assets/* vendor/jspdf/jspdf.umd.min.js
+find Arculus_Recovery.html Arculus_Recovery.py src/arculus_recovery vendor/jspdf scripts/prepare_tauri_assets.py src-tauri/tauri.conf.json src-tauri/icons \
+  docs/Arculus_Recovery_Manual.pdf docs/WhitePaper.pdf \
+  -type f ! -name '._*' -print0 | sort -z | xargs -0 shasum -a 256
 ```
 
-Expected hashes:
+Expected source, documentation, and build-support hashes:
 
 ```text
-7C919616B3C34B39DD9C79FF3C99DEDBB07C6CF93FF7C68462FA028B47C38606  Arculus_Recovery.html
-A976E8903E13AB4B8D119178A7E66A41492E96D9C47DF141AFC081EE0601AE00  Arculus_Recovery.py
-01C25B8A9840A29649CF8A899F1A7868C8D311AA8C2F4DC859672983A2BD20B4  src/arculus_recovery/cli.py
-C0F5978F76B94115A8377910D416F61390DDF114F1425955601A51047E8EA58C  src/arculus_recovery/core.py
-B9FF36F9F24464E0E89F0CE56B408CFD546914FD1937837128641F745DF82A0C  src/arculus_recovery/gui.py
-4EB95C6F2B61F034F2CE0ACFB9F2067BD2807BFFB3D0272160B37C55F36944C7  src/arculus_recovery/__init__.py
-34F3F27E4E99234489CF81AD240482C2A41CAC708713C6008D0C466988F568E8  src/arculus_recovery/__main__.py
-7C919616B3C34B39DD9C79FF3C99DEDBB07C6CF93FF7C68462FA028B47C38606  src/arculus_recovery/assets/Arculus_Recovery.html
-B14D2E8F96AC1A4FFA90C8F1BA56E94EB5708D9AD1BF62D6253EEB980771DE5C  src/arculus_recovery/assets/__init__.py
-98CCF17AA10C20BB1301762618FCC9B6AB3A4E7F26B6071D64D0B41154DF3875  src/arculus_recovery/assets/jspdf.umd.min.js
-98CCF17AA10C20BB1301762618FCC9B6AB3A4E7F26B6071D64D0B41154DF3875  vendor/jspdf/jspdf.umd.min.js
+efe027e2e0cc2862dd881b98a4e559aebdeb17e609ff6fc5be9210028b2a98f9  Arculus_Recovery.html
+a976e8903e13ab4b8d119178a7e66a41492e96d9c47df141afc081ee0601ae00  Arculus_Recovery.py
+30ed88d1a7fb3e490ff5d484fcfe463f233da792b711c01719d47f4ff90b6ce7  docs/Arculus_Recovery_Manual.pdf
+d32368b2796115675e261fbb7bec4ff65bbd08960dcb6973ec81e31458f3262e  docs/WhitePaper.pdf
+2ff7cc0c97ca91636beca45a652e135d37738044209a751f2e77d11b016f9322  scripts/prepare_tauri_assets.py
+f8138f3c298a75658a2f1164ad22a97dee71593ca93b97e62d5431bdce84b478  src-tauri/icons/icon.icns
+acfd39b73c563b5619ead02613d5408a541ae2293957801a9ec3c41edf675246  src-tauri/icons/icon.ico
+8644382e6e45b95f7c7a2d4af5c7e54f810343a5235407f6dff0752ae4ce71f0  src-tauri/icons/icon.png
+c3debce3ea02bb735a93657464dd0992339a3ed754af358439c37cefcfff335c  src-tauri/tauri.conf.json
+4eb95c6f2b61f034f2ce0acfb9f2067bd2807bffb3d0272160b37c55f36944c7  src/arculus_recovery/__init__.py
+34f3f27e4e99234489cf81ad240482c2a41cac708713c6008d0c466988f568e8  src/arculus_recovery/__main__.py
+3dc7da40e2ec617e239ea60c7d703c9780bc32d4ca83a7fedc54bb3211f24472  src/arculus_recovery/assets/Arculus_Recovery.html
+b14d2e8f96ac1a4ffa90c8f1ba56e94eb5708d9ad1bf62d6253eeb980771de5c  src/arculus_recovery/assets/__init__.py
+8644382e6e45b95f7c7a2d4af5c7e54f810343a5235407f6dff0752ae4ce71f0  src/arculus_recovery/assets/favicon.png
+98ccf17aa10c20bb1301762618fcc9b6ab3a4e7f26b6071d64d0b41154df3875  src/arculus_recovery/assets/jspdf.umd.min.js
+4732b8227c50166a7012969cc8e8f3c2304467428b9ecb80487802ae29bc6a70  src/arculus_recovery/assets/settings-icon.png
+01c25b8a9840a29649cf8a899f1a7868c8d311aa8c2f4dc859672983a2bd20b4  src/arculus_recovery/cli.py
+6ec4d18a51d7589b274ae33e6971a803fcb2cf642fb677203a70ea32ebd0455a  src/arculus_recovery/core.py
+a9ee5a04ce877bc00a2fbb05d371ffc0b1415e1a4afe190b9d086d29c09bebf7  src/arculus_recovery/gui.py
+98ccf17aa10c20bb1301762618fcc9b6ab3a4e7f26b6071d64d0b41154df3875  vendor/jspdf/jspdf.umd.min.js
 ```
 
-Update these hashes in your own copy of the README after each release.
+Expected packaged release hashes:
+
+```text
+100b83cbc4d97795b03df22c34f983ba41007bf871c5b85a831ac2d0421803e9  releases/tauri/windows/arculus-recovery.exe
+a618364b10262a2499d12ec674fdbeb8c3eba359c3d7cf6a4da4d6e7cf63854a  releases/tauri/windows/Arculus Recovery_1.5.0_x64-setup.exe
+0114949834e8a49aa234b716dfe0643bbb38901da51b63bf52512171671a832c  releases/tauri/windows/Arculus Recovery_1.5.0_x64_en-US.msi
+955efc96e164305a00b5bc52552d81103608fbbe062e61f0ae39f1f0a246c1d6  releases/tauri/macos/Arculus Recovery_1.5.0_aarch64.dmg
+eb0429bad10fe571768ad8c28cad355fd969224425bde5eafd8446514cb2ae2d  releases/tauri/macos/Arculus Recovery_1.5.0_x64.dmg
+1200ee67ae6df38ae3858ae9199fe2eba55459addf5c64e5a5afa18deffb6013  releases/tauri/macos/Arculus Recovery_1.5.0_universal.dmg
+```
+
+Update these hashes after each release build.
 
 ## Themes
 
@@ -338,10 +362,16 @@ python Arculus_Recovery.py \
 
 The project includes a Tauri wrapper that packages the canonical `Arculus_Recovery.html` as a native desktop app.
 
-Prepare Tauri assets:
+Prepare Tauri assets on Windows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\prepare-tauri-assets.ps1
+```
+
+Prepare Tauri assets on macOS or Linux without modifying the canonical HTML:
+
+```bash
+python3 scripts/prepare_tauri_assets.py
 ```
 
 Build on Windows from a Visual Studio Developer Command Prompt:
@@ -350,15 +380,60 @@ Build on Windows from a Visual Studio Developer Command Prompt:
 cargo tauri build
 ```
 
+Build on macOS from a shell with Rust and the Xcode Command Line Tools available:
+
+```bash
+python3 scripts/prepare_tauri_assets.py
+cargo tauri build --bundles app,dmg
+```
+
+Build a specific macOS architecture:
+
+```bash
+cargo tauri build --target aarch64-apple-darwin --bundles app,dmg
+cargo tauri build --target x86_64-apple-darwin --bundles app,dmg
+cargo tauri build --target universal-apple-darwin --bundles app,dmg
+```
+
+Build on Linux from a Linux host with Rust and the Tauri GTK/WebKit dependencies available:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+  libgtk-3-dev \
+  libwebkit2gtk-4.1-dev \
+  libayatana-appindicator3-dev \
+  librsvg2-dev \
+  patchelf
+python3 scripts/prepare_tauri_assets.py
+cargo tauri build --bundles appimage,deb,rpm
+```
+
 Local Windows artifacts are copied to:
 
 - `releases/tauri/windows/arculus-recovery.exe`
 - `releases/tauri/windows/Arculus Recovery_1.5.0_x64-setup.exe`
 - `releases/tauri/windows/Arculus Recovery_1.5.0_x64_en-US.msi`
 
+Local macOS artifacts are copied to:
+
+- `releases/tauri/macos/Arculus Recovery.app`
+- `releases/tauri/macos/Arculus Recovery x64.app`
+- `releases/tauri/macos/Arculus Recovery Universal.app`
+- `releases/tauri/macos/Arculus Recovery_1.5.0_aarch64.dmg` for Apple Silicon Macs
+- `releases/tauri/macos/Arculus Recovery_1.5.0_x64.dmg` for Intel Macs
+- `releases/tauri/macos/Arculus Recovery_1.5.0_universal.dmg` for a single DMG that supports both Apple Silicon and Intel Macs
+
+Local Linux artifacts are copied to:
+
+- `releases/tauri/linux/arculus-recovery`
+- `releases/tauri/linux/*.AppImage`
+- `releases/tauri/linux/*.deb`
+- `releases/tauri/linux/*.rpm`
+
 In the Tauri app, browser-style exports such as PDF, JSON, CSV, TXT, encrypted seed files, and QR PNGs are routed through an injected native export bridge. The bridge exposes `window.arculusTauriSaveExport` inside the WebView and calls the Rust `save_export` command, which opens a native Save dialog with the app's suggested filename before writing the file. The generated Tauri HTML copy keeps a WebView download fallback for native save failures, while user-cancelled Save dialogs are treated as cancellations. The Tauri v2 export bridge depends on `src-tauri/capabilities/default.json` and `src-tauri/permissions/export.toml`; keep both files in place when rebuilding desktop artifacts.
 
-macOS and Linux Tauri artifacts must be built on their native platforms. The workflow at `.github/workflows/tauri-build.yml` builds Windows, macOS, and Linux artifacts in GitHub Actions.
+macOS and Linux Tauri artifacts must be built on native runners. The workflow at `.github/workflows/tauri-build.yml` builds Windows, macOS, and Linux artifacts in GitHub Actions. macOS release builds should verify the executable architecture with `lipo -info`, verify ad-hoc or Developer ID signatures with `codesign --verify --deep --strict`, and verify DMGs with `hdiutil verify`.
 
 ## GitHub Release Assets
 
@@ -369,5 +444,21 @@ Upload these Windows assets to the GitHub release:
 - `releases/tauri/windows/arculus-recovery.exe`
 - `releases/tauri/windows/Arculus Recovery_1.5.0_x64-setup.exe`
 - `releases/tauri/windows/Arculus Recovery_1.5.0_x64_en-US.msi`
+
+Upload these macOS assets when the native macOS build is produced:
+
+- `releases/tauri/macos/Arculus Recovery.app`
+- `releases/tauri/macos/Arculus Recovery x64.app`
+- `releases/tauri/macos/Arculus Recovery Universal.app`
+- `releases/tauri/macos/Arculus Recovery_1.5.0_aarch64.dmg` for Apple Silicon Macs
+- `releases/tauri/macos/Arculus Recovery_1.5.0_x64.dmg` for Intel Macs
+- `releases/tauri/macos/Arculus Recovery_1.5.0_universal.dmg` for a single DMG that supports both Apple Silicon and Intel Macs
+
+Upload these Linux assets when the native Linux build is produced:
+
+- `releases/tauri/linux/arculus-recovery`
+- `releases/tauri/linux/*.AppImage`
+- `releases/tauri/linux/*.deb`
+- `releases/tauri/linux/*.rpm`
 
 GitHub automatically attaches `Source code (zip)` and `Source code (tar.gz)` for the tagged commit. Those generated archives include `Arculus_Recovery.html`, `Arculus_Recovery.py`, and the rest of the committed source tree, so the HTML and Python files do not need to be uploaded separately unless direct single-file downloads are desired.

@@ -180,10 +180,11 @@ Desktop wrapper requirement:
   canonical HTML application. It adds an injected WebView export bridge, a
   native save command, and Tauri v2 capability/permission files for desktop
   exports. Validate the final packaged application before relying on it for an
-  operational recovery session. If Tauri export behavior is uncertain on a
-  specific host, use the standalone HTML application or the PySide6 GUI for GUI
-  exports, or use the Python CLI with redirected stdout for JSON, CSV, and TXT
-  output.
+  operational recovery session. For macOS, verify that the selected artifact
+  matches the machine architecture: Apple Silicon, Intel x64, or universal. If
+  Tauri export behavior is uncertain on a specific host, use the standalone HTML
+  application or the PySide6 GUI for GUI exports, or use the Python CLI with
+  redirected stdout for JSON, CSV, and TXT output.
 
 
 Session Execution Procedure
@@ -532,5 +533,4 @@ Error: Storing the .arc file and its decryption password in the same location.
   to the storage location) yields both the encrypted file and the key to decrypt
   it. The .arc encryption provides no protection in this scenario. The password
   and the file must be stored at physically separate locations.
-
 

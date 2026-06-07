@@ -3365,7 +3365,7 @@ def save_derived_pdf(data: Dict, path: str, root_fingerprint: str = "") -> None:
 
 
 # ---------------------------------------------------------------------------
-# Pure-Python QR Code Generator (stdlib only) â€” ported from HTML QRGen
+# Pure-Python QR Code Generator (stdlib only) - ported from HTML QRGen
 # ---------------------------------------------------------------------------
 import re as _re
 import zlib as _zlib

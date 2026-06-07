@@ -39,9 +39,14 @@ DOC_ORDER = [
 ]
 
 SCREENSHOTS = [
-    ("arculus-light.png", "Figure 1. Light theme interface with mnemonic entry, derivation controls, and export panel."),
-    ("arculus-dark.png", "Figure 2. Dark theme interface showing the same recovery workflow in the desktop-style layout."),
-    ("arculus-dark-plus.png", "Figure 3. Dark+ theme interface for high-contrast offline recovery sessions."),
+    ("arculus-main-recovery.png", "Figure 1. Main recovery workspace with test-vector mnemonic validation controls."),
+    ("arculus-derived-output.png", "Figure 2. Derived output table after address derivation, with output tabs and export controls."),
+    ("arculus-qr-export.png", "Figure 3. QR Export modal generating an address QR code without external services."),
+    ("arculus-settings.png", "Figure 4. Settings dialog with theme selection and auto-derive preference."),
+    ("arculus-light.png", "Figure 5. Light theme interface."),
+    ("arculus-dark.png", "Figure 6. Dark theme interface."),
+    ("arculus-dark-plus.png", "Figure 7. Dark+ theme interface."),
+    ("arculus-terminal.png", "Figure 8. Terminal theme interface."),
 ]
 
 
@@ -59,6 +64,7 @@ def clean_text(text: str) -> str:
         "\u2265": ">=",
         "\u2208": "in",
         "\u00b7": ".",
+        "\ufffd": "?",
     }
     for old, new in replacements.items():
         text = text.replace(old, new)
@@ -256,8 +262,8 @@ def add_screenshots(story, styles):
     story.append(
         Paragraph(
             "The screenshots below show the primary user-facing layout and theme variants. "
-            "The HTML application is the canonical GUI surface; PySide6 and Tauri package "
-            "the same interface for desktop use.",
+            "The HTML application is the canonical GUI surface. PySide6 and Tauri package "
+            "the same interface for desktop use, so the screenshots apply to all GUI editions.",
             styles["body"],
         )
     )
@@ -310,9 +316,9 @@ def build():
             [
                 ["Primary GUI", "Standalone HTML application"],
                 ["Desktop GUI", "PySide6 WebEngine wrapper"],
-                ["Desktop Package", "Tauri wrapper; export path requires final packaged-app validation"],
+                ["Desktop Package", "Tauri wrapper with native export bridge"],
                 ["CLI", "Python derivation and export interface"],
-                ["Generated", "June 6, 2026"],
+                ["Generated", "June 7, 2026"],
             ],
             colWidths=[1.6 * inch, 4.7 * inch],
             style=TableStyle(
@@ -332,6 +338,7 @@ def build():
         PageBreak(),
     ]
 
+    add_text_doc(story, DOCS / "UserGuide.txt", styles)
     add_screenshots(story, styles)
 
     for doc_name in DOC_ORDER:

@@ -46,6 +46,70 @@ Tauri desktop package:
   target operating system before relying on it for an operational recovery.
 
 
+Installation Guide
+------------------
+
+Windows Tauri package:
+  1. Download the Windows installer from the trusted release location. Prefer
+     Arculus Recovery_1.5.0_x64-setup.exe for the guided installer, or
+     Arculus Recovery_1.5.0_x64_en-US.msi when an MSI package is required.
+
+  2. Verify the installer hash against the release hashes in README.md before
+     running it. If the hash does not match, stop and obtain a trusted copy.
+
+  3. Run the installer on the offline or prepared recovery machine. If Windows
+     SmartScreen warns about an unsigned build, confirm only after verifying
+     the hash and source of the installer.
+
+  4. Launch Arculus Recovery from the Start menu or desktop shortcut. Confirm
+     that the application opens without network access and that exports prompt
+     for a save location.
+
+  5. For portable use, arculus-recovery.exe can be copied to an offline machine
+     and launched directly. Keep the executable with the release documentation
+     and verified hashes.
+
+macOS Tauri package:
+  1. Download the macOS DMG from the trusted release location. Use the universal
+     DMG for both Apple Silicon and Intel Macs, or use the Apple Silicon DMG on
+     M-series Macs and the x64 DMG on Intel Macs when separate artifacts are
+     preferred.
+
+  2. Verify the DMG hash against the release hashes in README.md before opening
+     it. If the hash does not match, stop and obtain a trusted copy.
+
+  3. Open the DMG and drag Arculus Recovery.app to the Applications folder, or
+     copy the app to a dedicated offline recovery folder.
+
+  4. If macOS Gatekeeper warns about an unsigned build, use Control-click >
+     Open only after verifying the hash and trusted source. Do not bypass
+     Gatekeeper for an unverified copy.
+
+  5. Launch Arculus Recovery.app while offline. Confirm that the main window
+     opens, the network indicator reports offline status, and exports use the
+     native save dialog.
+
+Linux Tauri package:
+  1. Download the Linux artifact from the trusted release location. Prefer the
+     AppImage for portable use, or use the .deb or .rpm package when it matches
+     the target distribution's package manager.
+
+  2. Verify the artifact hash against the release hashes in README.md before
+     running or installing it. If the hash does not match, stop and obtain a
+     trusted copy.
+
+  3. For AppImage use, mark the file executable with chmod +x, then launch it
+     on the offline recovery machine.
+
+  4. For Debian or Ubuntu systems, install the .deb package with apt or dpkg.
+     For Fedora, RHEL, or compatible systems, install the .rpm package with dnf
+     or rpm.
+
+  5. Launch Arculus Recovery while offline. Confirm that the main window opens,
+     the network indicator reports offline status, and exports prompt for a
+     save location.
+
+
 Before You Begin
 ----------------
 

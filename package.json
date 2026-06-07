@@ -6,7 +6,9 @@
   "scripts": {
     "tauri": "tauri",
     "prepare:tauri": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/prepare-tauri-assets.ps1",
-    "build:tauri": "npm run prepare:tauri && tauri build"
+    "prepare:tauri:py": "python scripts/prepare_tauri_assets.py",
+    "build:tauri": "npm run prepare:tauri && tauri build",
+    "build:tauri:mac": "npm run prepare:tauri:py && tauri build --bundles app,dmg"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0"

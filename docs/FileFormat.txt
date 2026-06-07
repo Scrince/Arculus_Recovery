@@ -531,8 +531,8 @@ TXT, encrypted seed, and QR PNG exports retain their format-appropriate default
 extensions.
 
 The Tauri wrapper packages the same HTML export serializers and includes a Rust
-save_export command that writes browser-generated Blob bytes to the user's
-Downloads directory. The packaged WebView receives an injected
+save_export command that writes browser-generated Blob bytes through a native
+save dialog. The packaged WebView receives an injected
 window.arculusTauriSaveExport bridge during initialization and uses that bridge
 before any browser-style download path. The Tauri v2 bridge is represented by
 src-tauri/capabilities/default.json and src-tauri/permissions/export.toml. These
@@ -577,4 +577,3 @@ v1.1.0-production, provided the tool version implements the armored V2 import
 path and the decryption password is known. There are no version-specific
 extensions to the armored V2 bundle schema between v1.1.0-production and
 v1.5.0. The format has been stable since its introduction.
-

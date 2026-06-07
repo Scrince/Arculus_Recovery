@@ -212,7 +212,7 @@ phrase and no .arc file is involved.
       export behavior before relying on it during a recovery session. The Tauri
       package routes PDF, JSON, CSV, TXT, encrypted seed, and QR PNG exports
       through an injected WebView bridge and native save_export command that
-      writes to the user's Downloads directory.
+      opens a native save dialog before writing the selected file.
 
   14. When the recovery session is complete, click Clear All to wipe all fields
       and in-memory state. Close the browser tab. If the OS is ephemeral, power
@@ -555,5 +555,4 @@ Failure: Passphrase-derived addresses are correct but passphrase is forgotten.
     file stores the mnemonic only. If the passphrase was written down separately,
     locate that record. If no backup of the passphrase exists, the funds in the
     passphrase-derived key tree are inaccessible.
-
 

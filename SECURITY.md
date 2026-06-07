@@ -6,6 +6,7 @@ Arculus Recovery is an offline BIP39/BIP32 recovery and key-derivation tool. It 
 
 - `Arculus_Recovery.html`, opened directly in a browser
 - `Arculus_Recovery.py`, run as a Python desktop GUI or CLI
+- a Tauri desktop package that wraps the same canonical HTML application
 
 The core security expectation is simple: seed phrases, passphrases, private keys, exported files, and derived addresses should stay on a trusted machine that you control. The application does not require a server, account, cloud service, telemetry endpoint, or network API.
 
@@ -15,10 +16,10 @@ The current derivation surface includes UTXO-style outputs for Bitcoin, Litecoin
 
 | Version | Supported |
 | --- | --- |
-| 1.1.0-production (latest) | Active |
+| 1.5.0 | Active |
 | Older copies | Not supported |
 
-Use the latest project folder together, including `Arculus_Recovery.html`, `Arculus_Recovery.py`, `src/`, and `vendor/`. The README includes SHA256 hashes so users can verify the exact files they are running.
+Use the latest project folder together, including `Arculus_Recovery.html`, `Arculus_Recovery.py`, `src/`, `vendor/`, and the relevant desktop package when using Tauri. The README includes SHA256 hashes so users can verify the exact files and release artifacts they are running.
 
 ## Threat Model
 
@@ -85,6 +86,24 @@ Recommended Python posture:
 - Run from a trusted Python installation.
 - Prefer an offline or air-gapped environment.
 - Verify file hashes before running if the files were transferred between machines.
+
+### Tauri Desktop Packages
+
+The Tauri packages are native desktop wrappers around the canonical HTML application. They add a WebView shell and native file-save bridge, but the recovery workflow, derivation code, encrypted seed handling, and export serializers remain those of the packaged HTML application.
+
+Security properties:
+
+- The packaged app loads local bundled assets, not a hosted website.
+- Browser-style exports are routed through the injected `window.arculusTauriSaveExport` bridge and Rust `save_export` command.
+- The Tauri v2 capability and permission files restrict the native command surface used by the main window.
+- macOS artifacts may be Apple Silicon-only, Intel-only, or universal. Verify that the downloaded DMG matches the target machine, or use the universal DMG.
+
+Recommended Tauri posture:
+
+- Verify the installer or DMG SHA256 hash from the README before opening it.
+- Treat ad-hoc signed macOS builds as unsigned for trust purposes unless a Developer ID signature and notarization are provided.
+- If Gatekeeper warns on macOS, bypass it only after verifying the hash and trusted source.
+- Test PDF, JSON, CSV, TXT, encrypted seed, and QR PNG export behavior in the packaged build before relying on it during an operational recovery.
 
 ## Mnemonic and Key Derivation Details
 
@@ -189,7 +208,7 @@ The hidden-seed workflow (covering both imported `.arc` seeds and newly generate
 ## Recommended Offline Workflow
 
 1. Download or transfer the latest project files.
-2. Verify SHA256 hashes from the README.
+2. Verify SHA256 hashes from the README, including installer or DMG hashes when using a packaged desktop build.
 3. Move the files to a trusted offline machine.
 4. Disconnect networking before opening the app.
 5. Run validation, generation, or derivation.

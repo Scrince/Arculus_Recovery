@@ -1,4 +1,4 @@
-﻿# Contributing to Arculus_Recovery
+# Contributing to Arculus_Recovery
 
 Arculus_Recovery is an offline, deterministic recovery tool for BIP39/BIP32/BIP86 and account-address workflows with both HTML/JS and Python implementations. Because this project handles sensitive cryptographic material, contributions must meet strict security, correctness, and reproducibility standards. This document defines the requirements for contributing code, documentation, or tests.
 
@@ -12,7 +12,7 @@ Arculus_Recovery supports:
 - Multi-coin derivation (BTC, LTC, DOGE, ETH / ERC-20, XRP)
 - Taproot (BIP86) support
 - Encrypted seed export/import using the .arc format
-- Browserâ€‘based and Pythonâ€‘based offline workflows
+- Browser-based and Python-based offline workflows
 
 Contributions must remain within this scope. Features that introduce network activity, telemetry, analytics, or remote dependencies will not be accepted.
 
@@ -23,29 +23,29 @@ All contributions must follow these rules:
 - No external network requests
 - No remote scripts or CDNs
 - No analytics or telemetry
-- No dependencies that autoâ€‘update or communicate externally
+- No dependencies that auto-update or communicate externally
 - All cryptographic operations must be deterministic
-- All keyâ€‘handling code must avoid unnecessary data copies
+- All key-handling code must avoid unnecessary data copies
 - No code may weaken .arc file confidentiality or integrity
 - Any change affecting cryptographic behavior must include a full review checklist (Section 8)
 
 ## 3. Workflow for Contributors
 
-### Step 1 â€” Fork and Branch
+### Step 1 - Fork and Branch
 
 ```bash
 git clone https://github.com/<your-username>/Arculus_Recovery
 git checkout -b feature/my-change
 ```
 
-### Step 2 â€” Make Focused Changes
+### Step 2 - Make Focused Changes
 
 - Keep changes atomic
 - Update both HTML and Python versions when applicable
 - Maintain parity between implementations unless intentionally diverging
 - Update documentation when behavior changes
 
-### Step 3 â€” Follow Coding Standards
+### Step 3 - Follow Coding Standards
 
 **HTML/JavaScript**
 - No external libraries unless stored locally
@@ -92,7 +92,7 @@ PRs modifying cryptographic logic must include:
 Before submitting a PR:
 
 - Test both HTML and Python versions
-- Validate 12â€‘word and 24â€‘word mnemonics
+- Validate 12-word and 24-word mnemonics
 - Verify derivation for BTC, LTC, DOGE, ETH / ERC-20, and XRP
 - Confirm BIP86 behavior
 - Test .arc export and import
@@ -120,7 +120,7 @@ Any PR that modifies cryptographic behavior, key handling, or .arc file logic mu
 
 - [ ] All cryptographic primitives are standard and widely reviewed
 - [ ] No custom cipher, MAC, or KDF is introduced
-- [ ] No deprecated primitives (e.g., SHAâ€‘1, PBKDF2 with low iteration count)
+- [ ] No deprecated primitives (e.g., SHA-1, PBKDF2 with low iteration count)
 - [ ] No reduction in entropy or key length
 
 ### 8.2 Determinism and Reproducibility
@@ -149,7 +149,7 @@ Any PR that modifies cryptographic behavior, key handling, or .arc file logic mu
 - [ ] BIP32 derivation matches reference vectors
 - [ ] BIP86 derivation matches reference vectors
 - [ ] Account-family address encoders match reference vectors, including EIP-55 for Ethereum and XRPL classic-address base58 for XRP when touched
-- [ ] Hardened vs. nonâ€‘hardened paths are handled correctly
+- [ ] Hardened vs. non-hardened paths are handled correctly
 
 ### 8.6 Implementation Parity
 
@@ -179,7 +179,7 @@ When opening an issue, include:
 - Whether .arc import/export is affected
 - Screenshots or logs if relevant
 
-Securityâ€‘related issues should be reported privately.
+Security-related issues should be reported privately.
 
 ## 10. Code of Conduct
 

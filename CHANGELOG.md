@@ -43,41 +43,44 @@ Changes on `main` not yet tagged in a formal release.
 - Restored the damaged inline jsPDF block and repaired stripped JavaScript conditionals so the standalone HTML and rebuilt Tauri app initialize correctly again.
 - Rebuilt and refreshed the Windows Tauri executable, MSI installer, and NSIS setup artifacts after the HTML repair.
 - Updated the Tauri native export command to open a Save dialog for PDF, JSON, CSV, TXT, encrypted seed, and QR exports instead of silently writing to Downloads.
+- Added macOS Tauri release artifacts for Apple Silicon, Intel x64, and universal builds, including verified DMGs and ad-hoc signed `.app` bundles.
+- Added cross-platform Python Tauri asset preparation for macOS and Linux build hosts without modifying the canonical HTML application.
+- Updated release documentation, hash verification, and installation guidance for Windows, macOS, Linux, and universal macOS packages.
 
 ---
 
-## [1.5.0] ? 2026-06-05
+## [1.5.0] - 2026-06-05
 
 ### Added
 
-**QR Code ? BIP21 / URI Scheme Auto-Detection (HTML)**
+**QR Code - BIP21 / URI Scheme Auto-Detection (HTML)**
 - A new `toBip21Uri()` function inspects the pasted address before encoding and prepends the correct URI scheme automatically, producing the format that wallet apps expect to scan rather than a bare address string.
-- Detection rules: `bc1?` / `1?` / `3?` ? `bitcoin:`, `ltc1?` / `L?` / `M?` ? `litecoin:`, `D?` / `A?` ? `dogecoin:`, `0x?` (40 hex chars) ? `ethereum:`. XRP classic addresses (`r?`) are encoded as bare addresses with no scheme prefix, which is the safest cross-wallet approach ? `xrp:` is not a recognised standard and `xrpl:` (XLS-7d) has inconsistent wallet support.
+- Detection rules: `bc1?` / `1?` / `3?` -> `bitcoin:`, `ltc1?` / `L?` / `M?` -> `litecoin:`, `D?` / `A?` -> `dogecoin:`, `0x?` (40 hex chars) -> `ethereum:`. XRP classic addresses (`r?`) are encoded as bare addresses with no scheme prefix, which is the safest cross-wallet approach; `xrp:` is not a recognised standard and `xrpl:` (XLS-7d) has inconsistent wallet support.
 - Addresses that already carry a scheme (e.g. manually typed `bitcoin:?`) are passed through unchanged.
 - The address label displayed beneath the QR canvas shows the full URI so the user can verify exactly what was encoded.
 
-**QR Code ? Forced Black-on-White Rendering (HTML)**
+**QR Code - Forced Black-on-White Rendering (HTML)**
 - QR codes now always render with a `#000000` foreground on a `#ffffff` background regardless of the active theme.
 - Previously, Dark+ mode rendered an orange-on-dark-gray QR (`#e86926` / `#1a1a1a`) which caused silent scan failures on many wallet camera decoders tuned for high-contrast black-on-white.
 
-**QR Code ? Increased Quiet Zone (HTML)**
+**QR Code - Increased Quiet Zone (HTML)**
 - The quiet zone around the QR matrix increased from 3 modules to 4 modules, matching the minimum recommended by the QR specification and improving decode reliability on scanners that crop near the canvas edge.
 
 ### Fixed
 
-**QR Code Generator ? Structural Module Type Collision (HTML)**
+**QR Code Generator - Structural Module Type Collision (HTML)**
 - The original `makeMatrix()` used JavaScript `true`/`false` for finder patterns, timing strips, alignment patterns, and the dark module. Since `applyMask()` identified data modules by checking `typeof cell === 'boolean'`, structural cells were incorrectly masked, corrupting the QR matrix.
 - Fixed by using integer `1`/`0` for all structural modules and reserving `boolean` values exclusively for data and error-correction modules.
 
-**QR Code Generator ? `applyMask()` XOR on Booleans (HTML)**
+**QR Code Generator - `applyMask()` XOR on Booleans (HTML)**
 - `out[r][c] ^= fn(r,c)` on a boolean operand produces an integer (`0` or `1`), not a boolean, silently breaking all subsequent `=== true` / `=== false` comparisons downstream.
 - Fixed by replacing the XOR with `out[r][c] = out[r][c] !== fn(r,c)`, which preserves the boolean type.
 
-**QR Code Generator ? `writeFormat()` Incorrect Bit Placement (HTML)**
+**QR Code Generator - `writeFormat()` Incorrect Bit Placement (HTML)**
 - The original `writeFormat()` contained a redundant loop that overwrote already-written bits and missed several of the 15 format bit positions specified by the QR standard, producing unreadable format information strips.
 - Rewritten to place all 15 format bits at their exact positions on both the top-left and top-right / bottom-left copy strips.
 
-**QR Code Generator ? `penaltyScore()` Mixed-Type Comparisons (HTML)**
+**QR Code Generator - `penaltyScore()` Mixed-Type Comparisons (HTML)**
 - With the previous mixed `true`/`false`/`1`/`0` cell types, `m[r][c] === m[r][c-1]` cross-type comparisons always returned `false`, making the penalty scorer unable to detect runs of identical modules and causing suboptimal mask selection.
 - Fixed by normalising all cell values through a `val(r,c) => !!m[r][c]` helper before comparison.
 
@@ -85,11 +88,11 @@ Changes on `main` not yet tagged in a formal release.
 - `applyImportedSeed()` registered new `input` and `change` listeners on the derivation path field and coin selector, plus a `DOMContentLoaded` listener on `window`, every time it was called. Importing multiple seeds in one session accumulated unbounded duplicate listeners.
 - The `refreshDerivationInfoIcon` helper and its two event listeners have been moved to `bindUI()` where they are registered exactly once at startup.
 
-**XRP Network Definition ? Spurious Taproot Versions (HTML)**
+**XRP Network Definition - Spurious Taproot Versions (HTML)**
 - The XRP network object incorrectly included a `p2tr` entry with Bitcoin xprv/xpub version bytes. XRP Ledger does not use Taproot. While this caused no runtime error (the script type for XRP is always `'xrp'`), it was misleading and inconsistent with the Dogecoin entry which correctly sets `p2tr: null`.
 - Fixed by setting `p2tr: null` in the XRP network definition.
 
-**Litecoin URI Regex ? Ambiguous `3?` Prefix (HTML)**
+**Litecoin URI Regex - Ambiguous `3?` Prefix (HTML)**
 - The Litecoin branch in `toBip21Uri()` matched addresses starting with `3`, which is the Bitcoin P2SH prefix, not Litecoin. Litecoin P2SH addresses use an `M` prefix. The `3` branch was unreachable in practice (the Bitcoin rule above it fires first) but has been removed to eliminate the ambiguity.
 
 ### Added
@@ -97,7 +100,7 @@ Changes on `main` not yet tagged in a formal release.
 **PDF Key Export (HTML)**
 - New `PDF` option in the Export format selector triggers a full key export as a landscape A4 PDF via jsPDF.
 - Page 1 opens with a title block ("Arculus Key Export"), a meta line showing coin, app version, UTC timestamp, and root fingerprint, followed by an **Extended Keys** section and then the address table.
-- Extended Keys section lists all present root and account extended keys (xprv, xpub, zprv, zpub, yprv, ypub, trprv, trpub) vertically in order ? label on the left, full value spanning the remaining page width ? separated from the address table by a horizontal rule.
+- Extended Keys section lists all present root and account extended keys (xprv, xpub, zprv, zpub, yprv, ypub, trprv, trpub) vertically in order a label on the left, full value spanning the remaining page width ? separated from the address table by a horizontal rule.
 - Address table columns: Branch, Path, Address, and the appropriate private key column ? Private Key WIF for UTXO coins (Bitcoin, Litecoin, Dogecoin) or Private Key Hex for Ethereum and XRP. Branch values are colour-coded (green for receiving, grey for change). Rows use alternating background shading.
 - Continuation pages repeat the title/meta block and table header without the extended keys section.
 - File saved as `Arculus_Key_Export_<coin>.pdf`.
@@ -108,53 +111,53 @@ Changes on `main` not yet tagged in a formal release.
 - Tab content is populated when derivation completes and cleared when output is reset.
 
 **Per-Cell Copy Buttons for Address and WIF (HTML)**
-- Address and Private Key WIF cells in the Table View each include an inline ? copy button that copies the cell value to the clipboard with a brief ? confirmation.
+- Address and Private Key WIF cells in the Table View each include an inline copy button that copies the cell value to the clipboard with a brief copied confirmation.
 
 ### Changed
 
-**PDF Export ? Root Fingerprint in Meta Line (HTML)**
+**PDF Export - Root Fingerprint in Meta Line (HTML)**
 - The root fingerprint is now displayed inline on the PDF meta line (after the UTC timestamp) using the same `?` separator style as the other meta fields, making it easy to identify which account was exported at a glance.
 - The fingerprint is sourced from the live root fingerprint display and omitted gracefully if unavailable.
 - Previously the fingerprint appeared on a dedicated second line below the meta row; that line has been removed.
 
-**PDF Export ? Network Identifier Removed (HTML)**
+**PDF Export - Network Identifier Removed (HTML)**
 - The network name (e.g. "Mainnet") is no longer included in the PDF meta line.
 
-**PDF Export ? Coin Name Capitalization (HTML)**
+**PDF Export - Coin Name Capitalization (HTML)**
 - Coin names in the PDF header now use proper display capitalization: `Bitcoin`, `Ethereum`, `Litecoin`, `Dogecoin`, `XRP`. Previously the raw internal identifier (e.g. `bitcoin`) was used.
 
-**PDF Export ? Default Format (HTML)**
+**PDF Export - Default Format (HTML)**
 - `PDF` is now the pre-selected option in the Export format dropdown. Previously `JSON` was the default.
 
-**Table View ? Column Ordering (HTML)**
+**Table View - Column Ordering (HTML)**
 - Address and Private Key WIF columns are now promoted to appear before all other data columns.
 - Branch and Path columns precede Address and Private Key WIF.
 
-**Table View ? No Truncation on Hex and Key Columns (HTML)**
-- `public_key_hex`, `private_key_hex`, and all taproot and Ethereum hex variant columns (`ethereum_public_key_hex`, `taproot_internal_public_key_hex`, `taproot_internal_private_key_hex`, `taproot_output_public_key_hex`, `taproot_output_private_key_hex`, `taproot_tweak_hex`) now display in full with an inline ? copy button, matching the behavior of Address and Private Key WIF. Previously they were truncated at 260 px with an ellipsis.
+**Table View - No Truncation on Hex and Key Columns (HTML)**
+- `public_key_hex`, `private_key_hex`, and all taproot and Ethereum hex variant columns (`ethereum_public_key_hex`, `taproot_internal_public_key_hex`, `taproot_internal_private_key_hex`, `taproot_output_public_key_hex`, `taproot_output_private_key_hex`, `taproot_tweak_hex`) now display in full with an inline copy button, matching the behavior of Address and Private Key WIF. Previously they were truncated at 260 px with an ellipsis.
 - Address and Private Key WIF cells no longer apply `max-width` / `text-overflow` truncation; they display in full.
 
-**Table View ? Suppressed Columns (HTML)**
+**Table View - Suppressed Columns (HTML)**
 - The following fields are no longer rendered as table columns, as they are surfaced elsewhere (Extended Keys tab or page header): `root_xprv`, `root_xpub`, `root_zprv`, `root_zpub`, `root_yprv`, `root_ypub`, `root_trprv`, `root_trpub`, `account_xprv`, `account_xpub`, `account_zprv`, `account_zpub`, `account_yprv`, `account_ypub`, `account_trprv`, `account_trpub`, `network`, `word_count`, `derivation`, `account_script_type_used`, `coin`.
 
-**PDF Export ? Coin-Appropriate Private Key Column (HTML)**
+**PDF Export - Coin-Appropriate Private Key Column (HTML)**
 - For Ethereum and XRP exports the PDF address table now shows a **Private Key Hex** column in place of Private Key WIF, since WIF encoding does not apply to those coins. UTXO coins (Bitcoin, Litecoin, Dogecoin) continue to use Private Key WIF. The column header updates accordingly.
 
-**Export Format Selector ? Renamed PDF Option (HTML)**
+**Export Format Selector - Renamed PDF Option (HTML)**
 - The export option previously labelled "Dump" is now labelled "PDF".
 
-**QR Code ? XRP Destination Tag / Memo Prompt (HTML)**
+**QR Code - XRP Destination Tag / Memo Prompt (HTML)**
 - Generating a QR code for an XRP address now triggers a two-step flow instead of rendering immediately.
-- After clicking **Generate** (or pressing Enter), a prompt appears explaining what a destination tag is and when exchanges such as Robinhood require one. The user can enter a numeric tag and click **Generate QR**, or click **Skip ? No Tag** to encode the bare address without a tag.
+- After clicking **Generate** (or pressing Enter), a prompt appears explaining what a destination tag is and when exchanges such as Robinhood require one. The user can enter a numeric tag and click **Generate QR**, or click **Skip - No Tag** to encode the bare address without a tag.
 - When a tag is provided the QR encodes `rADDRESSdt=TAGNUMBER`, the `dt=` query parameter format recognised by Robinhood, Coinbase, Binance, and XUMM/Xaman. When skipped, the bare `rADDRESS` is encoded as before.
-- The same prompt appears when the **?** QR button is clicked directly from a table row for an XRP address, keeping both entry points consistent.
-- All non-XRP coins (Bitcoin, Ethereum, Litecoin, Dogecoin) are unaffected ? their QR codes continue to render immediately on Generate with no extra step.
+- The same prompt appears when the row QR button is clicked directly from a table row for an XRP address, keeping both entry points consistent.
+- All non-XRP coins (Bitcoin, Ethereum, Litecoin, Dogecoin) are unaffected; their QR codes continue to render immediately on Generate with no extra step.
 - A new `isXrpAddress()` helper and `resetQrOutput()` utility have been extracted from the QR UI logic to support the two-step flow cleanly and avoid duplicated state-reset code.
 
-**Address Count ? 15-Character Input Limit (HTML)**
+**Address Count - 15-Character Input Limit (HTML)**
 - The Address Count input is now capped at `maxlength="15"` characters.
 
-**Address Count ? Range Input (HTML)**
+**Address Count - Range Input (HTML)**
 - A **Range** label and accompanying text input (max 20 characters) have been added inline to the right of the Address Count field.
 - Entering a range in `START-END` format (e.g. `100-200`) causes the Derive Keys + Addresses button to derive addresses starting at the `START` index and ending at the `END` index on the active derivation path.
 - The Path column in the output table reflects the actual child indices derived (e.g. `m/84'/0'/0'/0/100` through `m/84'/0'/0'/0/200`), not a loop counter starting from zero.
@@ -162,19 +165,19 @@ Changes on `main` not yet tagged in a formal release.
 - If the Range input is empty the tool falls back to the Address Count value, deriving from index `0` as before.
 - The Range label uses the same `font-weight: 600` style as the Address Count label for visual consistency.
 
-**Settings ? Advanced Section (HTML)**
+**Settings - Advanced Section (HTML)**
 - A collapsible **Advanced** section has been added at the bottom of the Settings dialog, below the Theme row.
-- The section is collapsed by default and toggled open by clicking the **Advanced** heading, which displays a ? chevron that rotates to ? when expanded. The `aria-expanded` attribute updates accordingly for accessibility.
+- The section is collapsed by default and toggled open by clicking the **Advanced** heading, which displays a collapsed chevron that rotates when expanded. The `aria-expanded` attribute updates accordingly for accessibility.
 - Keeping it collapsed by default avoids cluttering the settings for users who do not need these options.
 
-**Settings ? Auto-Derive on Settings Change (HTML)**
+**Settings - Auto-Derive on Settings Change (HTML)**
 - An **Auto-Derive on Settings Change** toggle has been added inside the Advanced section of Settings.
 - When enabled, changing the Coin, Script Type, Derivation Path, Address Count, or Range field after an initial derive has run automatically triggers a re-derive after a 600 ms debounce, keeping the output in sync without requiring a manual button press.
 - The toggle is **off by default**, making the feature strictly opt-in. When off, `scheduleAutoderive()` exits immediately without scheduling any work.
 - The toggle uses the same `.toggle` / `.toggle-track` component already used elsewhere in the UI for visual consistency.
 - The status bar shows "Re-deriving?" while the automatic derive is in progress, and reverts to "Derivation complete." on success or an error message on failure, identical to a manual derive.
 
-**Output Panel ? Expand / Minimize (HTML)**
+**Output Panel - Expand / Minimize (HTML)**
 - A **? Expand** button has been added as a fourth item in the output tab bar, positioned at the far right and visually distinguished from the three content tabs with a transparent border and muted colour.
 - Clicking it expands the output panel to fill the full viewport: the tab bar fixes to the top of the screen and the content area stretches to fill everything below it, with a solid backdrop covering the rest of the page.
 - The button label and title change to **? Minimize** while expanded. Clicking it again restores the panel to its normal inline position.
@@ -183,7 +186,7 @@ Changes on `main` not yet tagged in a formal release.
 - Three ways to minimize: clicking **? Minimize**, clicking the backdrop, or pressing **Escape**. All three restore normal page scroll.
 - Page scroll is locked (`overflow: hidden` on `<body>`) while the panel is expanded to prevent the underlying content from scrolling behind it.
 
-**QR Modal ? Edit Button (HTML)**
+**QR Modal - Edit Button (HTML)**
 - A **Edit** button has been added alongside Save PNG and Copy Address in the QR actions row, visible after a QR code has been generated.
 - Clicking it collapses back to the appropriate input step without closing the modal or clearing any values: for XRP addresses it returns to the destination tag prompt with focus on the memo field; for all other addresses it restores focus to the address input.
 - This allows the user to adjust the address or memo and regenerate without re-pasting or reopening the modal.
@@ -192,7 +195,7 @@ Changes on `main` not yet tagged in a formal release.
 
 ---
 
-## [1.4.0] ? 2026-06-03
+## [1.4.0] - 2026-06-03
 
 ### Added
 
@@ -241,7 +244,7 @@ Changes on `main` not yet tagged in a formal release.
 
 ---
 
-## [1.3.0] ? 2026-06-02
+## [1.3.0] - 2026-06-02
 
 ### Added
 
@@ -287,7 +290,7 @@ Changes on `main` not yet tagged in a formal release.
 
 ---
 
-## [1.2.0] ? 2026-06-02
+## [1.2.0] - 2026-06-02
 
 ### Added
 
@@ -302,15 +305,15 @@ Changes on `main` not yet tagged in a formal release.
 
 ### Changed
 
-**Word Grid ? 12-Word Mode Hides Slots 13?24 (HTML & Python GUI)**
+**Word Grid - 12-Word Mode Hides Slots 13?24 (HTML & Python GUI)**
 - Word entry cells 13?24 are now hidden when 12-word mode is active, cutting the numbered-words section roughly in half for the common case.
 - Cells reappear immediately when the user switches to 24-word mode or pastes a 24-word mnemonic.
 - In the HTML version, cells toggle via `display: none` inside `refreshWordEnabled()`. In the Python GUI, cells toggle via `grid_remove()` / `grid()` inside `on_seed_length_change()`.
 
-**Mnemonic Textarea ? Reduced Default Height (HTML & Python GUI)**
+**Mnemonic Textarea - Reduced Default Height (HTML & Python GUI)**
 - Default height reduced from 4 lines (`min-height: 96px`) to 2 lines (`min-height: 60px`). The field remains user-resizable.
 
-**Output Textarea ? Reduced Default Height (HTML & Python GUI)**
+**Output Textarea - Reduced Default Height (HTML & Python GUI)**
 - Default height reduced from 20 lines (`min-height: 280px`) to 10 lines (`min-height: 120px`). The field remains user-resizable.
 
 **Seed Mask Character Changed from Asterisks to Bullets (HTML & Python GUI)**
@@ -321,7 +324,7 @@ Changes on `main` not yet tagged in a formal release.
 
 ---
 
-## [1.1.0] ? 2026-06-01
+## [1.1.0] - 2026-06-01
 
 ### Added
 
@@ -354,7 +357,7 @@ Changes on `main` not yet tagged in a formal release.
 
 ---
 
-## [Arculus_Recovery] ? 2026-04-24
+## [Arculus_Recovery] - 2026-04-24
 
 Tagged release commit `e7cc84e`. First formal GitHub release.
 

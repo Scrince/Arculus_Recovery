@@ -944,3 +944,8 @@ cryptographic vectors above but can affect user-visible behavior:
      injected WebView export bridge and native save_export command. Packaged
      release checks must confirm PDF, JSON, TXT, CSV, .arc, and QR PNG exports
      save to disk through the native bridge.
+
+  5. macOS release checks must verify the Apple Silicon DMG, Intel x64 DMG, and
+     universal DMG with hdiutil verify. The copied .app bundles must pass
+     codesign --verify --deep --strict, and lipo -info must report x86_64 for
+     the Intel build and both x86_64 and arm64 for the universal build.
