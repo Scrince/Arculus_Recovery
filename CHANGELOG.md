@@ -15,6 +15,28 @@ Changes on `main` not yet tagged in a formal release.
 **Beta Build**
 - Renamed the next-release working build to `Arculus_Recovery_Beta.html` and documented it as the Beta validation target before promotion to the main HTML.
 
+### Fixed
+
+**XRP QR Code — Missing `?` in Destination Tag URI (`Arculus_Recovery_Beta.html`)**
+- The original `toBip21Uri()` produced `rADDRESS dt=NNNN` (no `?`) for tagged XRP addresses, making the URI malformed and causing scanner failures. Fixed by inserting the missing `?` separator.
+
+**XRP QR Code — Tagless Addresses Not Resolving (`Arculus_Recovery_Beta.html`)**
+- A bare `rADDRESS` with no query string gave wallet scanners no signal to identify the payload as XRP, causing silent resolution failures. Tagless XRP QR codes now always append `?dt=00000` as a dummy destination tag, matching the format scanners expect without affecting transaction routing.
+
+### Added
+
+**XRP QR Code — Dedicated `renderXrpQr()` Function (`Arculus_Recovery_Beta.html`)**
+- Extracted XRP QR rendering into a dedicated function that renders at 320 px (vs 256 px for other coins) with a 4-module quiet zone for improved decode reliability. XRP addresses are now detected and routed to this renderer before the generic `toBip21Uri()` path runs.
+
+**XRP QR Code — `xrp-mode` Modal Widening (`Arculus_Recovery_Beta.html`)**
+- When displaying an XRP QR, the modal widens to `min(400px, calc(100vw - 40px))` to accommodate the larger 320 px canvas. The `xrp-mode` class is correctly removed on reset so the wider sizing does not persist after closing.
+
+**QR Canvas — Responsive Sizing CSS (`Arculus_Recovery_Beta.html`)**
+- Added `max-width: 100%; height: auto` to `#qrCanvas` so the canvas scales correctly on narrow viewports without overflow.
+
+**QR Code Generator — Capacity Calculation Fix (`Arculus_Recovery_Beta.html`)**
+- The version-selection loop now correctly accounts for terminator bits (`+4`) before rounding up to whole codewords, and removes a hardcoded `v===10` short-circuit that could cause incorrect QR version selection for certain payload lengths.
+
 **Python GUI - PySide6 HTML Shell**
 - Replaced the legacy Tkinter GUI with a PySide6 WebEngine desktop shell that loads the canonical `Arculus_Recovery.html` interface unchanged.
 - Kept CLI derivation mode available through `Arculus_Recovery.py` and added package entry points under `src/arculus_recovery/`.

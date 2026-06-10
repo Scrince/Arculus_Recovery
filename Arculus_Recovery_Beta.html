@@ -776,6 +776,12 @@
     #qrCanvas {
       border-radius: 8px;
       image-rendering: pixelated;
+      max-width: 100%;
+      height: auto;
+    }
+    /* Widen the modal slightly when showing an XRP QR (larger canvas) */
+    #qrModal.xrp-mode {
+      width: min(400px, calc(100vw - 40px));
     }
     .qr-actions { display: flex; gap: 10px; }
     button.qr-trigger {
@@ -975,6 +981,16 @@
             </div>
             <label class="toggle" aria-label="Auto-derive on settings change">
               <input type="checkbox" id="autoderiveToggle" />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              <span style="font-weight:600;">Legacy Address Format (Bitcoin Cash)</span>
+              <span style="font-size:12px;color:var(--muted);">Use legacy Base58 addresses (starting with <code style="font-family:monospace;">1</code>) instead of the default CashAddr format (<code style="font-family:monospace;">bitcoincash:q…</code>). Applies to Bitcoin Cash only.</span>
+            </div>
+            <label class="toggle" aria-label="Use legacy BCH address format">
+              <input type="checkbox" id="legacyAddrToggle" />
               <span class="toggle-track"></span>
             </label>
           </div>
@@ -1480,11 +1496,11 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     };
     const DEFAULT_ACCOUNT_DERIVATION = {
       bitcoin: "m/0'",
-      bitcoincash: "m/44'/145'/0'",
+      bitcoincash: "m/0'",
       litecoin: "m/84'/2'/0'",
       dogecoin: "m/44'/3'/0'",
       ethereum: "m/44'/60'/0'",
-      solana: "m/44'/501'/0'/0'",
+      solana: "m/44'/501'/0'",
       stellar: "m/44'/148'/0'",
       monero: "m/44'/128'/0'",
       cardano: "m/1852'/1815'/0'/0/0",
@@ -1526,7 +1542,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       themeModeDark: document.getElementById('themeModeDark'),
       themeModeDarkPlus: document.getElementById('themeModeDarkPlus'),
       themeModeTerminal: document.getElementById('themeModeTerminal'),
-      clearAllBtn: document.getElementById('clearAllBtn')
+      clearAllBtn: document.getElementById('clearAllBtn'),
+      legacyAddrToggle: document.getElementById('legacyAddrToggle')
     };
 
     const wordInputs = [];
@@ -1624,6 +1641,14 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     // ?? Output table rendering ???????????????????????????????????????????????
     let currentOutputMode = 'raw';
 
+    // Strip scheme prefixes for display only (QR/copy still use the full value)
+    function displayAddress(val, coin) {
+      if (coin === 'bitcoincash' && typeof val === 'string') {
+        return val.replace(/^bitcoincash:/i, '');
+      }
+      return val;
+    }
+
     function buildDerivedTable(data) {
       const rows = flattenDerivedRows(data);
       if (!rows.length) return null;
@@ -1714,12 +1739,12 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             const wrap = document.createElement('span');
             wrap.className = 'td-copy-wrap';
             const text = document.createElement('span');
-            text.textContent = String(val);
+            text.textContent = col === 'address' ? String(displayAddress(val, data.coin)) : String(val);
             wrap.appendChild(makeCopyBtn(val));
             if (col === 'address') wrap.appendChild(makeQrBtn(val, data.coin));
             wrap.appendChild(text);
             td.appendChild(wrap);
-            td.title = String(val);
+            td.title = col === 'address' ? String(displayAddress(val, data.coin)) : String(val);
           } else {
             td.className = 'td-truncate';
             td.textContent = String(val);
@@ -3422,10 +3447,10 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       return base58check(concatBytes(Uint8Array.of(0), accountId), XRP_B58);
     }
 
-    async function pubToAddress(pub, scriptType, net) {
+    async function pubToAddress(pub, scriptType, net, useLegacy) {
       const pkh = await hash160(pub);
       if (scriptType === 'p2pkh') {
-        if (net.cashAddrPrefix) return cashaddrEncode(net.cashAddrPrefix, 0, pkh);
+        if (net.cashAddrPrefix && !useLegacy) return cashaddrEncode(net.cashAddrPrefix, 0, pkh);
         return base58check(concatBytes(Uint8Array.of(net.p2pkhPrefix), pkh));
       }
       if (scriptType === 'p2wpkh') {
@@ -3434,7 +3459,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       if (scriptType === 'p2wpkh-p2sh') {
         const redeem = concatBytes(Uint8Array.of(0x00, 0x14), pkh);
         const h = await hash160(redeem);
-        if (net.cashAddrPrefix) return cashaddrEncode(net.cashAddrPrefix, 1, h);
+        if (net.cashAddrPrefix && !useLegacy) return cashaddrEncode(net.cashAddrPrefix, 1, h);
         return base58check(concatBytes(Uint8Array.of(net.p2shPrefix), h));
       }
       throw new Error('Unsupported script type');
@@ -3537,9 +3562,10 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
           setProgress(10 + Math.round((addressesDerived / totalAddresses) * 80));
           if (addressesDerived % 3 === 0) await new Promise(r => setTimeout(r, 0));
           const pub = serPub(pointMul(child.k, G));
+          const useLegacy = els.legacyAddrToggle && els.legacyAddrToggle.checked;
           const item = {
             path: `${derivation}/${branch}/${startIdx + i}`,
-            address: st === 'p2tr' || isEthereum || isXrp ? null : await pubToAddress(pub, st, net),
+            address: st === 'p2tr' || isEthereum || isXrp ? null : await pubToAddress(pub, st, net, useLegacy),
             public_key_hex: bytesToHex(pub),
             private_key_hex: bytesToHex(ser256(child.k))
           };
@@ -3609,7 +3635,10 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       }, new Set()));
       return [
         headers.map(csvEscape).join(','),
-        ...rows.map(row => headers.map(header => csvEscape(row[header])).join(','))
+        ...rows.map(row => headers.map(header => {
+          const val = header === 'address' ? displayAddress(row[header], data.coin) : row[header];
+          return csvEscape(val);
+        }).join(','))
       ].join('\n') + '\n';
     }
 
@@ -3617,11 +3646,12 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       return key.replace(/_/g, ' ');
     }
 
-    function appendTextFields(lines, obj, exclude = []) {
+    function appendTextFields(lines, obj, exclude = [], coin = '') {
       const excluded = new Set(exclude);
       for (const [key, value] of Object.entries(obj || {})) {
         if (excluded.has(key) || value === null || value === undefined) continue;
-        lines.push(`${textLabel(key)}: ${value}`);
+        const display = key === 'address' ? displayAddress(value, coin) : value;
+        lines.push(`${textLabel(key)}: ${display}`);
       }
     }
 
@@ -3645,7 +3675,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
           }
           for (const [itemIndex, item] of items.entries()) {
             lines.push('', `${branch} #${itemIndex}`);
-            appendTextFields(lines, item);
+            appendTextFields(lines, item, [], data.coin);
           }
         }
       }
@@ -3876,7 +3906,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
         let x = MARGIN + COL_GAP;
         for (const col of cols) {
-          const val = row[col.key] != null ? String(row[col.key]) : '';
+          const rawVal = row[col.key] != null ? String(row[col.key]) : '';
+          const val = col.key === 'address' ? String(displayAddress(rawVal, lastDerivedOutput.coin)) : rawVal;
           const text = clipText(val, col.w - COL_GAP);
           if (col.key === 'branch') {
             doc.setTextColor(val === 'receiving' ? 27 : 107, val === 'receiving' ? 143 : 114, val === 'receiving' ? 47 : 128);
@@ -4622,11 +4653,13 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             const byteLen = enc.length;
             let ver = 1, ecLevel = 0;
             
-            // Exact capacity check dynamically factoring in version indicator lengths
+            // Correct capacity check: mode indicator (4) + char-count bits (8 or 16)
+            // + data bits (byteLen*8) + terminator (4), rounded up to whole codewords.
             for (let v=1;v<=10;v++) {
-              let reqBytes = Math.ceil((4 + (v < 10 ? 8 : 16) + byteLen * 8) / 8);
+              const lenBitsV = v < 10 ? 8 : 16;
+              const totalBits = 4 + lenBitsV + byteLen * 8 + 4;
+              const reqBytes = Math.ceil(totalBits / 8);
               if (CAP[v][0].db >= reqBytes) { ver=v; ecLevel=0; break; }
-              if (v===10 && CAP[v][1].db >= reqBytes) { ver=v; ecLevel=1; break; }
               if (CAP[v][1].db >= reqBytes) { ver=v; ecLevel=1; break; }
             }
             
@@ -4682,8 +4715,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
     // Detect the correct BIP21/URI scheme for a given address and return the
     // full URI string that wallet apps expect to scan.
-    // For XRP, an optional numeric destination tag is appended as dt=NNNN ?
-    // the format used by Robinhood, Coinbase, Binance, and XUMM/Xaman.
+    // For XRP: raw r-address with optional ?dt=NNNN destination tag.
+    
+    
     function toBip21Uri(address, memo, coinContext) {
       const a = address.trim();
       const m = (memo || '').trim();
@@ -4698,16 +4732,53 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       if (/^(ltc1|[LM])[a-zA-HJ-NP-Z0-9]{25,}/.test(a)) return 'litecoin:' + a;
       if (/^[DA9][a-zA-HJ-NP-Z0-9]{25,}/.test(a)) return 'dogecoin:' + a;
       if (/^0x[0-9a-fA-F]{40}$/.test(a)) return 'ethereum:' + a;
-      if (isXrpAddress(a)) return m ? a + 'dt=' + encodeURIComponent(m) : a;
+      // XRP: bare r-address; append ?dt=NNNN when a destination tag is present.
+      if (isXrpAddress(a)) return a + '?dt=' + (m ? encodeURIComponent(m) : '00000');
       return a;
+    }
+
+    // Build QR for an XRP address using the raw r-address as the QR content.
+    
+    function renderXrpQr(address, memo) {
+      const canvas  = document.getElementById('qrCanvas');
+      const label   = document.getElementById('qrAddressLabel');
+      const saveRow = document.getElementById('qrSaveRow');
+      const modal   = document.getElementById('qrModal');
+      try {
+        const a   = address.trim();
+        const m   = (memo || '').trim();
+        // Bare r-address with optional ?dt= tag.
+        const uri = a + '?dt=' + (m ? encodeURIComponent(m) : '00000');
+        const matrix = QRGen.generate(uri);
+        // 320 px canvas, 4-module quiet zone, pure B&W for maximum scanner compatibility
+        // Bare address — XRP-aware scanners resolve the r-address directly.
+        QRGen.render(matrix, canvas, { size: 320, quiet: 4, dark: '#000000', light: '#ffffff' });
+        modal.classList.add('xrp-mode');
+        canvas.style.display  = '';
+        label.textContent     = uri;
+        label.style.display   = '';
+        saveRow.style.display = '';
+      } catch(e) {
+        modal.classList.remove('xrp-mode');
+        canvas.style.display  = 'none';
+        label.textContent     = 'Error: ' + e.message;
+        label.style.display   = '';
+        saveRow.style.display = 'none';
+      }
     }
 
     function renderQrFromAddress(address, memo, coinContext) {
       const canvas   = document.getElementById('qrCanvas');
       const label    = document.getElementById('qrAddressLabel');
       const saveRow  = document.getElementById('qrSaveRow');
+      const coin     = coinContext || document.getElementById('qrAddressInput').dataset.coin || '';
+      // XRP addresses use the dedicated high-quality renderer
+      if (isXrpAddress(address.trim())) {
+        renderXrpQr(address, memo);
+        return;
+      }
       try {
-        const uri = toBip21Uri(address, memo, coinContext || document.getElementById('qrAddressInput').dataset.coin || '');
+        const uri = toBip21Uri(address, memo, coin);
         const matrix = QRGen.generate(uri);
         QRGen.render(matrix, canvas, { size: 256, quiet: 4, dark: '#000000', light: '#ffffff' });
         canvas.style.display   = '';
@@ -4727,6 +4798,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       document.getElementById('qrAddressLabel').style.display = 'none';
       document.getElementById('qrSaveRow').style.display     = 'none';
       document.getElementById('qrMemoPrompt').style.display  = 'none';
+      document.getElementById('qrModal').classList.remove('xrp-mode');
     }
 
     function openQrModal() {
