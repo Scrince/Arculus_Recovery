@@ -1960,15 +1960,19 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     }
 
     function protectedSeedStatus() {
-      return importedSeedState.kind === 'generated'
-        ? 'Generated seed phrase is hidden but ready for validation, copy, export, and derivation.'
-        : 'Encrypted seed imported. Seed phrase is hidden but ready for validation and derivation.';
+      if (importedSeedState.kind === 'generated')
+        return 'Generated seed phrase is hidden but ready for validation, copy, export, and derivation.';
+      if (importedSeedState.kind === 'entered')
+        return 'Seed phrase hidden after successful derivation. Hold \u201cShow Seed\u201d to reveal.';
+      return 'Encrypted seed imported. Seed phrase is hidden but ready for validation and derivation.';
     }
 
     function protectedSeedPlaceholder() {
-      return importedSeedState.kind === 'generated'
-        ? 'Generated seed phrase hidden. Hold Show Seed to reveal.'
-        : 'Encrypted seed loaded. Hold Show Seed to reveal.';
+      if (importedSeedState.kind === 'generated')
+        return 'Generated seed phrase hidden. Hold Show Seed to reveal.';
+      if (importedSeedState.kind === 'entered')
+        return 'Seed hidden. Hold \u201cShow Seed\u201d to reveal.';
+      return 'Encrypted seed loaded. Hold Show Seed to reveal.';
     }
 
     function hasVisibleSeedInput() {
@@ -4292,6 +4296,25 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       // address count, or range AFTER a successful derive has already run, re-run
       // automatically after a short debounce so the output stays in sync with the
       // settings without requiring a manual button press.
+      // After a successful derivation of a manually-typed seed, promote it into
+      // importedSeedState and mask it exactly like a generated/imported seed.
+      function maskManuallyEnteredSeed() {
+        if (importedSeedState) return; // already managed — nothing to do
+        const raw = els.mnemonic.value.trim();
+        if (!raw) return;
+        const words = normalizeMnemonicWords(raw);
+        if (words.length !== 12 && words.length !== 24) return;
+        importedSeedState = {
+          mnemonic: words.join(' '),
+          sourceName: 'manually entered seed',
+          kind: 'entered'
+        };
+        showingImportedSeed = false;
+        setObfuscatedSeedInputs(words);
+        els.mnemonic.placeholder = 'Seed hidden. Hold \u201cShow Seed\u201d to reveal.';
+        scheduleRootFingerprintRefresh();
+      }
+
       let _autoderiveTimer = null;
       function scheduleAutoderive() {
         if (!lastDerivedOutput) return; // nothing derived yet ? don't fire
@@ -4308,7 +4331,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             setProgress(100);
             setTimeout(hideProgress, 400);
             showDerivedTable(data);
-            uiStatus('Derivation complete.', 'valid');
+            maskManuallyEnteredSeed();
+            uiStatus('Derivation complete. Seed phrase hidden \u2014 hold \u201cShow Seed\u201d to reveal.', 'valid');
           } catch (e) {
             hideProgress();
             uiStatus(`Error: ${e.message}`, 'invalid');
@@ -4343,7 +4367,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
           setProgress(100);
           setTimeout(hideProgress, 400);
           showDerivedTable(data);
-          uiStatus('Derivation complete.', 'valid');
+          maskManuallyEnteredSeed();
+          uiStatus('Derivation complete. Seed phrase hidden \u2014 hold \u201cShow Seed\u201d to reveal.', 'valid');
         } catch (e) {
           hideProgress();
           uiStatus(`Error: ${e.message}`, 'invalid');

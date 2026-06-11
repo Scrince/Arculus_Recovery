@@ -15,6 +15,16 @@ Changes on `main` not yet tagged in a formal release.
 **Beta Build**
 - Renamed the next-release working build to `Arculus_Recovery_Beta.html` and documented it as the Beta validation target before promotion to the main HTML.
 
+### Added
+
+**Seed Auto-Mask After Derivation (`Arculus_Recovery_Beta.html`)**
+- When a manually typed 12-word or 24-word mnemonic is successfully derived, the seed is now automatically masked in the same way as a generated or imported seed — both the mnemonic textarea and the numbered word grid are replaced with bullet characters (`••••`).
+- The seed remains protected in memory via `importedSeedState` (kind: `'entered'`) and is available for all subsequent operations (re-derive, export, copy, encrypt) without needing to be re-entered.
+- The status bar and textarea placeholder update to instruct the user to hold **Show Seed** to reveal the phrase.
+- The **Show Seed** press-and-hold button works identically to its behavior for generated and imported seeds: hold to reveal, release to re-mask.
+- Auto-derive re-runs also trigger masking if the seed was not already protected, so the seed does not re-appear on settings changes when Auto-Derive is enabled.
+- A `maskManuallyEnteredSeed()` helper function was added; it is a no-op if `importedSeedState` is already set, so generated and imported seeds are unaffected.
+
 ### Fixed
 
 **XRP QR Code — Missing `?` in Destination Tag URI (`Arculus_Recovery_Beta.html`)**

@@ -94,7 +94,7 @@ Theme examples:
 - Encrypted seed export/import via `.arc` files
 - Export derived keys/addresses as JSON, CSV, TXT, or PDF
 - PDF export includes title block, root fingerprint, extended keys section, and full address table
-- Hidden imported-seed workflow
+- Hidden seed workflow — manually entered seeds are automatically masked after a successful derivation, matching the behavior of generated and imported seeds
 - Press-and-hold seed reveal
 - Inline root fingerprint display
 - Clear All - wipes all fields and protected seed state in one action
@@ -221,8 +221,9 @@ The project supports encrypted seed backup and export using the `.arc` file exte
 - `Import Seed` loads a `.arc` file back into the app
 - Imported seeds remain hidden on screen
 - Imported hidden seeds can still be validated and used for key derivation
-- `Show Seed` temporarily reveals the hidden imported seed only while held down
-- `Clear All` removes the imported seed from memory along with all other fields
+- Manually entered seeds are automatically masked after a successful derivation, identical to the behavior of generated and imported seeds — the mnemonic textarea and word grid are replaced with bullet characters, and the seed remains available in memory for all subsequent operations without needing to be re-entered
+- `Show Seed` temporarily reveals any hidden seed only while held down, then re-masks on release — this applies to generated, imported, and manually entered seeds
+- `Clear All` removes the seed from memory along with all other fields
 
 ### Compatibility
 
@@ -294,7 +295,7 @@ Open `Arculus_Recovery.html` directly in a browser. No installation required. Th
 - QR Export - generate a QR code from any pasted address, no external dependencies
 - Encrypt/export seed to `.arc`
 - Import encrypted seed from `.arc`
-- Hold-to-show hidden imported seed
+- Hold-to-show hidden seed — applies to generated, imported, and manually entered seeds; seeds entered manually are masked automatically after a successful derivation
 - Clear All button to wipe all fields and protected seed state
 - Root fingerprint display in the action toolbar
 - Derivation path info tooltip when using the Arculus-native `m/0'` path
