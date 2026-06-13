@@ -1,132 +1,44 @@
-Arculus Recovery v1.5.0 — Encryption Subsystem Internals
-====================================================================
+Arculus Recovery v1.6.0 Encryption Subsystem Internals
+======================================================
 
 Scope
 -----
 
-This document is the authoritative byte-level specification of the encrypted
-seed storage subsystem as implemented in Arculus Recovery v1.5.0. It
-defines the .arc file format in complete structural detail, the PBKDF2-based
-key schedule, domain-separated key derivation, the HMAC-SHA512 counter-mode
-keystream construction, the authenticated metadata transcript, the full export
-and import procedures, the constant-time MAC comparison requirement, the
-compatibility matrix for all supported legacy formats, iteration count rationale,
-and the precise boundary of what the .arc format protects and does not protect.
-
-This document is an offline reference. All cryptographic constructions are
-expressed as byte-level procedures and pseudocode. No external dependencies,
-diagrams, or supplementary materials are required to implement or verify
-compliance.
+This document specifies the current .arc encrypted seed format at the byte and
+algorithm level. It covers the V2 key schedule, stream cipher, MAC transcript,
+and import/export behavior.
 
 
-Design Objectives
-------------------
+Design Goals
+------------
 
-The .arc format was designed under three non-negotiable engineering constraints
-that admit no exceptions:
-
-  1. Zero external cryptographic runtime dependencies.
-     Python uses exclusively hashlib, hmac, os.urandom, json, and base64 from
-     the Python standard library. The HTML version uses browser built-ins
-     exclusively: SubtleCrypto (PBKDF2, HMAC, SHA-512),
-     crypto.getRandomValues, TextEncoder, TextDecoder, btoa, and atob. No
-     third-party cryptographic package, compiled extension, or WebAssembly
-     module is introduced for .arc encryption under any circumstances. The
-     constraint is absolute for seed encryption and applies retroactively: any
-     proposed change that introduces an external cryptographic dependency is
-     rejected by design, not by policy.
-
-  2. Cross-platform byte-level compatibility.
-     A .arc file produced by the HTML version must be decryptable by the Python
-     version and vice versa without any intermediate conversion step. Both
-     implementations derive byte-identical key material and produce byte-
-     identical ciphertext for the same (plaintext, password, salt, nonce)
-     tuple. The only implementation differences lie in WebCrypto versus hashlib
-     API surface; the underlying cryptographic operations are specification-
-     identical.
-
-  3. Encrypt-then-MAC with fully authenticated metadata.
-     The authentication tag covers not only the ciphertext but all versioned
-     metadata, KDF parameters, cipher parameters, nonce, salt, and creation
-     timestamp as raw bytes. An adversary who obtains a .arc file cannot alter
-     any field — including the KDF iteration count — without producing a MAC
-     verification failure. This property holds unconditionally: it does not
-     require the adversary's modification to be detectable by inspection of the
-     file structure.
-
-The scheme in a single-line summary:
-
-  password -> PBKDF2-HMAC-SHA512(1,000,000 iterations, 32-byte salt)
-           -> 64-byte master key
-           -> HMAC-SHA512 domain separation -> enc_key (64 bytes), mac_key (64 bytes)
-           -> HMAC-SHA512-CTR stream cipher over UTF-8 plaintext JSON
-           -> encrypt-then-MAC over fully versioned metadata transcript
-           -> compact JSON bundle -> base64 armor -> ARCULUS-ARC-V2 text file
+  - No external cryptographic runtime dependency.
+  - Byte-compatible browser and Python implementations.
+  - Encrypt-then-MAC.
+  - MAC-bound metadata, including KDF parameters.
+  - Backward-compatible import for older .arc formats.
 
 
-Why HMAC-SHA512-CTR and Not AES-GCM
--------------------------------------
-
-The decision to construct a counter-mode stream from HMAC-SHA512 rather than
-use AES-GCM is architectural, not a cryptographic compromise.
-
-Python's standard library does not expose AES-GCM. Introducing AES-GCM would
-require one of: the `cryptography` package (a compiled C extension with an
-OpenSSL binding and an external trust surface), PyCryptodome, or a pure-Python
-AES implementation. Each option introduces packaging complexity, cross-platform
-build variability, and a divergence between the Python and HTML implementations
-that would require a compatibility shim or a distinct code path.
-
-HMAC-SHA512 is natively available in both Python's hashlib and the browser's
-SubtleCrypto.sign API. Building the stream cipher from HMAC-SHA512 preserves
-complete dependency freedom across both runtimes, permits a single unified
-algorithm specification with no platform-conditional branches, and delegates
-security entirely to HMAC-SHA512's well-analyzed pseudorandom function
-properties under the standard assumption that SHA-512 is a secure hash function.
-
-The construction is encrypt-then-MAC: authentication is computed over the
-ciphertext, never over the plaintext. MAC-then-encrypt exposes padding and
-decryption oracle vulnerabilities in certain cipher configurations. The
-authenticate-then-decrypt order in the import procedure is non-negotiable and is
-enforced unconditionally: no decryption step is attempted before MAC verification
-succeeds.
-
-The MAC transcript commits to all metadata fields, making the scheme a committed
-authenticated encryption construction without the overhead of a dedicated AEAD
-library. KDF downgrade attacks — in which an adversary modifies the stored
-iteration count to reduce brute-force cost — are defeated because the iteration
-count is a bound field in the MAC commitment.
-
-AES-GCM would be a technically appropriate alternative if external dependencies
-were acceptable. They are not for this tool, and this design decision is final.
-
-
-Executive Summary of Current Format
---------------------------------------
+Current Format Summary
+----------------------
 
   Armor header:             ARCULUS-ARC-V2
   Internal format ID:       arculus-encrypted-seed-v2
-  Internal version integer: 2
-  Password normalization:   Unicode NFKD, then UTF-8 encoded
-  KDF algorithm:            PBKDF2-HMAC-SHA512
-  KDF output length:        64 bytes (512 bits)
-  KDF iterations (new):     1,000,000
-  KDF iterations (minimum): 600,000 (legacy v2 import acceptance floor)
-  Salt:                     32 bytes, CSPRNG-generated per export
-  Nonce:                    24 bytes, CSPRNG-generated per export
-  Stream cipher:            HMAC-SHA512 counter mode (HMAC-SHA512-CTR)
-  Authentication:           HMAC-SHA512 over versioned metadata transcript
-  MAC length:               64 bytes (512 bits)
-  Key separation:           domain-specific HMAC-SHA512 labels
-  Plaintext payload:        normalized mnemonic, word count, UTC ISO 8601 timestamp
+  Version integer:          2
+  Password normalization:   Unicode NFKD, then UTF-8
+  KDF:                      PBKDF2-HMAC-SHA512
+  KDF output length:        64 bytes
+  New export iterations:    1000000
+  Minimum V2 import floor:  600000
+  Salt:                     32 random bytes
+  Nonce:                    24 random bytes
+  Cipher:                   HMAC-SHA512 counter stream
+  Authentication:           HMAC-SHA512
+  MAC length:               64 bytes
 
 
-Implementation Constants
--------------------------
-
-These constants are defined identically in both the Python and HTML
-implementations. Any deviation between implementations — even in whitespace,
-capitalization, or encoding — produces incompatible key material or MAC values.
+Constants
+---------
 
   ARC_MAGIC                 = "ARCULUS-ARC"
   ARC_ARMOR_HEADER          = "ARCULUS-ARC-V2"
@@ -134,643 +46,156 @@ capitalization, or encoding — produces incompatible key material or MAC values
   ARC_V2_VERSION            = 2
   ARC_V2_KDF_NAME           = "PBKDF2"
   ARC_V2_KDF_HASH           = "SHA-512"
-  ARC_V2_KDF_ITERATIONS     = 1_000_000
-  ARC_V2_MIN_KDF_ITERATIONS = 600_000
+  ARC_V2_KDF_ITERATIONS     = 1000000
+  ARC_V2_MIN_KDF_ITERATIONS = 600000
   ARC_V2_SALT_BYTES         = 32
   ARC_V2_NONCE_BYTES        = 24
   ARC_V2_MAC_BYTES          = 64
   ARC_V2_MASTER_KEY_BYTES   = 64
   ARC_V2_CIPHER_NAME        = "HMAC-SHA512-CTR"
 
-Domain-separation label constants (byte literals):
+Domain labels:
 
-  ENC_LABEL    = b"Arculus ARC v2 encryption key"      -- 29 bytes
-  MAC_LABEL    = b"Arculus ARC v2 authentication key"  -- 33 bytes
-  STREAM_LABEL = b"Arculus ARC v2 stream\x00"          -- 22 bytes
-  MAC_PREFIX   = b"Arculus ARC v2 MAC"                 -- 18 bytes
-
-The null byte (0x00) terminating STREAM_LABEL provides a hard boundary between
-the label and the variable-length nonce || counter suffix that follows it,
-preventing label extension collisions with any input that begins with a partial
-match of the label string.
-
-
-File Format: External Structure
----------------------------------
-
-A .arc file is UTF-8 text with the following three-line structure:
-
-  Line 1: "ARCULUS-ARC-V2"                     -- armor header, exact string
-  Line 2: base64( compact_json(bundle) )        -- RFC 4648 standard base64
-  Line 3: empty (trailing LF newline)
-
-The armor header on line 1 is the format discriminator. If line 1 is not
-exactly "ARCULUS-ARC-V2", the importer falls through to the legacy detection
-path without raising an error.
-
-Line 2 is standard RFC 4648 base64 (not base64url). It encodes a compact JSON
-object as specified in the Internal Bundle Structure section below. The resulting
-file is an opaque envelope: opening the file reveals no human-readable metadata
-about the key derivation parameters, the mnemonic length, or the creation date.
-
-This opaque presentation is an intentional property. The armoring does not
-provide confidentiality — the MAC and keystream are the security boundary — but
-it eliminates casual inspection of sensitive operational parameters and
-discourages manual file editing that could produce subtly incorrect inputs to the
-KDF or cipher without triggering an immediate parsing error.
-
-
-File Format: Internal Bundle Structure
------------------------------------------
-
-After RFC 4648 base64 decoding of line 2, the result is a compact JSON object.
-The Python serializer produces it with separators=(",", ":") and sort_keys=True.
-The HTML serializer produces compact JSON via JSON.stringify. JSON key ordering
-is not a security property; the MAC transcript is constructed from explicit field
-extractions over raw bytes, not over the JSON string itself.
-
-Full internal bundle schema (all fields present in every current export):
-
-  {
-    "cipher": {
-      "name":      "HMAC-SHA512-CTR",
-      "nonce_b64": "<base64(24 bytes)>"
-    },
-    "ciphertext_b64": "<base64(N bytes, N = len(plaintext_utf8))>",
-    "created_at":     "<ISO 8601 UTC timestamp, e.g. 2026-05-04T12:00:00.000Z>",
-    "format":         "arculus-encrypted-seed-v2",
-    "kdf": {
-      "hash":       "SHA-512",
-      "iterations": 1000000,
-      "name":       "PBKDF2",
-      "salt_b64":   "<base64(32 bytes)>"
-    },
-    "mac_b64":  "<base64(64 bytes)>",
-    "magic":    "ARCULUS-ARC",
-    "version":  2
-  }
-
-All binary fields (salt, nonce, ciphertext, MAC) are RFC 4648 base64-encoded
-within this JSON object. The JSON bundle itself is then base64-encoded again for
-the armored file line. This intentional double-encoding separates concerns: the
-outer base64 layer produces the printable armor body; the inner base64 fields
-keep binary data safe within JSON string values without requiring binary JSON
-extensions.
+  ENC_LABEL    = b"Arculus ARC v2 encryption key"
+  MAC_LABEL    = b"Arculus ARC v2 authentication key"
+  STREAM_LABEL = b"Arculus ARC v2 stream\x00"
+  MAC_PREFIX   = b"Arculus ARC v2 MAC"
 
 
 Plaintext Payload
-------------------
+-----------------
 
-The content encrypted by this subsystem is intentionally minimal:
+The encrypted plaintext is compact UTF-8 JSON:
 
   {
-    "mnemonic":   "word1 word2 ... wordN",
+    "mnemonic": "word1 word2 ... wordN",
     "word_count": 12,
-    "created_at": "2026-05-04T12:00:00.000Z"
+    "created_at": "2026-06-13T00:00:00.000Z"
   }
 
-Only the BIP39 seed mnemonic is encrypted. The following are explicitly outside
-the scope of .arc encryption:
-
-  - The BIP39 wallet passphrase (a separate wallet seed derivation parameter)
-  - Derived private keys, WIF keys, private_key_hex fields
-  - Extended private keys (xprv, yprv, zprv, tprv)
-  - Extended public keys (xpub, ypub, zpub, tpub)
-  - Derived addresses (P2PKH, P2WPKH-P2SH, P2WPKH, P2TR, Ethereum, XRP)
-  - Ethereum account state, ERC-20 token metadata, allowances, or balances
-  - XRP classic addresses, X-addresses, destination tags, or sequence numbers
-  - JSON/CSV/TXT derived-output export files (these are always plaintext)
-
-The .arc encryption password is operationally and cryptographically distinct
-from the BIP39 wallet passphrase. The system never conflates them. The BIP39
-passphrase is a wallet-tree derivation parameter processed through a 2048-
-iteration PBKDF2 over "mnemonic" + passphrase. The .arc password is a file-at-
-rest protection parameter processed through a 1,000,000-iteration PBKDF2 over
-a fresh 32-byte random salt. Their key schedules, salts, iteration counts, and
-derived key material are entirely independent.
-
-Importers must silently ignore unknown fields in the plaintext JSON object to
-preserve forward compatibility. Future format versions may add payload fields
-without breaking existing readers.
+Only the mnemonic is protected by .arc encryption. The BIP39 passphrase and all
+derived-output exports are outside the .arc file.
 
 
 Key Schedule
+------------
+
+1. Normalize password:
+
+   password_bytes = NFKD(password).encode("utf-8")
+
+2. Derive master key:
+
+   master_key = PBKDF2-HMAC-SHA512(
+       password=password_bytes,
+       salt=salt,
+       iterations=iterations,
+       dklen=64
+   )
+
+3. Derive encryption key:
+
+   enc_key = HMAC-SHA512(master_key, ENC_LABEL)
+
+4. Derive authentication key:
+
+   mac_key = HMAC-SHA512(master_key, MAC_LABEL)
+
+
+Stream Cipher
 -------------
 
-The key schedule derives all per-operation keys from a single PBKDF2 master key
-and then separates them by cryptographic domain. No key material is shared or
-reused across domains. The schedule has four sequential steps.
-
-Step 1 — Password normalization:
-
-  password_nfkd  = NFKD(password_string)
-  password_bytes = password_nfkd.encode("utf-8")
-
-  Unicode NFKD normalization (Compatibility Decomposition) ensures that different
-  Unicode representations of the same logical password string — e.g., composed
-  vs. decomposed diacritics, full-width vs. half-width characters, ligature vs.
-  component forms — produce the same byte sequence regardless of input platform
-  or keyboard method. Without this normalization, the same passphrase typed on
-  two different operating systems may produce different byte sequences, resulting
-  in a permanently inaccessible .arc file.
-
-Step 2 — Master key derivation via PBKDF2-HMAC-SHA512:
-
-  master_key = PBKDF2-HMAC-SHA512(
-      password   = password_bytes,
-      salt       = salt,         -- 32 bytes from CSPRNG (fresh per export)
-      iterations = 1_000_000,
-      dklen      = 64            -- 512-bit output
-  )
-
-  The 64-byte master key is never used directly for any cryptographic operation.
-  It serves exclusively as a key derivation source. This intermediate indirection
-  ensures that compromise of any single derived operation key does not yield the
-  master key, and therefore does not yield the other derived keys.
-
-Step 3 — Encryption key derivation:
-
-  enc_key = HMAC-SHA512(
-      key = master_key,
-      msg = b"Arculus ARC v2 encryption key"    -- ENC_LABEL
-  )
-
-  Output: 64 bytes. Used exclusively as the HMAC key in the HMAC-SHA512-CTR
-  keystream construction. This key is never reused outside that context.
-
-Step 4 — Authentication key derivation:
-
-  mac_key = HMAC-SHA512(
-      key = master_key,
-      msg = b"Arculus ARC v2 authentication key"  -- MAC_LABEL
-  )
-
-  Output: 64 bytes. Used exclusively as the HMAC key in the MAC transcript
-  computation. This key is never reused outside that context.
-
-enc_key and mac_key are cryptographically independent under the standard PRF
-assumption on HMAC-SHA512. Knowledge of enc_key yields no information about
-mac_key or master_key, and vice versa. The domain-separation labels ensure
-that even if an adversary constructs an input that produces a target HMAC output
-for one label, that output is computationally unrelated to the HMAC output under
-a different label.
-
-
-HMAC-SHA512 Counter-Mode Keystream
--------------------------------------
-
-The keystream is generated from enc_key and the 24-byte per-export random nonce
-using an indexed HMAC-SHA512 construction. For counter value i = 0, 1, 2, ...:
+For counter i = 0, 1, 2, ...
 
   block_i = HMAC-SHA512(
-      key = enc_key,
-      msg = STREAM_LABEL || nonce || uint64_be(i)
+      key=enc_key,
+      msg=STREAM_LABEL || nonce || uint64_be(i)
   )
 
-Where:
-
-  STREAM_LABEL = b"Arculus ARC v2 stream\x00"   -- 22 bytes including null terminator
-  nonce        = 24 bytes (CSPRNG-generated per export)
-  uint64_be(i) = counter i encoded as an 8-byte big-endian unsigned integer
-
-Each block_i is 64 bytes (512 bits). The keystream is the sequential
-concatenation of as many counter blocks as required to cover the full plaintext
-byte length:
-
-  keystream = block_0 || block_1 || block_2 || ... || block_{ceil(N/64)-1}
-
-Only the first N bytes of the keystream are consumed, where N = len(plaintext).
-
-Encryption and decryption are identical XOR operations over the keystream:
-
-  ciphertext[j] = plaintext[j]  XOR keystream[j]
-  plaintext[j]  = ciphertext[j] XOR keystream[j]
-
-Security analysis of the construction:
-
-  - Each counter block input is uniquely bound to (STREAM_LABEL, nonce, i),
-    preventing block reordering attacks and ensuring independent per-position
-    pseudorandomness.
-  - The 24-byte nonce provides 192 bits of nonce space, making per-export nonce
-    collision probability negligible under reasonable export volumes.
-  - The nonce binds the keystream to a specific export event; two exports of the
-    same mnemonic under the same password but with different nonces produce
-    completely independent ciphertexts.
-  - The keystream is never consumed without prior or subsequent MAC verification;
-    ciphertext is not accepted as decryption input before MAC verification
-    succeeds unconditionally.
+The keystream is the concatenation of blocks truncated to the plaintext length.
+Encryption and decryption are XOR with the keystream.
 
 
-MAC Transcript Construction
------------------------------
+MAC Transcript
+--------------
 
-The MAC binds the ciphertext to all versioned file metadata. It is computed over
-an explicitly constructed byte transcript, not over the raw JSON bytes of the
-bundle. This design prevents serialization-order attacks and makes the commitment
-explicit and auditable.
+The MAC transcript is NUL-separated:
 
-The transcript is constructed as the NUL-byte-separated (0x00) concatenation of
-the following fields in the following order:
-
-  parts = [
-      MAC_PREFIX,                       -- b"Arculus ARC v2 MAC"     (18 bytes)
-      bundle["magic"].encode("utf-8"),  -- b"ARCULUS-ARC"            (11 bytes)
-      bundle["format"].encode("utf-8"), -- b"arculus-encrypted-seed-v2"
-      str(bundle["version"]).encode(),  -- b"2"
-      bundle["created_at"].encode(),    -- ISO 8601 timestamp bytes
-      bundle["kdf"]["name"].encode(),   -- b"PBKDF2"
-      bundle["kdf"]["hash"].encode(),   -- b"SHA-512"
-      str(bundle["kdf"]["iterations"]).encode(),  -- b"1000000"
-      bundle["cipher"]["name"].encode(), -- b"HMAC-SHA512-CTR"
-      salt,                             -- raw 32 bytes (not base64)
-      nonce,                            -- raw 24 bytes (not base64)
-      ciphertext                        -- raw ciphertext bytes (not base64)
-  ]
+  MAC_PREFIX
+  magic
+  format
+  version as decimal text
+  created_at
+  kdf.name
+  kdf.hash
+  kdf.iterations as decimal text
+  cipher.name
+  raw salt
+  raw nonce
+  raw ciphertext
 
   transcript = b"\x00".join(parts)
+  mac = HMAC-SHA512(mac_key, transcript)
 
-  mac = HMAC-SHA512(
-      key = mac_key,
-      msg = transcript
-  )
-
-The 0x00 separator between adjacent fields prevents concatenation collision
-attacks in which bytes are moved between adjacent fields to produce an identical
-transcript byte sequence. An adversary cannot shift bytes between the magic and
-format fields, or between the nonce and ciphertext, without introducing a 0x00
-boundary violation that changes the transcript value.
-
-The fields committed by this MAC and the attacks they defeat:
-
-  MAC_PREFIX        -- domain-separation; prevents cross-context MAC reuse
-  magic             -- prevents format confusion with other arc-family formats
-  format            -- version-specific format string commitment
-  version           -- numeric version commitment
-  created_at        -- binds the MAC to the specific export event timestamp
-  kdf.name          -- prevents substitution of an alternative KDF algorithm
-  kdf.hash          -- prevents substitution of an alternative hash function
-  kdf.iterations    -- defeats KDF iteration-count downgrade attacks
-  cipher.name       -- prevents substitution of an alternative cipher
-  salt (raw bytes)  -- prevents base64 re-encoding of a modified salt value
-  nonce (raw bytes) -- prevents nonce substitution or reuse attacks
-  ciphertext (raw)  -- the primary ciphertext authentication commitment
-
-
-Full Export Procedure
-----------------------
-
-Input: mnemonic (string), password (string)
-
-  -- 1. Normalize and validate the mnemonic
-  words = normalize_mnemonic_words(mnemonic)
-  assert len(words) in {12, 24}
-
-  -- 2. Generate fresh random parameters
-  salt       = CSPRNG(32)                     -- os.urandom(32) / getRandomValues(32)
-  nonce      = CSPRNG(24)                     -- os.urandom(24) / getRandomValues(24)
-  created_at = current_utc_timestamp_iso8601()
-
-  -- 3. Normalize password and derive keys
-  password_bytes = NFKD(password).encode("utf-8")
-  master_key     = PBKDF2-HMAC-SHA512(password_bytes, salt, 1_000_000, 64)
-  enc_key        = HMAC-SHA512(master_key, ENC_LABEL)
-  mac_key        = HMAC-SHA512(master_key, MAC_LABEL)
-
-  -- 4. Construct and encrypt plaintext
-  plaintext_obj  = {
-      "mnemonic":   " ".join(words),
-      "word_count": len(words),
-      "created_at": created_at
-  }
-  plaintext      = compact_json(plaintext_obj).encode("utf-8")
-  ciphertext     = plaintext XOR hmac_sha512_ctr_stream(enc_key, nonce, len(plaintext))
-
-  -- 5. Assemble bundle and compute MAC
-  bundle = {
-      "magic":          "ARCULUS-ARC",
-      "format":         "arculus-encrypted-seed-v2",
-      "version":        2,
-      "created_at":     created_at,
-      "kdf":   { "name": "PBKDF2", "hash": "SHA-512",
-                 "iterations": 1_000_000, "salt_b64": base64(salt) },
-      "cipher": { "name": "HMAC-SHA512-CTR", "nonce_b64": base64(nonce) },
-      "ciphertext_b64": base64(ciphertext),
-      "mac_b64":        base64( HMAC-SHA512(mac_key, transcript(bundle, salt, nonce, ciphertext)) )
-  }
-
-  -- 6. Serialize to armored text
-  file_text = "ARCULUS-ARC-V2\n" + base64(compact_json(bundle)) + "\n"
-
-Every invocation of the export procedure produces a distinct .arc file for the
-same (mnemonic, password) pair because salt and nonce are independently sampled
-from the CSPRNG on each call. Two .arc files exported from the same mnemonic
-with the same password are computationally indistinguishable from two .arc files
-with entirely different mnemonics. This is the correct and expected behavior.
-
-
-Full Import Procedure
-----------------------
-
-Input: file_text (string), password (string)
-
-  -- 1. Detect and decode format
-  if file_text.startswith("ARCULUS-ARC-V2"):
-      body   = file_text.split("\n")[1]
-      bundle = json_parse(base64_decode(body))
-  else:
-      bundle = json_parse(file_text)           -- legacy path: raw JSON body
-
-  -- 2. Dispatch on version
-  if bundle.get("magic") == "ARCULUS-ARC" or bundle.get("version") == 2:
-
-      -- 3. Structural field validation
-      assert bundle["format"]            == "arculus-encrypted-seed-v2"
-      assert bundle["kdf"]["name"]       == "PBKDF2"
-      assert bundle["kdf"]["hash"]       == "SHA-512"
-      assert bundle["kdf"]["iterations"] >= ARC_V2_MIN_KDF_ITERATIONS
-      assert bundle["cipher"]["name"]    == "HMAC-SHA512-CTR"
-
-      -- 4. Decode binary fields
-      salt       = base64_decode(bundle["kdf"]["salt_b64"])
-      nonce      = base64_decode(bundle["cipher"]["nonce_b64"])
-      ciphertext = base64_decode(bundle["ciphertext_b64"])
-      mac_stored = base64_decode(bundle["mac_b64"])
-
-      -- 5. Validate binary field lengths
-      assert len(salt)       == 32
-      assert len(nonce)      == 24
-      assert len(mac_stored) == 64
-
-      -- 6. Derive keys
-      password_bytes = NFKD(password).encode("utf-8")
-      iterations     = bundle["kdf"]["iterations"]
-      master_key     = PBKDF2-HMAC-SHA512(password_bytes, salt, iterations, 64)
-      enc_key        = HMAC-SHA512(master_key, ENC_LABEL)
-      mac_key        = HMAC-SHA512(master_key, MAC_LABEL)
-
-      -- 7. Verify MAC before any decryption
-      mac_computed = HMAC-SHA512(mac_key, transcript(bundle, salt, nonce, ciphertext))
-      if not constant_time_compare(mac_computed, mac_stored):
-          raise DecryptionError("MAC verification failed")
-                               -- error is intentionally non-specific
-
-      -- 8. Decrypt (only reached after MAC verification succeeds)
-      plaintext_bytes = ciphertext XOR hmac_sha512_ctr_stream(enc_key, nonce, len(ciphertext))
-      payload         = json_parse(plaintext_bytes.decode("utf-8"))
-
-      -- 9. Extract and validate mnemonic
-      mnemonic    = payload["mnemonic"]
-      word_count  = payload.get("word_count")
-
-      normalize and validate mnemonic words
-      if word_count is present: assert len(words) == word_count
-
-      return mnemonic
-
-  else:
-      -- Fall through to legacy import path
-
-Step 7 is the authenticate-before-decrypt gate. This ordering is unconditional
-and cannot be bypassed. Decryption is not attempted, and no keystream bytes are
-consumed, before MAC verification returns a successful constant-time comparison.
-A MAC failure is reported as a generic authentication error. The error message
-does not distinguish between wrong password, corrupted file, truncated file, or
-tampered metadata. This information concealment is intentional.
-
-
-Constant-Time MAC Comparison
-------------------------------
-
-MAC comparison must be performed in constant time to prevent timing side-channel
-attacks. A conditional short-circuit comparison — one that returns false on the
-first mismatched byte — leaks the length of the common prefix between the
-computed and stored MACs. Against a remote timing oracle this leakage can be
-exploited to recover the expected MAC byte by byte.
-
-Python uses hmac.compare_digest(mac_computed, mac_stored) for constant-time
-comparison. compare_digest is implemented in C with explicit resistance to
-compiler optimization that could reintroduce early exit behavior.
-
-The HTML version uses a manual XOR-accumulation loop over the full 64-byte MAC
-arrays:
-
-  let diff = 0;
-  for (let i = 0; i < 64; i++) diff |= mac_computed[i] ^ mac_stored[i];
-  const match = (diff === 0);
-
-The XOR-OR accumulation pattern ensures that every byte of both arrays is read
-regardless of any mismatch at any position. The SubtleCrypto API does not expose
-a constant-time comparison primitive for raw byte arrays, making this explicit
-loop the correct implementation choice.
-
-
-Compatibility Matrix
----------------------
-
-Format description                            Export   Import    Notes
---------------------------------------------  -------  --------  ---------------------------------
-ARCULUS-ARC-V2 armored v2                     yes      yes       Current format; all new exports
-JSON arculus-encrypted-seed-v2,               no       yes       Compatibility format;
-  magic=ARCULUS-ARC, version=2                                   ≥600,000 iterations accepted
-JSON v2, PBKDF2-SHA256 + XOR-HMAC             no       yes       Legacy Python-style format
-arculus-encrypted-seed-python-v1              no       yes       Legacy Python pre-release format
-arculus-encrypted-seed-v1 (AES-GCM)          no       browser   HTML only; AES-GCM via
-                                                       only      SubtleCrypto; Python cannot read
-
-All new exports use the ARCULUS-ARC-V2 armored format unconditionally, regardless
-of the format of the imported source file. If a legacy .arc file is imported and
-the user subsequently exports, the output is a fresh ARCULUS-ARC-V2 file with a
-newly sampled salt, a newly sampled nonce, and exactly 1,000,000 KDF iterations.
-This is the correct and recommended migration path for all pre-existing .arc files
-produced under any prior format version.
-
-The minimum accepted KDF iteration count for v2 imports is exactly 600,000.
-Files with a kdf.iterations value below 600,000 are rejected even if MAC
-verification would otherwise succeed. This floor prevents silent acceptance of
-artificially weakened files without requiring the importer to know in advance
-what iteration count was used at export time.
-
-
-KDF Iteration Count Rationale
--------------------------------
-
-PBKDF2-HMAC-SHA512 is an iterated pseudorandom function. Its resistance to
-offline password guessing is linear in the iteration count: an adversary who can
-compute T PBKDF2 evaluations per second can make T / iterations guesses per
-second against a captured .arc file.
-
-The current export count of 1,000,000 iterations over SHA-512 is selected to
-impose meaningful computational cost on offline guessing while remaining
-tolerable for the import operation on low-power, software-only hardware.
-On a contemporary CPU executing PBKDF2-HMAC-SHA512 in software, 1,000,000
-iterations completes on the order of several seconds. The deliberate import
-latency is the intended user experience: it imposes the same per-guess cost on
-an attacker.
-
-Critical limitations:
-
-  - GPU-accelerated PBKDF2 achieves substantially higher throughput than
-    software-only computation. The iteration count does not make a short,
-    low-entropy, or dictionary-derivable password safe against a GPU-equipped
-    adversary with a captured .arc file.
-
-  - Against a password of sufficient entropy — a randomly generated sequence
-    of five or more words from a large vocabulary, or a random alphanumeric
-    string of 16 or more characters — the iteration count provides comfortable
-    resistance to all known offline guessing approaches.
-
-  - Against a PIN, a single dictionary word, a short common phrase, or any
-    password derivable from personal information, no iteration count is a
-    substitute for password entropy. The computational barrier is linear in
-    iterations, but the search space is exponential in password length and
-    alphabet size. A weak password with 1,000,000 iterations is less secure
-    than a strong password with 10,000 iterations.
-
-Memory-hard key derivation functions such as Argon2id or scrypt provide
-substantially stronger resistance to GPU and ASIC acceleration by requiring
-large amounts of RAM per evaluation, which limits parallelism. Neither can be
-used without external dependencies, which are excluded by design constraint 1.
-The iteration count is the only available tuning lever within the dependency
-boundary, and it has been set to the maximum value consistent with acceptable
-interactive latency on target hardware.
-
-
-What the .arc Format Protects and Does Not Protect
-----------------------------------------------------
-
-Protected by the .arc format at rest:
-
-  - The mnemonic phrase stored inside the encrypted file, against an adversary
-    who obtains the file without the password
-  - The integrity of all metadata fields — magic, format, version, created_at,
-    KDF parameters, cipher parameters, nonce — through the MAC transcript
-    commitment
-  - The KDF iteration count against downgrade attacks, because iterations is a
-    MAC-bound field
-  - The creation timestamp as a non-repudiable bound element in the MAC
-
-Not protected by the .arc format:
-
-  - The mnemonic while loaded into application memory after decryption
-  - The mnemonic while displayed on screen or in the word grid
-  - The decryption password while being typed or held in process memory
-  - Clipboard contents at any point in the workflow
-  - Derived private keys, extended private keys, and WIF keys, which are not
-    encrypted by this format
-  - JSON/CSV/TXT derived-output export files, which are always plaintext
-  - Any on-chain state: Ethereum balances, ERC-20 token metadata, XRP ledger
-    data, destination tags, or transaction history (the tool does not fetch,
-    store, or process chain state in any form)
-  - The BIP39 wallet passphrase, which is a separate derivation parameter
-    outside the scope of .arc protection
-  - The file against an adversary who knows or can correctly guess the password;
-    a correct password always produces a successful MAC verification and
-    decryption
-
-The armored envelope prevents casual JSON inspection of sensitive operational
-parameters and discourages manual editing. It is not a security boundary. The
-security boundary is the MAC verification gate backed by the password-derived
-mac_key. The armoring is an operational defense against inadvertent information
-disclosure; the MAC is the cryptographic defense against unauthorized access.
-
-
-Security Considerations for .arc File Storage
------------------------------------------------
-
-  - Store .arc files exclusively on encrypted removable media. Storing a .arc
-    file on the general filesystem of a daily-use machine reduces its security
-    to that of the machine's full-disk encryption and OS access controls.
-
-  - Never synchronize .arc files to cloud storage services, email attachments,
-    or any system with network connectivity. The file is designed for offline
-    backup. Placing it on a networked system expands the attack surface from
-    local to remote.
-
-  - The encryption is bounded by password entropy. A randomly generated
-    passphrase of five or more words from a large wordlist provides a reasonable
-    entropy baseline against offline attack. A passphrase derived from personal
-    information, a PIN, or a common phrase provides substantially weaker
-    protection regardless of the KDF iteration count.
-
-  - The .arc encryption password and the BIP39 wallet passphrase may differ.
-    Neither can be derived from the other by any means. Both must be preserved
-    independently.
-
-  - Re-export any .arc files created with fewer than 1,000,000 KDF iterations
-    to apply the current hardening level. The compatibility floor of 600,000
-    accepts older files for import; re-exporting upgrades them.
-
-  - Verify that a newly exported .arc file imports correctly before relying on
-    it as the sole backup of a mnemonic. Export verification — import under the
-    export password and confirm the mnemonic matches — is a mandatory step in
-    any operationally sound backup procedure.
-
-
-Implementation Reference
--------------------------
-
-Python function map:
-
-  arc_v2_keys(password, salt, iterations)
-      Derives master_key via PBKDF2-HMAC-SHA512, then derives enc_key and
-      mac_key via domain-labeled HMAC-SHA512. Returns (enc_key, mac_key).
-
-  arc_v2_stream_crypt(enc_key, nonce, data)
-      Generates the HMAC-SHA512-CTR keystream and applies XOR to data. Used
-      for both encryption (plaintext -> ciphertext) and decryption (ciphertext
-      -> plaintext) since the operation is self-inverse.
-
-  arc_v2_mac_data(bundle_meta, salt, nonce, ciphertext)
-      Constructs the NUL-byte-separated MAC transcript bytes from explicit
-      field extractions. Returns the raw transcript byte sequence.
-
-  encrypt_v2(mnemonic, password)
-      Full export pipeline: generates salt and nonce from os.urandom, derives
-      all keys, encrypts plaintext, computes MAC, assembles bundle dict. Returns
-      the internal bundle dict before serialization.
-
-  decrypt_v2(bundle, password)
-      Full import pipeline: validates structural fields, derives keys, verifies
-      MAC via hmac.compare_digest, decrypts on MAC success, validates mnemonic.
-      Returns the plaintext mnemonic string.
-
-  serialize_seed_bundle(bundle)
-      Produces the armored ARCULUS-ARC-V2 file text from an internal bundle
-      dict: compact JSON serialization, then base64 encoding, then header line
-      prepension.
-
-  parse_seed_bundle(file_text)
-      Detects the file format (armored v2 vs. raw JSON legacy), decodes the
-      armor if present, and returns the internal bundle dict for decryption.
-
-HTML counterpart functions mirror the Python implementations in all
-cryptographically material respects:
-
-  serializeSeedBundle()     -- armor write path
-  parseSeedBundle()         -- format detection and armor decode
-  PBKDF2 via SubtleCrypto.deriveBits with { name: "PBKDF2", hash: "SHA-512" }
-  HMAC via SubtleCrypto.sign with { name: "HMAC", hash: "SHA-512" }
-
-All ARC constants (labels, magic strings, format IDs, version integers,
-parameter sizes) are defined identically in both implementations. Any change to
-a constant value in either implementation must be propagated to the other with
-identical byte representation, or cross-implementation compatibility breaks
-silently — .arc files produced by the modified implementation will fail MAC
-verification when imported into the unmodified one, and vice versa.
-
-
-Application Surface Notes
---------------------------
-
-The standalone HTML application performs .arc export and import entirely with
-browser built-ins and embedded application code. The PySide6 GUI renders the
-same HTML application inside Qt WebEngine and therefore uses the same browser-
-side .arc implementation for GUI import/export. The Python CLI uses the Python
-implementation directly.
-
-The Tauri wrapper also renders the canonical HTML application, but its desktop
-file-save path is routed through a native export bridge and Tauri v2
-capability/permission files. This file-save bridge is outside the .arc
-cryptographic construction: a Tauri save failure does not imply a cryptographic
-format failure, but the final packaged Tauri export path must be verified before
-it is relied upon during an operational recovery session.
+The MAC must be verified before decryption.
+
+
+Export Procedure
+----------------
+
+1. Normalize and validate mnemonic.
+2. Generate 32-byte salt and 24-byte nonce with the platform CSPRNG.
+3. Create UTC timestamp.
+4. Derive enc_key and mac_key.
+5. Encrypt compact plaintext JSON.
+6. Build bundle metadata.
+7. Compute MAC over the transcript.
+8. Serialize compact JSON.
+9. Base64 encode the bundle and prepend ARCULUS-ARC-V2.
+
+Two exports of the same mnemonic and password should produce different files
+because salt and nonce are freshly generated.
+
+
+Import Procedure
+----------------
+
+1. Detect armor or legacy JSON.
+2. Parse bundle.
+3. Validate required fields.
+4. Reject V2 iteration counts below 600000.
+5. Decode salt, nonce, ciphertext, and MAC.
+6. Derive enc_key and mac_key from the supplied password.
+7. Recompute MAC and compare in constant time.
+8. Decrypt only after MAC success.
+9. Parse plaintext and validate the mnemonic.
+
+MAC failure should not distinguish wrong password, corrupted file, or tampered
+metadata.
+
+
+Compatibility
+-------------
+
+  Format                                  Export  Import
+  --------------------------------------  ------  ----------------------------
+  ARCULUS-ARC-V2 armored V2               yes     yes
+  Raw JSON arculus-encrypted-seed-v2      no      yes
+  Legacy PBKDF2-SHA256/XOR-HMAC           no      yes
+  arculus-encrypted-seed-python-v1        no      yes
+  arculus-encrypted-seed-v1 AES-GCM       no      browser implementation only
+
+Import a legacy file and export it again to migrate to current armored V2.
+
+
+Storage Limits
+--------------
+
+.arc protects the mnemonic at rest only. It does not protect:
+
+  - Mnemonic after decryption in memory.
+  - BIP39 passphrase.
+  - Private keys or extended private keys.
+  - Plaintext derived exports.
+  - Clipboard or screen contents.
+  - Files against an attacker who knows or guesses the password.

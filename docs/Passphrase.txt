@@ -1,40 +1,21 @@
-Arculus Recovery v1.5.0 — BIP39 Passphrase Reference
-======================================================
+Arculus Recovery v1.6.0 BIP39 Passphrase Reference
+==================================================
 
 Scope
 -----
 
-This document defines the BIP39 passphrase as implemented in Arculus Recovery
-v1.5.0: its cryptographic role in seed derivation, how it interacts with the
-mnemonic, the precise consequences of every class of passphrase error, the
-distinction between the passphrase and the .arc encryption password, backup
-requirements, the visibility toggle introduced in v1.4.0, and the operational
-procedures for entering, verifying, and storing the passphrase correctly.
-
-The BIP39 passphrase is the single most operationally dangerous input in the
-entire recovery workflow. A mnemonic entered with a wrong character produces a
-BIP39 checksum failure on most errors; a passphrase entered wrong produces no
-error of any kind and no warning. It silently derives a completely valid-looking
-key tree that has no connection to any funded wallet. This document exists
-because the gap between "no error was produced" and "the output is correct" is
-nowhere larger than it is for the passphrase.
-
-This document is specific to the BIP39 passphrase. The .arc encryption password
-is a different secret, defined in Encryption.txt. The derivation pipeline that
-consumes the passphrase is defined in Derivation.txt. Operational security
-requirements for any session that handles the passphrase are defined in OpSec.txt.
+This document explains the BIP39 passphrase, its effect on recovery, and how it
+differs from the .arc encryption password.
 
 
-What the BIP39 Passphrase Is
------------------------------
+What It Is
+----------
 
-The BIP39 passphrase is an optional string that participates in seed derivation
-as a second factor. It was specified in BIP39 and is sometimes called the "25th
-word" by hardware wallet documentation, though it is not constrained to the BIP39
-word list and is not a word in any technical sense. It may be any Unicode string
-of any length, including the empty string.
+The BIP39 passphrase is an optional string used during BIP39 seed derivation.
+It is sometimes called a "25th word", but it is not limited to BIP39 words and
+may be any Unicode string, including the empty string.
 
-Its position in the derivation pipeline is defined precisely:
+Derivation:
 
   password_bytes = NFKD(mnemonic).encode("utf-8")
   salt_bytes     = ("mnemonic" + NFKD(passphrase)).encode("utf-8")
@@ -46,476 +27,95 @@ Its position in the derivation pipeline is defined precisely:
       dklen      = 64
   )
 
-The passphrase is concatenated onto the string "mnemonic" and used as the PBKDF2
-salt, not as the PBKDF2 password. The mnemonic is the PBKDF2 password. This
-parameter assignment follows the BIP39 specification exactly. The reversal from
-intuitive expectations — passphrase-as-salt rather than passphrase-as-password —
-is a deliberate design in BIP39 and has no practical security consequence; PBKDF2
-derives key material from both parameters under a construction that treats neither
-as more privileged than the other.
-
-The output of this PBKDF2 invocation is a 512-bit (64-byte) seed. Every bit of
-every key derived from the seed — including every address, every private key, and
-every extended key at every depth — is a deterministic function of both the
-mnemonic and the passphrase together. Neither alone is sufficient to reconstruct
-the seed.
-
-
-What the BIP39 Passphrase Is Not
-----------------------------------
-
-The BIP39 passphrase is not any of the following:
-
-  It is not the .arc encryption password. The .arc file stores and protects
-  only the mnemonic. It does not store the passphrase. Decrypting a .arc file
-  recovers the mnemonic; re-entering the passphrase separately during derivation
-  is still required. See the section on password independence below.
-
-  It is not a PIN or login credential for any software. It does not protect
-  access to the tool itself. No part of Arculus Recovery uses it for
-  authentication.
-
-  It is not optional in the sense of "safe to omit at recovery time if you used
-  one at setup time." If a passphrase was used when the wallet was created, it is
-  required for recovery. Omitting it at recovery time does not produce an error;
-  it derives the empty-passphrase key tree, which is a completely different wallet
-  with a different root fingerprint, different addresses, and different private
-  keys. Funds in the passphrase-derived tree are not accessible from the empty-
-  passphrase tree and vice versa.
-
-  It is not recoverable from the mnemonic. There is no mathematical relationship
-  between the mnemonic and the passphrase. Given the mnemonic and a set of funded
-  addresses, there is no faster path to finding the passphrase than trying every
-  candidate value. If the passphrase is forgotten and no backup exists, the funds
-  in the passphrase-derived tree are permanently inaccessible by any means,
-  including by the authors of this software.
-
-  It is not validated by the BIP39 checksum. The BIP39 checksum covers the
-  mnemonic entropy bits only. It has no knowledge of the passphrase. A wrong
-  passphrase produces no checksum error, no validation warning, and no
-  computationally detectable signal of any kind other than a root fingerprint
-  mismatch against a previously recorded value.
-
-
-Cryptographic Effect of the Passphrase
-----------------------------------------
-
-Every distinct passphrase string — including the empty string — produces a
-completely independent 512-bit seed from the same mnemonic. The seeds are
-unrelated: knowing the mnemonic and the seed derived from passphrase A gives no
-computational advantage in finding the seed derived from passphrase B, regardless
-of any relationship between A and B.
-
-This independence is a consequence of PBKDF2's pseudorandom function properties.
-PBKDF2-HMAC-SHA512 is a keyed pseudorandom function family. Changing a single
-byte of the salt — which includes the passphrase — produces an output that is
-computationally indistinguishable from a random 64-byte string by any adversary
-who does not know the salt value. Two passphrases that differ by a single
-character produce seeds that share no bits in a predictable pattern.
-
-Practical consequences:
-
-  "password" and "Password" derive completely different wallets. The passphrase
-  is case-sensitive. There is no case folding or normalization applied beyond
-  Unicode NFKD decomposition (described below). A capital letter in the wrong
-  position is not a similar passphrase; it is a different passphrase.
-
-  "password " (with a trailing space) and "password" (without) derive completely
-  different wallets. The passphrase is whitespace-sensitive. Leading and trailing
-  spaces are not stripped. No normalization of any kind is applied to whitespace.
-
-  "café" entered on a keyboard that produces the precomposed U+00E9 (é as a
-  single code point) and "café" entered on a keyboard that produces the
-  decomposed U+0065 U+0301 (e followed by combining acute accent) derive the
-  same wallet. Unicode NFKD decomposition is applied to the passphrase before
-  byte-encoding, as specified by BIP39. Visually identical strings that differ
-  only in Unicode composition form are normalized to the same byte sequence.
-  This is the only normalization applied.
-
-  No other normalization is performed. The passphrase is not lowercased, trimmed,
-  or otherwise transformed. What is typed is what is used, after NFKD
-  decomposition.
-
-
-Unicode NFKD Normalization
----------------------------
-
-BIP39 mandates Unicode NFKD (Normalization Form Compatibility Decomposition)
-for both the mnemonic and the passphrase before byte-encoding. The normalization
-is applied by normalizeNFKD() in the HTML version and by
-unicodedata.normalize('NFKD', ...) in the Python version.
-
-NFKD normalization does two things:
-
-  Canonical decomposition: composed characters are decomposed into their base
-  characters and combining characters. U+00E9 (é, precomposed) becomes U+0065
-  U+0301 (e + combining acute accent). U+00C5 (Å, precomposed) becomes U+0041
-  U+030A (A + combining ring above).
-
-  Compatibility decomposition: compatibility variants are mapped to their
-  canonical equivalents. The ligature U+FB01 (ﬁ) becomes U+0066 U+0069 (fi).
-  The superscript U+00B2 (²) becomes U+0032 (2). The full-width U+FF41 (ａ)
-  becomes U+0061 (a).
-
-For passphrases composed entirely of ASCII characters (letters, digits, spaces,
-punctuation in the ASCII range), NFKD normalization is an identity transformation:
-all ASCII code points are already in their canonical decomposed form with no
-compatibility variants. The NFKD-normalized and non-normalized byte sequences are
-identical for any ASCII-only passphrase.
-
-For passphrases that contain non-ASCII Unicode characters, the behavior of NFKD
-normalization must be considered carefully:
-
-  Any character with a compatibility equivalent will be silently transformed.
-  A passphrase typed on a keyboard that produces full-width characters (common on
-  some CJK input methods) will be normalized to their half-width equivalents. A
-  passphrase containing ligatures will have them split. If the passphrase was
-  created on a system that does not apply NFKD normalization before storage, and
-  the original unnormalized byte sequence was what was intended, the BIP39-
-  compliant derivation using NFKD normalization will produce a different seed.
-
-  The NFKD normalization requirement is part of the BIP39 specification and is
-  applied by all conformant BIP39 implementations. It is not a behavior specific
-  to Arculus Recovery. Any hardware wallet that follows BIP39 applies NFKD
-  normalization to the passphrase before seed derivation. If the passphrase was
-  originally set on a conformant hardware wallet, the same NFKD normalization
-  will have been applied at setup time, and re-entering the same passphrase in
-  Arculus Recovery will produce the correct seed.
-
-  The operational recommendation is to use ASCII-only passphrases. NFKD
-  normalization over ASCII is a no-op, and the passphrase will produce identical
-  byte sequences on any conformant platform regardless of Unicode composition
-  form or platform-specific normalization settings.
-
-
-The Empty Passphrase
----------------------
-
-The empty string is a valid BIP39 passphrase. It is the default when no
-passphrase is entered. The BIP39 salt in this case is:
-
-  salt_bytes = "mnemonic".encode("utf-8")   -- 8 bytes
-
-A wallet set up without a passphrase derives from this empty-passphrase seed.
-Most hardware wallets that support BIP39 passphrases use the empty passphrase by
-default and require an explicit opt-in to use a non-empty one.
-
-The empty passphrase and any non-empty passphrase derive completely disjoint
-key trees. A wallet that holds funds under the empty-passphrase tree has no
-funds accessible from any non-empty passphrase, and vice versa. There is no
-"master" wallet that contains both; they are independent derivations.
-
-In the Passphrase field in Arculus Recovery, leaving the field empty and entering
-a passphrase that happens to be the empty string are equivalent: both result in
-the empty-passphrase derivation. There is no sentinel value, null encoding, or
-special handling for the empty case. The field value is used directly as the
-passphrase string, and the empty string is a fully valid passphrase value.
-
-When recovering a wallet, the correct starting assumption is that no passphrase
-was used unless there is specific knowledge or documentation to the contrary.
-Deriving with an empty passphrase first and comparing the root fingerprint against
-a recorded value is the fastest path to confirming this assumption.
-
-
-Independence from the .arc Encryption Password
-------------------------------------------------
-
-The BIP39 passphrase and the .arc file encryption password are independent
-secrets that operate on unrelated key schedules. They are not derived from each
-other. Neither can be inferred from the other. Each must be preserved and
-recalled independently.
-
-The .arc file stores the mnemonic under encryption. It does not store the
-passphrase. When a .arc file is exported, the passphrase in the Passphrase field
-at export time is not recorded anywhere in the file. Decrypting a .arc file
-recovers only the mnemonic. The passphrase must be remembered or retrieved from
-a separate backup and re-entered manually into the Passphrase field before
-derivation is run.
-
-The two passwords differ structurally:
-
-  .arc encryption password:
-    Used as input to PBKDF2-HMAC-SHA512 at 1,000,000 iterations to derive the
-    encryption and authentication keys for the .arc file. Governs whether the
-    .arc file can be decrypted. An incorrect .arc password produces a MAC
-    authentication failure and decryption does not proceed.
-
-  BIP39 passphrase:
-    Used as input to PBKDF2-HMAC-SHA512 at 2,048 iterations as the salt
-    component of BIP39 seed derivation. Governs which key tree is derived from
-    the mnemonic. An incorrect BIP39 passphrase produces no error; it derives a
-    different valid-looking key tree silently.
-
-The error behavior is inverted: a wrong .arc password is detected immediately
-and visibly; a wrong BIP39 passphrase is undetectable without a reference
-fingerprint or known address to compare against. This asymmetry makes the BIP39
-passphrase operationally more hazardous than the .arc encryption password.
-
-The two passwords may be set to the same string value by user choice. This does
-not cause any cryptographic conflict; the engine applies them on entirely separate
-key schedules with different parameters and different input contexts. Reusing the
-same string for both is a user decision; the tool does not prevent it, warn about
-it, or encourage it. The operational consequence of reusing them is that
-compromise of one compromises the other.
-
-
-Root Fingerprint as Passphrase Verification
----------------------------------------------
-
-The root fingerprint is the only reliable mechanism for verifying that the
-correct passphrase has been entered during a recovery session. It is defined as:
-
-  root_pubkey      = serP(master_private_key × G)   -- 33-byte compressed
-  root_fingerprint = HASH160(root_pubkey)[0:4]       -- 4-byte hex string
-
-The fingerprint is derived deterministically from the mnemonic and passphrase
-together. Two sessions using the same mnemonic and passphrase always produce the
-same fingerprint. Two sessions using the same mnemonic but different passphrases
-produce different fingerprints with overwhelming probability.
-
-The root fingerprint is displayed in the Arculus Recovery toolbar and is updated
-immediately and asynchronously after every change to the mnemonic state or after
-derivation completes. It is also included in every JSON and TXT export and in the
-PDF title block.
-
-To use the root fingerprint as a passphrase verification mechanism:
-
-  At wallet setup or first recovery: record the root fingerprint immediately
-  after validating the mnemonic and entering the passphrase. The fingerprint is
-  not secret; it reveals no recoverable key material. It may be stored alongside
-  the mnemonic backup, alongside the .arc file, or in any accessible location.
-  Its sole purpose is to confirm that a given mnemonic and passphrase combination
-  reproduce the expected key tree.
-
-  At recovery: after entering the mnemonic and passphrase, compare the displayed
-  root fingerprint against the recorded value before exporting any derived output
-  or acting on any derived address. A fingerprint mismatch is the only signal
-  that a wrong passphrase was entered. In the absence of a recorded fingerprint,
-  comparison against a known funded address from the wallet's on-chain history
-  is the fallback verification mechanism.
-
-The root fingerprint is a 4-byte (8 hex character) value. Fingerprint collisions
-— two different (mnemonic, passphrase) pairs producing the same fingerprint — are
-possible with probability approximately 1/2^32 per pair. For any practical
-recovery scenario, a fingerprint match constitutes reliable confirmation.
-
-
-Passphrase Entry in the HTML Interface
-----------------------------------------
-
-The Passphrase field in Arculus Recovery v1.5.0 is a password-type input that
-masks its contents by default. This behavior was introduced in v1.4.0 to prevent
-shoulder-surfing exposure of the passphrase during session setup. The behavior
-is shared by the standalone HTML application and GUI surfaces that render the
-same HTML asset, including the PySide6 desktop GUI and the Tauri wrapper.
-
-Visibility toggle:
-
-  An eye-icon button is embedded in the right edge of the Passphrase field. It
-  toggles the field between masked (type="password", contents displayed as
-  bullets) and plain-text (type="text", contents visible) display.
-
-  Masked state:   button aria-label is "Show passphrase"
-  Plain-text state: button aria-label is "Hide passphrase"
-
-  The toggle state is not persisted between sessions. The field always begins in
-  the masked state when the page loads or when Clear All is used.
-
-  Use the plain-text state only to verify that the passphrase was entered
-  correctly, and return to masked state before any period in which the screen
-  may be visible to others. Minimize the duration for which the passphrase is
-  displayed in plain text.
-
-Behavioral notes:
-
-  The Passphrase field does not apply any normalization to its displayed value.
-  The NFKD normalization described above is applied to the string at the point
-  it is consumed by the derivation pipeline (mnemonicToSeed and related
-  functions), not at the point of entry. The field displays the raw typed string.
-
-  The Passphrase field is cleared by Clear All. It is not cleared by switching
-  the coin or derivation path. It persists in the field until explicitly cleared
-  or until the page is closed.
-
-  The Passphrase field does not participate in the hidden-seed workflow. It is
-  always readable in the DOM when in plain-text toggle state. On a machine where
-  screen capture or DOM inspection is possible, the passphrase is readable in
-  plain text if the visibility toggle is enabled.
-
-  The inactivity auto-clear timer (5-minute idle timeout, introduced in
-  v1.4.0) clears the Passphrase field as part of its full-session wipe. This
-  provides an automatic recovery from a session that was left unattended.
-
-
-Common Passphrase Errors and Their Consequences
--------------------------------------------------
-
-The following errors are silent in all cases. They produce no error message, no
-warning, and no computationally detectable signal other than a root fingerprint
-mismatch or failure to locate known addresses.
-
-Error: Entering a passphrase when none was used at wallet setup.
-  Consequence: The derived key tree is completely different from the wallet that
-    holds funds. All derived addresses and private keys are for an empty wallet.
-    The tool produces no error. The root fingerprint will differ from any
-    previously recorded value.
-  Detection: Root fingerprint mismatch, or failure to locate any known funded
-    address in the derived output.
-  Resolution: Clear the Passphrase field and re-derive. Compare the root
-    fingerprint against the recorded value.
-
-Error: Omitting the passphrase when one was used at wallet setup.
-  Consequence: Identical to the above. The empty-passphrase derivation produces
-    a completely different key tree. The tool produces no error.
-  Detection: Root fingerprint mismatch, or failure to locate any known funded
-    address in the derived output.
-  Resolution: Re-enter the passphrase and re-derive. If the passphrase is unknown,
-    refer to the passphrase recovery procedure in Recovery.txt.
-
-Error: Case error in a passphrase composed of mixed-case letters.
-  Consequence: A single character in the wrong case produces a completely
-    different 512-bit seed. All downstream key material is unrelated to the
-    wallet that holds funds. No error is produced.
-  Detection: Root fingerprint mismatch.
-  Resolution: Systematically try each candidate capitalization. If the passphrase
-    is short and the location of the error is suspected, the search space may be
-    manageable. For a long passphrase where the error location is unknown, the
-    search space grows exponentially with passphrase length.
-
-Error: Extra or missing whitespace in the passphrase.
-  Consequence: A trailing space, leading space, or doubled space produces a
-    completely different seed. Whitespace is not normalized. No error is produced.
-  Detection: Root fingerprint mismatch.
-  Resolution: Try the passphrase with and without leading/trailing whitespace.
-    If the passphrase was copied from a source that may have added whitespace,
-    check the source carefully.
-
-Error: Passphrase entered with a different keyboard layout than at setup time.
-  Consequence: Characters that map to different code points on different keyboard
-    layouts produce different byte sequences. A passphrase containing characters
-    outside the invariant ASCII set (i.e., characters other than A-Z, a-z, 0-9,
-    and common punctuation) may silently produce different byte sequences on
-    different keyboards, regardless of visible appearance.
-  Detection: Root fingerprint mismatch.
-  Resolution: Identify the keyboard layout used at setup time. If the setup
-    machine is still available, re-enter the passphrase on it and record the
-    root fingerprint. Use ASCII-only passphrases for all future wallets to
-    eliminate keyboard layout dependency.
-
-Error: Passphrase forgotten entirely.
-  Consequence: Permanent loss of access to all funds in the passphrase-derived
-    key tree. There is no recovery path from a forgotten passphrase. The
-    passphrase is not stored in the .arc file, is not derivable from the
-    mnemonic, and cannot be reconstructed from the derived addresses or keys.
-  Detection: The passphrase is not known. Root fingerprint cannot be matched.
-  Resolution: None available through the tool. If the passphrase was a short,
-    low-entropy string and a partial description of it is remembered, a manual
-    search may be feasible. If the passphrase was a long, random, high-entropy
-    string and no backup exists, the funds are permanently inaccessible.
-
-
-Passphrase Backup Requirements
---------------------------------
-
-The passphrase must be backed up independently of the mnemonic. A mnemonic backup
-without the passphrase recovers only the empty-passphrase key tree. If all funded
-addresses are in a passphrase-derived tree, a mnemonic-only backup provides no
-access to funds.
-
-The following backup architecture is the minimum acceptable for a wallet that
-uses a passphrase:
-
-  Backup 1 — Mnemonic (primary seed backup):
-    The mnemonic, recorded in permanent ink on archival paper or engraved on
-    metal. Stored in a fire-resistant container at a separate physical location
-    from the hardware wallet. This backup provides access to the empty-passphrase
-    key tree only. It does not provide access to funded addresses in the
-    passphrase-derived tree without the passphrase.
-
-  Backup 2 — Passphrase (separate from mnemonic):
-    The passphrase recorded in the same physical form as the mnemonic backup, but
-    stored at a different physical location from both the mnemonic backup and the
-    hardware wallet. No single physical location should hold both the mnemonic
-    and the passphrase. An adversary who obtains both can reconstruct the wallet
-    without any other material.
-
-  Backup 3 — Root fingerprint (stored alongside both backups):
-    The root fingerprint for the mnemonic and passphrase combination. The
-    fingerprint is not secret; it cannot be used to reconstruct any key material.
-    It serves as a verification checksum to confirm that the mnemonic and
-    passphrase have been correctly recorded and recalled. Store it in both backup
-    locations: alongside the mnemonic backup and alongside the passphrase backup.
-
-  Backup 4 — .arc file (optional, encrypted digital backup of mnemonic):
-    A .arc file stores and protects the mnemonic only. If a .arc backup is used,
-    the passphrase backup (Backup 2) remains independently required. Recovering
-    from the .arc file and omitting the passphrase at derivation time recovers
-    only the empty-passphrase tree.
-
-The passphrase backup must be verified at creation time using the same round-trip
-procedure defined for .arc files in OpSec.txt: enter the mnemonic and the
-passphrase, confirm the root fingerprint matches the recorded value, and confirm
-at least one known address appears in the derivation output. A passphrase backup
-that has not been verified by this procedure may contain a transcription error
-that renders it useless at recovery time.
-
-The passphrase backup should be verified periodically (annually at minimum)
-using the same procedure, for the same reason that .arc files are re-verified:
-to confirm the backup is readable and the passphrase is still correctly recalled.
-A passphrase that was correct five years ago and has since been partially
-misremembered is indistinguishable from a wrong passphrase at recovery time.
-
-
-Entropy Considerations for Passphrase Choice
----------------------------------------------
-
-The BIP39 passphrase provides two security properties that are often conflated:
-
-  Property 1 — Wallet segregation (plausible deniability):
-    A single mnemonic can be used with multiple passphrases to create independent
-    wallets. An adversary who obtains the mnemonic under coercion has no way to
-    determine how many passphrases exist or which one controls the primary funds.
-    A small amount of funds can be kept in the empty-passphrase wallet as a
-    decoy; the primary funds are in a passphrase-derived wallet unknown to the
-    adversary.
-
-    For this use case, the passphrase does not need to be high-entropy. It needs
-    to be unknown to the adversary and unknown from the mnemonic alone. Even a
-    short passphrase that is not publicly known provides effective deniability,
-    because the adversary cannot distinguish an empty wallet from a wallet that
-    simply has no funds yet.
-
-  Property 2 — Cryptographic hardening against mnemonic compromise:
-    If the mnemonic is obtained by an adversary — through theft of the paper
-    backup, hardware wallet compromise, or other means — the passphrase prevents
-    the adversary from accessing funds in the passphrase-derived tree until the
-    passphrase is also obtained. The strength of this protection is a direct
-    function of passphrase entropy.
-
-    For this use case, the passphrase must be high-entropy. An adversary who
-    obtains the mnemonic can attempt to brute-force the passphrase offline, with
-    no rate limiting and no detection mechanism, because PBKDF2-HMAC-SHA512 at
-    only 2,048 iterations — the BIP39 KDF parameter — provides negligible
-    resistance to GPU-accelerated guessing. A short, low-entropy passphrase
-    (a single word, a name, a date, a common phrase) provides no meaningful
-    protection against a dedicated adversary.
-
-    The entropy threshold for effective hardening against offline brute-force is
-    substantially higher than what BIP39's 2,048-iteration KDF protects. A
-    passphrase of five or more randomly selected words from a large wordlist, or
-    a randomly generated alphanumeric string of 16 or more characters, provides
-    a search space large enough to make exhaustive attack infeasible regardless
-    of GPU availability.
-
-The two use cases have conflicting backup risk profiles. A high-entropy passphrase
-that is difficult to brute-force is also more difficult to remember and more
-likely to be forgotten or transcribed incorrectly. A short, memorable passphrase
-that is easy to recall provides deniability but limited brute-force resistance.
-The choice between these trade-offs is a user decision that depends on the threat
-model. This document does not prescribe a specific choice; it documents the
-consequences of each approach so the decision can be made with full information.
-
-In both cases, the backup requirement is identical: the passphrase must be
-recorded in a durable, physically secured backup that is stored separately from
-the mnemonic, and the backup must be verified against a known root fingerprint
-before it is relied upon for recovery.
+Every distinct passphrase derives a different wallet tree from the same
+mnemonic. The empty passphrase is also a real passphrase value.
+
+
+What It Is Not
+--------------
+
+The BIP39 passphrase is not:
+
+  - The .arc encryption password.
+  - A login password for Arculus Recovery.
+  - Stored inside a .arc file.
+  - Checked by the BIP39 checksum.
+  - Recoverable from the mnemonic.
+
+A wrong .arc password causes an authentication failure. A wrong BIP39
+passphrase causes no error; it silently derives a different wallet.
+
+
+Whitespace, Case, and Unicode
+-----------------------------
+
+Passphrases are case-sensitive and whitespace-sensitive.
+
+  "Password" != "password"
+  "secret"   != "secret "
+
+BIP39 requires Unicode NFKD normalization before byte encoding. ASCII-only
+passphrases are the easiest to reproduce correctly across systems.
+
+
+Verification
+------------
+
+The root fingerprint is the best practical confirmation that the mnemonic and
+passphrase combination is correct. Record the fingerprint when a wallet is set
+up or first verified.
+
+At recovery time:
+
+1. Enter mnemonic and passphrase.
+2. Let the root fingerprint update.
+3. Compare it to the recorded value.
+4. Do not export or sweep funds if it does not match.
+
+If no fingerprint is available, compare derived addresses against a known funded
+address from the wallet.
+
+
+Interface Behavior
+------------------
+
+The Passphrase field is masked by default. The visibility toggle reveals it only
+for visual checking. Clear All clears the field. The value is not saved as a
+preference.
+
+The passphrase is not part of the hidden-seed workflow. When shown, it is visible
+on screen and readable to software that can inspect the page.
+
+
+Backup Requirements
+-------------------
+
+Back up the passphrase separately from the mnemonic. A mnemonic without the
+passphrase recovers only the empty-passphrase wallet tree.
+
+Recommended records:
+
+  - Mnemonic backup in one secure location.
+  - Passphrase backup in a different secure location.
+  - Root fingerprint stored with both records.
+  - Optional .arc file for encrypted mnemonic backup only.
+
+No single location should hold both the mnemonic and passphrase unless the user
+intends that location to be sufficient for full recovery.
+
+
+Common Mistakes
+---------------
+
+Entering a passphrase when none was used:
+  Produces the wrong wallet tree.
+
+Omitting a passphrase that was used:
+  Produces the empty-passphrase tree, not the funded wallet.
+
+Changing case or whitespace:
+  Produces a different seed with no warning.
+
+Forgetting the passphrase:
+  Cannot be repaired by Arculus Recovery. Recovery requires a backup or a
+  feasible manual search of remembered candidates.

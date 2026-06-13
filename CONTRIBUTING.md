@@ -1,191 +1,108 @@
-# Contributing to Arculus_Recovery
+# Contributing to Arculus Recovery
 
-Arculus_Recovery is an offline, deterministic recovery tool for BIP39/BIP32/BIP86 and account-address workflows with both HTML/JS and Python implementations. Because this project handles sensitive cryptographic material, contributions must meet strict security, correctness, and reproducibility standards. This document defines the requirements for contributing code, documentation, or tests.
+Arculus Recovery handles seed phrases, private keys, and encrypted seed backups. Contributions are welcome, but changes must preserve offline operation, deterministic derivation, and cross-surface compatibility between the HTML app, Python CLI, PySide6 GUI, and Tauri wrapper.
 
-## 1. Project Scope
+## Project Boundaries
 
-Arculus_Recovery supports:
+Accepted work should stay inside the project's purpose:
 
-- Offline mnemonic validation
-- BIP39 seed generation
-- BIP32 and BIP86 key derivation
-- Multi-coin derivation (BTC, LTC, DOGE, ETH / ERC-20, XRP)
-- Taproot (BIP86) support
-- Encrypted seed export/import using the .arc format
-- Browser-based and Python-based offline workflows
+- Offline BIP39 mnemonic validation and generation
+- BIP32/BIP44/BIP49/BIP84/BIP86 derivation
+- Bitcoin, Litecoin, Dogecoin, Ethereum / ERC-20, and XRP address output
+- Encrypted `.arc` seed import/export
+- Local export of derived data
+- Documentation, tests, packaging, and release tooling
 
-Contributions must remain within this scope. Features that introduce network activity, telemetry, analytics, or remote dependencies will not be accepted.
+Do not add telemetry, analytics, hosted services, remote scripts, CDN dependencies, balance lookups, cloud sync, or automatic update behavior.
 
-## 2. Security Requirements
+## Development Rules
 
-All contributions must follow these rules:
+- Keep the standalone HTML app usable as a local file with no runtime network dependency.
+- Keep cryptographic behavior deterministic for identical inputs.
+- Maintain parity between HTML and Python behavior unless a difference is deliberate and documented.
+- Treat changes to `.arc`, derivation, address encoding, or export schemas as security-sensitive.
+- Update documentation and test vectors when behavior changes.
+- Avoid broad refactors in security-critical code unless they are required for the change.
 
-- No external network requests
-- No remote scripts or CDNs
-- No analytics or telemetry
-- No dependencies that auto-update or communicate externally
-- All cryptographic operations must be deterministic
-- All key-handling code must avoid unnecessary data copies
-- No code may weaken .arc file confidentiality or integrity
-- Any change affecting cryptographic behavior must include a full review checklist (Section 8)
+## Local Setup
 
-## 3. Workflow for Contributors
-
-### Step 1 - Fork and Branch
+Python CLI and packaging metadata:
 
 ```bash
-git clone https://github.com/<your-username>/Arculus_Recovery
-git checkout -b feature/my-change
+python -m pip install .
 ```
 
-### Step 2 - Make Focused Changes
+Python GUI:
 
-- Keep changes atomic
-- Update both HTML and Python versions when applicable
-- Maintain parity between implementations unless intentionally diverging
-- Update documentation when behavior changes
-
-### Step 3 - Follow Coding Standards
-
-**HTML/JavaScript**
-- No external libraries unless stored locally
-- Keep crypto logic isolated and explicit
-- Avoid unnecessary DOM complexity
-- Maintain offline compatibility across browsers
-
-**Python**
-- Python 3.10+
-- Keep core recovery logic in the standard library where practical
-- Keep GUI code minimal and cross-platform
-- Add dependencies only when they materially improve fidelity, security, or maintainability
-
-## 4. Commit Message Format
-
-Use conventional commits:
-
-```
-feat(html): add BIP86 fingerprint display
-fix(python): correct hardened path parsing
-docs: update .arc format description
-refactor: simplify mnemonic validation logic
+```bash
+python -m pip install -r requirements.txt
+python Arculus_Recovery.py --gui
 ```
 
-## 5. Pull Request Requirements
+Tauri packaging:
 
-Every PR must include:
+```bash
+npm install
+npm run prepare:tauri
+npm run tauri -- build
+```
 
-- Description of the change
-- Rationale for the change
+Use the platform-specific build instructions in `README.md` when producing release artifacts.
+
+## Required Testing
+
+Before submitting a change, run the checks that match the touched surface:
+
+- Open `Arculus_Recovery.html` locally and confirm no network access is required.
+- Run `python Arculus_Recovery.py --help`.
+- Run CLI derivation against the standard `abandon ... about` mnemonic.
+- Test 12-word and 24-word validation when mnemonic handling changed.
+- Test `.arc` export/import when seed storage changed.
+- Test PDF, JSON, CSV, TXT, and QR export when UI or packaging changed.
+- Test Tauri export behavior when `src-tauri/`, `tauri-dist/`, or asset preparation changed.
+- Rebuild `docs/Arculus_Recovery_Manual.pdf` when files in `docs/` change.
+
+## Pull Request Checklist
+
+Every PR should include:
+
+- What changed
+- Why it changed
+- User-visible impact
 - Security considerations
-- Testing steps
-- Impact on .arc compatibility
+- Testing performed
+- `.arc` compatibility impact, if any
 - Screenshots for UI changes
+- Documentation updates, if behavior or workflows changed
 
-PRs modifying cryptographic logic must include:
+## Cryptographic Review Checklist
 
-- Test vectors
-- Before/after behavior
-- Validation that legacy .arc files still import correctly
+Complete this checklist for any change touching mnemonic generation, BIP39, BIP32, Taproot, address encoding, `.arc`, private-key handling, or export schemas:
 
-## 6. Testing Requirements
+- [ ] Standard primitives only; no custom hash, MAC, KDF, or curve construction added.
+- [ ] No downgrade in entropy, key length, MAC length, or KDF iteration policy.
+- [ ] Existing `.arc` files still import unless a documented version break is intentional.
+- [ ] New `.arc` exports are readable by both supported implementations.
+- [ ] BIP39 seed output matches reference vectors.
+- [ ] BIP32 derivation matches reference vectors.
+- [ ] Taproot output matches reference vectors when touched.
+- [ ] Ethereum EIP-55 and XRP classic-address output match reference vectors when touched.
+- [ ] Sensitive values are not logged.
+- [ ] Clipboard or display exposure is not increased without explicit user action.
+- [ ] HTML and Python behavior remain equivalent, or the difference is documented.
+- [ ] The app still works offline.
 
-Before submitting a PR:
+## Commit Style
 
-- Test both HTML and Python versions
-- Validate 12-word and 24-word mnemonics
-- Verify derivation for BTC, LTC, DOGE, ETH / ERC-20, and XRP
-- Confirm BIP86 behavior
-- Test .arc export and import
-- Confirm offline operation
+Use concise conventional-style commits:
 
-If adding new features:
+```text
+feat(html): mask entered seed after derivation
+fix(qr): encode XRP destination tag query correctly
+docs: refresh v1.6 manual sources
+build(tauri): prepare desktop export bridge assets
+```
 
-- Include test cases
-- Ensure no regressions in derivation paths or fingerprints
+## Security Reports
 
-## 7. Documentation Requirements
-
-When updating documentation:
-
-- Keep explanations concise and technical
-- Update screenshots if UI changes
-- Document new CLI flags or UI elements
-- Maintain consistency between HTML and Python documentation
-
-## 8. Cryptographic Review Checklist
-
-Any PR that modifies cryptographic behavior, key handling, or .arc file logic must complete this checklist. PRs missing this section will not be reviewed.
-
-### 8.1 Algorithm and Primitive Review
-
-- [ ] All cryptographic primitives are standard and widely reviewed
-- [ ] No custom cipher, MAC, or KDF is introduced
-- [ ] No deprecated primitives (e.g., SHA-1, PBKDF2 with low iteration count)
-- [ ] No reduction in entropy or key length
-
-### 8.2 Determinism and Reproducibility
-
-- [ ] All operations produce deterministic output for identical inputs
-- [ ] No hidden randomness
-- [ ] All randomness (if used) is explicitly sourced and documented
-
-### 8.3 Key Handling
-
-- [ ] No unnecessary copies of sensitive data
-- [ ] Sensitive data is zeroed when possible
-- [ ] No logging of sensitive material
-- [ ] No exposure of intermediate values unless explicitly intended
-
-### 8.4 .arc File Format Compatibility
-
-- [ ] Existing .arc files remain importable
-- [ ] New .arc files remain readable by older versions (unless version bump is intentional)
-- [ ] Versioning is updated if format changes
-- [ ] HMAC or integrity checks remain intact
-
-### 8.5 Derivation Path Correctness
-
-- [ ] BIP39 seed generation matches reference vectors
-- [ ] BIP32 derivation matches reference vectors
-- [ ] BIP86 derivation matches reference vectors
-- [ ] Account-family address encoders match reference vectors, including EIP-55 for Ethereum and XRPL classic-address base58 for XRP when touched
-- [ ] Hardened vs. non-hardened paths are handled correctly
-
-### 8.6 Implementation Parity
-
-- [ ] HTML and Python implementations match behavior
-- [ ] Differences are documented if intentional
-
-### 8.7 Offline Integrity
-
-- [ ] No new network calls
-- [ ] No new external dependencies
-- [ ] No remote resources
-
-### 8.8 Test Vectors
-
-- [ ] Test vectors included for all modified operations
-- [ ] Before/after comparison provided
-- [ ] Edge cases tested (empty passphrase, long passphrase, hardened paths, etc.)
-
-## 9. Reporting Issues
-
-When opening an issue, include:
-
-- Clear description
-- Steps to reproduce
-- Expected vs. actual behavior
-- Browser or Python environment
-- Whether .arc import/export is affected
-- Screenshots or logs if relevant
-
-Security-related issues should be reported privately.
-
-## 10. Code of Conduct
-
-All contributors must maintain a professional and respectful environment. Harassment or hostile behavior will not be tolerated.
-
-## 11. Acknowledgment
-
-Your contributions strengthen a tool designed for offline security and deterministic recovery. Thank you for helping maintain a high standard of correctness and cryptographic integrity.
-
+Do not disclose vulnerabilities publicly before maintainers can investigate. Include reproduction steps, affected files, expected behavior, actual behavior, and possible impact.
