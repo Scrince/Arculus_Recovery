@@ -776,12 +776,6 @@
     #qrCanvas {
       border-radius: 8px;
       image-rendering: pixelated;
-      max-width: 100%;
-      height: auto;
-    }
-    /* Widen the modal slightly when showing an XRP QR (larger canvas) */
-    #qrModal.xrp-mode {
-      width: min(400px, calc(100vw - 40px));
     }
     .qr-actions { display: flex; gap: 10px; }
     button.qr-trigger {
@@ -797,7 +791,7 @@
   <div class="app">
     <div class="title-row">
       <h1>Arculus Recovery</h1>
-      <span class="app-version">v1.5.0</span>
+      <span class="app-version">v1.5.0 LTS</span>
       <button id="settingsBtn" type="button" class="settings-button" aria-label="Open settings" title="Settings"></button>
       <div id="networkStatus" class="network-status" title="Browser network status" aria-live="polite">
         <span class="network-dot" aria-hidden="true"></span>
@@ -833,14 +827,9 @@
       <div class="label">Coin</div>
       <select id="coin">
         <option selected>Bitcoin</option>
-        <option>Bitcoin Cash</option>
         <option>Litecoin</option>
         <option>Dogecoin</option>
         <option>Ethereum / ERC-20</option>
-        <option>Solana</option>
-        <option>Stellar</option>
-        <option>Monero</option>
-        <option>Cardano</option>
         <option>XRP</option>
       </select>
 
@@ -981,16 +970,6 @@
             </div>
             <label class="toggle" aria-label="Auto-derive on settings change">
               <input type="checkbox" id="autoderiveToggle" />
-              <span class="toggle-track"></span>
-            </label>
-          </div>
-          <div class="setting-row">
-            <div style="display:flex;flex-direction:column;gap:3px;">
-              <span style="font-weight:600;">Legacy Address Format (Bitcoin Cash)</span>
-              <span style="font-size:12px;color:var(--muted);">Use legacy Base58 addresses (starting with <code style="font-family:monospace;">1</code>) instead of the default CashAddr format (<code style="font-family:monospace;">bitcoincash:q…</code>). Applies to Bitcoin Cash only.</span>
-            </div>
-            <label class="toggle" aria-label="Use legacy BCH address format">
-              <input type="checkbox" id="legacyAddrToggle" />
               <span class="toggle-track"></span>
             </label>
           </div>
@@ -1427,17 +1406,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         hrp: 'bc',
         networkName: 'mainnet'
       },
-      bitcoincash: {
-        p2pkh: { xprv: 0x0488ADE4, xpub: 0x0488B21E },
-        'p2wpkh-p2sh': null,
-        p2wpkh: null,
-        p2tr: null,
-        wif: 0x80,
-        p2pkhPrefix: 0x00,
-        p2shPrefix: 0x05,
-        cashAddrPrefix: 'bitcoincash',
-        networkName: 'mainnet'
-      },
       litecoin: {
         p2pkh: { xprv: 0x019D9CFE, xpub: 0x019DA462 },
         'p2wpkh-p2sh': { xprv: 0x01B26792, xpub: 0x01B26EF6 },
@@ -1469,22 +1437,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         addressFamily: 'ethereum',
         networkName: 'mainnet'
       },
-      solana: {
-        addressFamily: 'solana',
-        networkName: 'mainnet'
-      },
-      stellar: {
-        addressFamily: 'stellar',
-        networkName: 'mainnet'
-      },
-      monero: {
-        addressFamily: 'monero',
-        networkName: 'mainnet'
-      },
-      cardano: {
-        addressFamily: 'cardano',
-        networkName: 'mainnet'
-      },
       xrp: {
         p2pkh: { xprv: 0x0488ADE4, xpub: 0x0488B21E },
         'p2wpkh-p2sh': { xprv: 0x0488ADE4, xpub: 0x0488B21E },
@@ -1496,14 +1448,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     };
     const DEFAULT_ACCOUNT_DERIVATION = {
       bitcoin: "m/0'",
-      bitcoincash: "m/0'",
       litecoin: "m/84'/2'/0'",
       dogecoin: "m/44'/3'/0'",
       ethereum: "m/44'/60'/0'",
-      solana: "m/44'/501'/0'",
-      stellar: "m/44'/148'/0'",
-      monero: "m/44'/128'/0'",
-      cardano: "m/1852'/1815'/0'/0/0",
       xrp: "m/44'/144'/0'"
     };
 
@@ -1542,8 +1489,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       themeModeDark: document.getElementById('themeModeDark'),
       themeModeDarkPlus: document.getElementById('themeModeDarkPlus'),
       themeModeTerminal: document.getElementById('themeModeTerminal'),
-      clearAllBtn: document.getElementById('clearAllBtn'),
-      legacyAddrToggle: document.getElementById('legacyAddrToggle')
+      clearAllBtn: document.getElementById('clearAllBtn')
     };
 
     const wordInputs = [];
@@ -1641,14 +1587,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     // ?? Output table rendering ???????????????????????????????????????????????
     let currentOutputMode = 'raw';
 
-    // Strip scheme prefixes for display only (QR/copy still use the full value)
-    function displayAddress(val, coin) {
-      if (coin === 'bitcoincash' && typeof val === 'string') {
-        return val.replace(/^bitcoincash:/i, '');
-      }
-      return val;
-    }
-
     function buildDerivedTable(data) {
       const rows = flattenDerivedRows(data);
       if (!rows.length) return null;
@@ -1661,8 +1599,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       });
 
       // Columns that should appear first (promoted), with no truncation
-      const PROMOTED = ['branch', 'path', 'staking_path', 'address', 'private_key_wif', 'stellar_secret_seed', 'private_spend_key_hex', 'private_view_key_hex'];
-      const NO_TRUNCATE = new Set(['address', 'private_key_wif', 'stellar_secret_seed', 'public_key_hex', 'private_key_hex', 'ethereum_public_key_hex', 'stake_public_key_hex', 'stake_private_key_hex', 'public_spend_key_hex', 'public_view_key_hex', 'private_spend_key_hex', 'private_view_key_hex', 'taproot_internal_public_key_hex', 'taproot_internal_private_key_hex', 'taproot_output_public_key_hex', 'taproot_output_private_key_hex', 'taproot_tweak_hex']);
+      const PROMOTED = ['branch', 'path', 'address', 'private_key_wif'];
+      const NO_TRUNCATE = new Set(['address', 'private_key_wif', 'public_key_hex', 'private_key_hex', 'ethereum_public_key_hex', 'taproot_internal_public_key_hex', 'taproot_internal_private_key_hex', 'taproot_output_public_key_hex', 'taproot_output_private_key_hex', 'taproot_tweak_hex']);
 
       // Build final ordered column list: promoted cols first (if present), then the rest
       const promotedPresent = PROMOTED.filter(function(k) { return allCols.includes(k); });
@@ -1696,7 +1634,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         return btn;
       }
 
-      function makeQrBtn(address, coin) {
+      function makeQrBtn(address) {
         const btn = document.createElement('button');
         btn.className = 'copy-cell-btn';
         btn.textContent = '\u25a6';
@@ -1707,7 +1645,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
           const dlg       = document.getElementById('qrModal');
           resetQrOutput();
           input.value     = address;
-          input.dataset.coin = coin || '';
           memoInput.value = '';
           if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
           if (isXrpAddress(address)) {
@@ -1715,7 +1652,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             document.getElementById('qrMemoPrompt').style.display = '';
             setTimeout(() => memoInput.focus(), 50);
           } else {
-            renderQrFromAddress(address, '', coin);
+            renderQrFromAddress(address, '');
           }
         });
         return btn;
@@ -1739,12 +1676,12 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             const wrap = document.createElement('span');
             wrap.className = 'td-copy-wrap';
             const text = document.createElement('span');
-            text.textContent = col === 'address' ? String(displayAddress(val, data.coin)) : String(val);
+            text.textContent = String(val);
             wrap.appendChild(makeCopyBtn(val));
-            if (col === 'address') wrap.appendChild(makeQrBtn(val, data.coin));
+            if (col === 'address') wrap.appendChild(makeQrBtn(val));
             wrap.appendChild(text);
             td.appendChild(wrap);
-            td.title = col === 'address' ? String(displayAddress(val, data.coin)) : String(val);
+            td.title = String(val);
           } else {
             td.className = 'td-truncate';
             td.textContent = String(val);
@@ -1802,20 +1739,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       account_yprv: 'account yprv', account_ypub: 'account ypub',
       account_zprv: 'account zprv', account_zpub: 'account zpub',
       account_trprv: 'account trprv', account_trpub: 'account trpub',
-      root_private_key_hex: 'root private key hex',
-      root_chain_code_hex: 'root chain code hex',
-      root_public_key_hex: 'root public key hex',
-      account_private_key_hex: 'account private key hex',
-      account_chain_code_hex: 'account chain code hex',
-      account_public_key_hex: 'account public key hex',
-      account_private_spend_key_hex: 'account private spend key hex',
-      account_private_view_key_hex: 'account private view key hex',
-      account_public_spend_key_hex: 'account public spend key hex',
-      account_public_view_key_hex: 'account public view key hex',
-      root_private_spend_key_hex: 'root private spend key hex',
-      root_private_view_key_hex: 'root private view key hex',
-      root_public_spend_key_hex: 'root public spend key hex',
-      root_public_view_key_hex: 'root public view key hex',
     };
     const AK_KEY_ORDER = Object.keys(AK_LABELS);
 
@@ -1960,19 +1883,15 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     }
 
     function protectedSeedStatus() {
-      if (importedSeedState.kind === 'generated')
-        return 'Generated seed phrase is hidden but ready for validation, copy, export, and derivation.';
-      if (importedSeedState.kind === 'entered')
-        return 'Seed phrase hidden after successful derivation. Hold \u201cShow Seed\u201d to reveal.';
-      return 'Encrypted seed imported. Seed phrase is hidden but ready for validation and derivation.';
+      return importedSeedState.kind === 'generated'
+        ? 'Generated seed phrase is hidden but ready for validation, copy, export, and derivation.'
+        : 'Encrypted seed imported. Seed phrase is hidden but ready for validation and derivation.';
     }
 
     function protectedSeedPlaceholder() {
-      if (importedSeedState.kind === 'generated')
-        return 'Generated seed phrase hidden. Hold Show Seed to reveal.';
-      if (importedSeedState.kind === 'entered')
-        return 'Seed hidden. Hold \u201cShow Seed\u201d to reveal.';
-      return 'Encrypted seed loaded. Hold Show Seed to reveal.';
+      return importedSeedState.kind === 'generated'
+        ? 'Generated seed phrase hidden. Hold Show Seed to reveal.'
+        : 'Encrypted seed loaded. Hold Show Seed to reveal.';
     }
 
     function hasVisibleSeedInput() {
@@ -2608,256 +2527,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       return concatBytes(Uint8Array.of(prefix), intToBytes(p.x, 32));
     }
 
-    const ED25519_P = (1n << 255n) - 19n;
-    const ED25519_D = mod(-121665n * modInv(121666n, ED25519_P), ED25519_P);
-    const ED25519_G = {
-      x: BigInt('15112221349535400772501151409588531511454012693041857206046113283949847762202'),
-      y: BigInt('46316835694926478169428394003475163141307993866256225615783033603165251855960')
-    };
-
-    function leBytesToBigInt(bytes) {
-      let out = 0n;
-      for (let i = bytes.length - 1; i >= 0; i--) out = (out << 8n) | BigInt(bytes[i]);
-      return out;
-    }
-
-    function bigIntToLeBytes(n, len) {
-      const out = new Uint8Array(len);
-      let x = BigInt(n);
-      for (let i = 0; i < len; i++) { out[i] = Number(x & 0xffn); x >>= 8n; }
-      return out;
-    }
-
-    function ed25519PointAdd(p1, p2) {
-      if (!p1) return p2;
-      if (!p2) return p1;
-      const x1 = p1.x, y1 = p1.y, x2 = p2.x, y2 = p2.y;
-      const xy = mod(ED25519_D * x1 * x2 * y1 * y2, ED25519_P);
-      const x3 = mod((x1 * y2 + y1 * x2) * modInv(1n + xy, ED25519_P), ED25519_P);
-      const y3 = mod((y1 * y2 + x1 * x2) * modInv(1n - xy, ED25519_P), ED25519_P);
-      return { x: x3, y: y3 };
-    }
-
-    function ed25519PointMul(k, p = ED25519_G) {
-      let n = BigInt(k);
-      let result = { x: 0n, y: 1n };
-      let addend = p;
-      while (n > 0n) {
-        if (n & 1n) result = ed25519PointAdd(result, addend);
-        addend = ed25519PointAdd(addend, addend);
-        n >>= 1n;
-      }
-      return result;
-    }
-
-    const ED25519_L = (1n << 252n) + BigInt('27742317777372353535851937790883648493');
-
-    async function ed25519PublicKeyFromSeed(seed) {
-      const h = await crypto.subtle.digest('SHA-512', seed);
-      const scalarBytes = new Uint8Array(h).slice(0, 32);
-      scalarBytes[0] &= 248;
-      scalarBytes[31] &= 127;
-      scalarBytes[31] |= 64;
-      const point = ed25519PointMul(leBytesToBigInt(scalarBytes));
-      const encoded = bigIntToLeBytes(point.y, 32);
-      encoded[31] = (encoded[31] & 0x7f) | Number((point.x & 1n) << 7n);
-      return encoded;
-    }
-
-    function ed25519PublicKeyFromScalarBytes(scalarBytes) {
-      const point = ed25519PointMul(leBytesToBigInt(scalarBytes));
-      const encoded = bigIntToLeBytes(point.y, 32);
-      encoded[31] = (encoded[31] & 0x7f) | Number((point.x & 1n) << 7n);
-      return encoded;
-    }
-
-    function reduceEd25519Scalar(bytes) {
-      let scalar = leBytesToBigInt(bytes) % ED25519_L;
-      if (scalar === 0n) scalar = 1n;
-      return bigIntToLeBytes(scalar, 32);
-    }
-
-    function moneroBase58Encode(bytes) {
-      const encodedBlockSizes = [0, 2, 3, 5, 6, 7, 9, 10, 11];
-      let out = '';
-      for (let offset = 0; offset < bytes.length; offset += 8) {
-        const block = bytes.slice(offset, Math.min(offset + 8, bytes.length));
-        let num = 0n;
-        for (const b of block) num = (num << 8n) | BigInt(b);
-        let enc = '';
-        while (num > 0n) {
-          const mod = Number(num % 58n);
-          num /= 58n;
-          enc = B58[mod] + enc;
-        }
-        out += enc.padStart(encodedBlockSizes[block.length], B58[0]);
-      }
-      return out;
-    }
-
-    function moneroAddressFromSpendKey(privateSpendKey) {
-      const privateViewKey = reduceEd25519Scalar(keccak256(privateSpendKey));
-      const publicSpendKey = ed25519PublicKeyFromScalarBytes(privateSpendKey);
-      const publicViewKey = ed25519PublicKeyFromScalarBytes(privateViewKey);
-      const body = concatBytes(Uint8Array.of(18), publicSpendKey, publicViewKey);
-      const checksum = keccak256(body).slice(0, 4);
-      return {
-        address: moneroBase58Encode(concatBytes(body, checksum)),
-        privateViewKey,
-        publicSpendKey,
-        publicViewKey
-      };
-    }
-
-    function ser32LE(i) {
-      const out = new Uint8Array(4);
-      let x = i >>> 0;
-      for (let n = 0; n < 4; n++) { out[n] = x & 0xff; x >>>= 8; }
-      return out;
-    }
-
-    function mnemonicEntropyBytes(mnemonic) {
-      const words = normalizeMnemonicWords(mnemonic);
-      const checksumBits = Math.floor(words.length / 3);
-      const entropyBits = words.length * 11 - checksumBits;
-      let acc = 0n;
-      for (const word of words) acc = (acc << 11n) | BigInt(BIP39_INDEX[word]);
-      const entropy = acc >> BigInt(checksumBits);
-      return intToBytes(entropy, entropyBits / 8);
-    }
-
-    async function cardanoIcarusMasterFromEntropy(entropyBytes) {
-      const keyBytes = await pbkdf2Sha512(new Uint8Array(), entropyBytes, 4096, 96);
-      keyBytes[0] &= 0xf8;
-      keyBytes[31] &= 0x1f;
-      keyBytes[31] |= 0x40;
-      return { k: keyBytes.slice(0, 64), c: keyBytes.slice(64, 96) };
-    }
-
-    function cardanoPublicKeyFromPrivate(k) {
-      return ed25519PublicKeyFromScalarBytes(k.slice(0, 32));
-    }
-
-    async function ckdPrivCardano(node, index) {
-      const idxBytes = ser32LE(index);
-      const priv = node.k;
-      const pub = cardanoPublicKeyFromPrivate(priv);
-      let z, cDigest;
-      if (index & HARDENED) {
-        z = await hmacSha512(node.c, concatBytes(Uint8Array.of(0), priv, idxBytes));
-        cDigest = await hmacSha512(node.c, concatBytes(Uint8Array.of(1), priv, idxBytes));
-      } else {
-        z = await hmacSha512(node.c, concatBytes(Uint8Array.of(2), pub, idxBytes));
-        cDigest = await hmacSha512(node.c, concatBytes(Uint8Array.of(3), pub, idxBytes));
-      }
-      const kl = leBytesToBigInt(priv.slice(0, 32));
-      const kr = leBytesToBigInt(priv.slice(32, 64));
-      const zl = leBytesToBigInt(z.slice(0, 28));
-      const zr = leBytesToBigInt(z.slice(32, 64));
-      const childLeft = kl + (8n * zl);
-      if (childLeft % ED25519_L === 0n) throw new Error('Invalid Cardano child key');
-      const childRight = (kr + zr) % (1n << 256n);
-      return {
-        k: concatBytes(bigIntToLeBytes(childLeft, 32), bigIntToLeBytes(childRight, 32)),
-        c: cDigest.slice(32, 64)
-      };
-    }
-
-    async function deriveCardano(node, path) {
-      let cur = node;
-      for (const i of parsePath(path)) cur = await ckdPrivCardano(cur, i);
-      return cur;
-    }
-
-    function cardanoPathsForIndex(basePath, index) {
-      const ints = parsePath(basePath);
-      let account = HARDENED;
-      if (
-        ints.length >= 3 &&
-        (ints[0] & 0x7fffffff) === 1852 &&
-        (ints[1] & 0x7fffffff) === 1815
-      ) {
-        account = ints[2];
-      }
-      return {
-        paymentPath: pathFromIndexes([(1852 + HARDENED) >>> 0, (1815 + HARDENED) >>> 0, account, 0, index]),
-        stakingPath: pathFromIndexes([(1852 + HARDENED) >>> 0, (1815 + HARDENED) >>> 0, account, 2, 0])
-      };
-    }
-
-    function blake2b224(input) {
-      const MASK = (1n << 64n) - 1n;
-      const IV = [
-        0x6a09e667f3bcc908n, 0xbb67ae8584caa73bn, 0x3c6ef372fe94f82bn, 0xa54ff53a5f1d36f1n,
-        0x510e527fade682d1n, 0x9b05688c2b3e6c1fn, 0x1f83d9abfb41bd6bn, 0x5be0cd19137e2179n
-      ];
-      const SIGMA = [
-        [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
-        [14,10,4,8,9,15,13,6,1,12,0,2,11,7,5,3],
-        [11,8,12,0,5,2,15,13,10,14,3,6,7,1,9,4],
-        [7,9,3,1,13,12,11,14,2,6,5,10,4,0,15,8],
-        [9,0,5,7,2,4,10,15,14,1,11,12,6,8,3,13],
-        [2,12,6,10,0,11,8,3,4,13,7,5,15,14,1,9],
-        [12,5,1,15,14,13,4,10,0,7,6,3,9,2,8,11],
-        [13,11,7,14,12,1,3,9,5,0,15,4,8,6,2,10],
-        [6,15,14,9,11,3,0,8,12,2,13,7,1,4,10,5],
-        [10,2,8,4,7,6,1,5,15,11,9,14,3,12,13,0],
-        [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
-        [14,10,4,8,9,15,13,6,1,12,0,2,11,7,5,3]
-      ];
-      const rotr = (x, n) => ((x >> BigInt(n)) | (x << BigInt(64 - n))) & MASK;
-      const read64 = (block, offset) => {
-        let out = 0n;
-        for (let i = 7; i >= 0; i--) out = (out << 8n) | BigInt(block[offset + i] || 0);
-        return out;
-      };
-      const h = IV.slice();
-      h[0] ^= 0x01010000n ^ 28n;
-      let offset = 0;
-      while (offset < input.length || input.length === 0) {
-        const last = offset + 128 >= input.length;
-        const block = input.slice(offset, Math.min(offset + 128, input.length));
-        const m = new Array(16);
-        for (let i = 0; i < 16; i++) m[i] = read64(block, i * 8);
-        const v = h.concat(IV);
-        const t = BigInt(input.length);
-        v[12] ^= t & MASK;
-        v[13] ^= t >> 64n;
-        if (last) v[14] ^= MASK;
-        const Gmix = (a, b, c, d, x, y) => {
-          v[a] = (v[a] + v[b] + x) & MASK; v[d] = rotr(v[d] ^ v[a], 32);
-          v[c] = (v[c] + v[d]) & MASK; v[b] = rotr(v[b] ^ v[c], 24);
-          v[a] = (v[a] + v[b] + y) & MASK; v[d] = rotr(v[d] ^ v[a], 16);
-          v[c] = (v[c] + v[d]) & MASK; v[b] = rotr(v[b] ^ v[c], 63);
-        };
-        for (let r = 0; r < 12; r++) {
-          const s = SIGMA[r];
-          Gmix(0,4,8,12,m[s[0]],m[s[1]]); Gmix(1,5,9,13,m[s[2]],m[s[3]]);
-          Gmix(2,6,10,14,m[s[4]],m[s[5]]); Gmix(3,7,11,15,m[s[6]],m[s[7]]);
-          Gmix(0,5,10,15,m[s[8]],m[s[9]]); Gmix(1,6,11,12,m[s[10]],m[s[11]]);
-          Gmix(2,7,8,13,m[s[12]],m[s[13]]); Gmix(3,4,9,14,m[s[14]],m[s[15]]);
-        }
-        for (let i = 0; i < 8; i++) h[i] = (h[i] ^ v[i] ^ v[i + 8]) & MASK;
-        if (last) break;
-        offset += 128;
-      }
-      const out = new Uint8Array(64);
-      for (let i = 0; i < 8; i++) {
-        let x = h[i];
-        for (let j = 0; j < 8; j++) { out[i * 8 + j] = Number(x & 0xffn); x >>= 8n; }
-      }
-      return out.slice(0, 28);
-    }
-
-    function cardanoShelleyBaseAddress(paymentPub, stakePub) {
-      const payload = concatBytes(
-        Uint8Array.of(0x01),
-        blake2b224(paymentPub),
-        blake2b224(stakePub)
-      );
-      return bech32Encode('addr', convertBits(Array.from(payload), 8, 5, true));
-    }
-
     function ser32(i) { return intToBytes(BigInt(i >>> 0), 4); }
     function ser256(i) { return intToBytes(BigInt(i), 32); }
 
@@ -2947,73 +2616,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
     function bech32mEncode(hrp, data) {
       return bech32EncodeWithConstant(hrp, data, 0x2bc830a3);
-    }
-
-    function cashaddrPolymod(values) {
-      const gen = [0x98f2bc8e61n, 0x79b76d99e2n, 0xf33e5fb3c4n, 0xae2eabe2a8n, 0x1e4f43e470n];
-      let chk = 1n;
-      for (const v of values) {
-        const top = chk >> 35n;
-        chk = ((chk & 0x07ffffffffn) << 5n) ^ BigInt(v);
-        for (let i = 0; i < 5; i++) if ((top >> BigInt(i)) & 1n) chk ^= gen[i];
-      }
-      return chk ^ 1n;
-    }
-
-    function cashaddrPrefixExpand(prefix) {
-      return Array.from(prefix.toLowerCase()).map(c => c.charCodeAt(0) & 31).concat([0]);
-    }
-
-    function cashaddrEncode(prefix, type, hash) {
-      if (hash.length !== 20) throw new Error('Unsupported Bitcoin Cash hash length');
-      const version = (type << 3) | 0;
-      const payload = convertBits([version].concat(Array.from(hash)), 8, 5, true);
-      const values = cashaddrPrefixExpand(prefix).concat(payload).concat([0,0,0,0,0,0,0,0]);
-      const checksumValue = cashaddrPolymod(values);
-      const checksum = [];
-      for (let i = 0; i < 8; i++) checksum.push(Number((checksumValue >> BigInt(5 * (7 - i))) & 31n));
-      return prefix.toLowerCase() + ':' + payload.concat(checksum).map(v => BECH32[v]).join('');
-    }
-
-    const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-
-    function base32Encode(bytes) {
-      let bits = 0, value = 0, out = '';
-      for (const b of bytes) {
-        value = (value << 8) | b;
-        bits += 8;
-        while (bits >= 5) {
-          out += BASE32[(value >>> (bits - 5)) & 31];
-          bits -= 5;
-        }
-      }
-      if (bits > 0) out += BASE32[(value << (5 - bits)) & 31];
-      return out;
-    }
-
-    function crc16Xmodem(bytes) {
-      let crc = 0;
-      for (const b of bytes) {
-        crc ^= b << 8;
-        for (let i = 0; i < 8; i++) {
-          crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
-          crc &= 0xffff;
-        }
-      }
-      return Uint8Array.of(crc & 0xff, (crc >>> 8) & 0xff);
-    }
-
-    function stellarStrKey(versionByte, payload) {
-      const body = concatBytes(Uint8Array.of(versionByte), payload);
-      return base32Encode(concatBytes(body, crc16Xmodem(body)));
-    }
-
-    function stellarPublicAddress(publicKey) {
-      return stellarStrKey(6 << 3, publicKey);
-    }
-
-    function stellarSecretSeed(privateSeed) {
-      return stellarStrKey(18 << 3, privateSeed);
     }
 
     function convertBits(data, fromBits, toBits, pad = true) {
@@ -3159,245 +2761,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       return cur;
     }
 
-    async function masterFromSeedEd25519(seed) {
-      const I = await hmacSha512(await textToBytes('ed25519 seed'), seed);
-      return { k: I.slice(0, 32), c: I.slice(32) };
-    }
-
-    async function ckdPrivEd25519(node, index) {
-      if (!(index & HARDENED)) throw new Error('Ed25519 derivation requires hardened path indexes.');
-      const I = await hmacSha512(node.c, concatBytes(Uint8Array.of(0), node.k, ser32(index)));
-      return { k: I.slice(0, 32), c: I.slice(32) };
-    }
-
-    async function deriveEd25519(node, path) {
-      let cur = node;
-      for (const i of parsePath(path)) cur = await ckdPrivEd25519(cur, i);
-      return cur;
-    }
-
-    function pathFromIndexes(indexes) {
-      if (!indexes.length) return 'm';
-      return 'm/' + indexes.map(i => (i & HARDENED) ? `${i - HARDENED}'` : `${i}`).join('/');
-    }
-
-    function solanaPathForIndex(basePath, index) {
-      const ints = parsePath(basePath);
-      if (
-        ints.length >= 4 &&
-        (ints[0] & 0x7fffffff) === 44 &&
-        (ints[1] & 0x7fffffff) === 501 &&
-        (ints[ints.length - 1] & 0x7fffffff) === 0
-      ) {
-        const next = ints.slice();
-        next[2] = (index | HARDENED) >>> 0;
-        return pathFromIndexes(next);
-      }
-      if (index === 0) return normalizePath(basePath);
-      return normalizePath(basePath) + `/${index}'`;
-    }
-
-    function accountPathForIndex(basePath, coinType, index) {
-      const ints = parsePath(basePath);
-      if (
-        ints.length >= 3 &&
-        (ints[0] & 0x7fffffff) === 44 &&
-        (ints[1] & 0x7fffffff) === coinType
-      ) {
-        const next = ints.slice();
-        next[2] = (index | HARDENED) >>> 0;
-        return pathFromIndexes(next);
-      }
-      if (index === 0) return normalizePath(basePath);
-      return normalizePath(basePath) + `/${index}'`;
-    }
-
-    async function deriveSolanaOutput(seed, derivation, count, startIdx, wordCount, networkName) {
-      const root = await masterFromSeedEd25519(seed);
-      const rootPublicKey = await ed25519PublicKeyFromSeed(root.k);
-      const firstAccountPath = solanaPathForIndex(derivation, startIdx);
-      const firstAccountNode = await deriveEd25519(root, firstAccountPath);
-      const firstAccountPublicKey = await ed25519PublicKeyFromSeed(firstAccountNode.k);
-      const account = {
-        derivation,
-        account_script_type_used: 'solana',
-        root_private_key_hex: bytesToHex(root.k),
-        root_chain_code_hex: bytesToHex(root.c),
-        root_public_key_hex: bytesToHex(rootPublicKey),
-        account_private_key_hex: bytesToHex(firstAccountNode.k),
-        account_chain_code_hex: bytesToHex(firstAccountNode.c),
-        account_public_key_hex: bytesToHex(firstAccountPublicKey),
-        receiving: [],
-        change: []
-      };
-      for (let i = 0; i < count; i++) {
-        const addressIndex = startIdx + i;
-        const path = solanaPathForIndex(derivation, addressIndex);
-        const child = await deriveEd25519(root, path);
-        const publicKey = await ed25519PublicKeyFromSeed(child.k);
-        setProgress(10 + Math.round(((i + 1) / count) * 80));
-        if ((i + 1) % 3 === 0) await new Promise(r => setTimeout(r, 0));
-        account.receiving.push({
-          branch: 'account',
-          path,
-          address: base58encode(publicKey),
-          public_key_hex: bytesToHex(publicKey),
-          private_key_hex: bytesToHex(child.k),
-          solana_note: 'Solana address derived with SLIP-0010 Ed25519 hardened derivation.'
-        });
-      }
-      return {
-        coin: 'solana',
-        network: networkName,
-        word_count: wordCount,
-        accounts: [account]
-      };
-    }
-
-    async function deriveStellarOutput(seed, derivation, count, startIdx, wordCount, networkName) {
-      const root = await masterFromSeedEd25519(seed);
-      const rootPublicKey = await ed25519PublicKeyFromSeed(root.k);
-      const firstAccountPath = accountPathForIndex(derivation, 148, startIdx);
-      const firstAccountNode = await deriveEd25519(root, firstAccountPath);
-      const firstAccountPublicKey = await ed25519PublicKeyFromSeed(firstAccountNode.k);
-      const account = {
-        derivation,
-        account_script_type_used: 'stellar',
-        root_private_key_hex: bytesToHex(root.k),
-        root_chain_code_hex: bytesToHex(root.c),
-        root_public_key_hex: bytesToHex(rootPublicKey),
-        account_private_key_hex: bytesToHex(firstAccountNode.k),
-        account_chain_code_hex: bytesToHex(firstAccountNode.c),
-        account_public_key_hex: bytesToHex(firstAccountPublicKey),
-        receiving: [],
-        change: []
-      };
-      for (let i = 0; i < count; i++) {
-        const addressIndex = startIdx + i;
-        const path = accountPathForIndex(derivation, 148, addressIndex);
-        const child = await deriveEd25519(root, path);
-        const publicKey = await ed25519PublicKeyFromSeed(child.k);
-        setProgress(10 + Math.round(((i + 1) / count) * 80));
-        if ((i + 1) % 3 === 0) await new Promise(r => setTimeout(r, 0));
-        account.receiving.push({
-          branch: 'account',
-          path,
-          address: stellarPublicAddress(publicKey),
-          public_key_hex: bytesToHex(publicKey),
-          private_key_hex: bytesToHex(child.k),
-          stellar_secret_seed: stellarSecretSeed(child.k),
-          stellar_note: 'Stellar account derived with SLIP-0010 Ed25519 hardened derivation.'
-        });
-      }
-      return {
-        coin: 'stellar',
-        network: networkName,
-        word_count: wordCount,
-        accounts: [account]
-      };
-    }
-
-    async function deriveMoneroOutput(seed, derivation, count, startIdx, wordCount, networkName) {
-      const root = await masterFromSeedEd25519(seed);
-      const rootPrivateSpendKey = reduceEd25519Scalar(root.k);
-      const rootMonero = moneroAddressFromSpendKey(rootPrivateSpendKey);
-      const firstAccountPath = accountPathForIndex(derivation, 128, startIdx);
-      const firstAccountNode = await deriveEd25519(root, firstAccountPath);
-      const firstAccountPrivateSpendKey = reduceEd25519Scalar(firstAccountNode.k);
-      const firstAccountMonero = moneroAddressFromSpendKey(firstAccountPrivateSpendKey);
-      const account = {
-        derivation,
-        account_script_type_used: 'monero',
-        root_private_key_hex: bytesToHex(root.k),
-        root_chain_code_hex: bytesToHex(root.c),
-        account_private_key_hex: bytesToHex(firstAccountNode.k),
-        account_chain_code_hex: bytesToHex(firstAccountNode.c),
-        account_private_spend_key_hex: bytesToHex(firstAccountPrivateSpendKey),
-        account_private_view_key_hex: bytesToHex(firstAccountMonero.privateViewKey),
-        account_public_spend_key_hex: bytesToHex(firstAccountMonero.publicSpendKey),
-        account_public_view_key_hex: bytesToHex(firstAccountMonero.publicViewKey),
-        root_private_spend_key_hex: bytesToHex(rootPrivateSpendKey),
-        root_private_view_key_hex: bytesToHex(rootMonero.privateViewKey),
-        root_public_spend_key_hex: bytesToHex(rootMonero.publicSpendKey),
-        root_public_view_key_hex: bytesToHex(rootMonero.publicViewKey),
-        receiving: [],
-        change: []
-      };
-      for (let i = 0; i < count; i++) {
-        const addressIndex = startIdx + i;
-        const path = accountPathForIndex(derivation, 128, addressIndex);
-        const child = await deriveEd25519(root, path);
-        const privateSpendKey = reduceEd25519Scalar(child.k);
-        const monero = moneroAddressFromSpendKey(privateSpendKey);
-        setProgress(10 + Math.round(((i + 1) / count) * 80));
-        if ((i + 1) % 3 === 0) await new Promise(r => setTimeout(r, 0));
-        account.receiving.push({
-          branch: 'account',
-          path,
-          address: monero.address,
-          public_spend_key_hex: bytesToHex(monero.publicSpendKey),
-          public_view_key_hex: bytesToHex(monero.publicViewKey),
-          private_spend_key_hex: bytesToHex(privateSpendKey),
-          private_view_key_hex: bytesToHex(monero.privateViewKey),
-          monero_note: 'Monero standard mainnet address derived from a BIP39 seed using SLIP-0010 Ed25519 hardened derivation.'
-        });
-      }
-      return {
-        coin: 'monero',
-        network: networkName,
-        word_count: wordCount,
-        accounts: [account]
-      };
-    }
-
-    async function deriveCardanoOutput(mnemonic, derivation, count, startIdx, wordCount, networkName) {
-      const entropy = mnemonicEntropyBytes(mnemonic);
-      const root = await cardanoIcarusMasterFromEntropy(entropy);
-      const rootPublicKey = cardanoPublicKeyFromPrivate(root.k);
-      const firstPaths = cardanoPathsForIndex(derivation, startIdx);
-      const firstAccountNode = await deriveCardano(root, firstPaths.paymentPath);
-      const firstAccountPublicKey = cardanoPublicKeyFromPrivate(firstAccountNode.k);
-      const account = {
-        derivation,
-        account_script_type_used: 'cardano_shelley_base',
-        root_private_key_hex: bytesToHex(root.k),
-        root_chain_code_hex: bytesToHex(root.c),
-        root_public_key_hex: bytesToHex(rootPublicKey),
-        account_private_key_hex: bytesToHex(firstAccountNode.k),
-        account_chain_code_hex: bytesToHex(firstAccountNode.c),
-        account_public_key_hex: bytesToHex(firstAccountPublicKey),
-        receiving: [],
-        change: []
-      };
-      for (let i = 0; i < count; i++) {
-        const addressIndex = startIdx + i;
-        const paths = cardanoPathsForIndex(derivation, addressIndex);
-        const payment = await deriveCardano(root, paths.paymentPath);
-        const staking = await deriveCardano(root, paths.stakingPath);
-        const paymentPub = cardanoPublicKeyFromPrivate(payment.k);
-        const stakingPub = cardanoPublicKeyFromPrivate(staking.k);
-        setProgress(10 + Math.round(((i + 1) / count) * 80));
-        if ((i + 1) % 3 === 0) await new Promise(r => setTimeout(r, 0));
-        account.receiving.push({
-          branch: 'receiving',
-          path: paths.paymentPath,
-          staking_path: paths.stakingPath,
-          address: cardanoShelleyBaseAddress(paymentPub, stakingPub),
-          public_key_hex: bytesToHex(paymentPub),
-          stake_public_key_hex: bytesToHex(stakingPub),
-          private_key_hex: bytesToHex(payment.k),
-          stake_private_key_hex: bytesToHex(staking.k),
-          cardano_note: 'Cardano Shelley mainnet base address using CIP-1852/Icarus Ed25519-BIP32 derivation.'
-        });
-      }
-      return {
-        coin: 'cardano',
-        network: networkName,
-        word_count: wordCount,
-        accounts: [account]
-      };
-    }
-
     async function xprv(node, version) {
       const payload = concatBytes(
         intToBytes(BigInt(version), 4),
@@ -3451,19 +2814,15 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       return base58check(concatBytes(Uint8Array.of(0), accountId), XRP_B58);
     }
 
-    async function pubToAddress(pub, scriptType, net, useLegacy) {
+    async function pubToAddress(pub, scriptType, net) {
       const pkh = await hash160(pub);
-      if (scriptType === 'p2pkh') {
-        if (net.cashAddrPrefix && !useLegacy) return cashaddrEncode(net.cashAddrPrefix, 0, pkh);
-        return base58check(concatBytes(Uint8Array.of(net.p2pkhPrefix), pkh));
-      }
+      if (scriptType === 'p2pkh') return base58check(concatBytes(Uint8Array.of(net.p2pkhPrefix), pkh));
       if (scriptType === 'p2wpkh') {
         return segwitAddress(net.hrp, 0, pkh);
       }
       if (scriptType === 'p2wpkh-p2sh') {
         const redeem = concatBytes(Uint8Array.of(0x00, 0x14), pkh);
         const h = await hash160(redeem);
-        if (net.cashAddrPrefix && !useLegacy) return cashaddrEncode(net.cashAddrPrefix, 1, h);
         return base58check(concatBytes(Uint8Array.of(net.p2shPrefix), h));
       }
       throw new Error('Unsupported script type');
@@ -3485,7 +2844,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       const count = endIdx - startIdx + 1;
       const scriptMap = { Auto: 'auto', P2PKH: 'p2pkh', 'P2WPKH-P2SH': 'p2wpkh-p2sh', P2WPKH: 'p2wpkh', P2TR: 'p2tr' };
       const requested = scriptMap[els.scriptType.value] || 'p2wpkh';
-      const coinMap = { Bitcoin: 'bitcoin', 'Bitcoin Cash': 'bitcoincash', Litecoin: 'litecoin', Dogecoin: 'dogecoin', 'Ethereum / ERC-20': 'ethereum', Solana: 'solana', Stellar: 'stellar', Monero: 'monero', Cardano: 'cardano', XRP: 'xrp' };
+      const coinMap = { Bitcoin: 'bitcoin', Litecoin: 'litecoin', Dogecoin: 'dogecoin', 'Ethereum / ERC-20': 'ethereum', XRP: 'xrp' };
       const coin = coinMap[els.coin.value] || 'bitcoin';
       const net = NETS[coin];
       const derivation = normalizePath((els.derivation.value || '').trim() || DEFAULT_ACCOUNT_DERIVATION[coin] || "m/0'");
@@ -3495,19 +2854,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       if (!(check.wordsOk && check.checksumOk)) throw new Error(check.message);
 
       const seed = await bip39Seed(mnemonic, passphrase);
-      const wordCount = normalizeMnemonicWords(mnemonic).length;
-      if (net.addressFamily === 'solana') {
-        return deriveSolanaOutput(seed, derivation, count, startIdx, wordCount, net.networkName);
-      }
-      if (net.addressFamily === 'stellar') {
-        return deriveStellarOutput(seed, derivation, count, startIdx, wordCount, net.networkName);
-      }
-      if (net.addressFamily === 'monero') {
-        return deriveMoneroOutput(seed, derivation, count, startIdx, wordCount, net.networkName);
-      }
-      if (net.addressFamily === 'cardano') {
-        return deriveCardanoOutput(mnemonic, derivation, count, startIdx, wordCount, net.networkName);
-      }
       const root = await masterFromSeed(seed);
       const account = await derive(root, derivation);
       const isEthereum = net.addressFamily === 'ethereum';
@@ -3523,7 +2869,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       const result = {
         coin,
         network: net.networkName,
-        word_count: wordCount,
+        word_count: normalizeMnemonicWords(mnemonic).length,
         accounts: [{
           derivation,
           account_script_type_used: st,
@@ -3566,10 +2912,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
           setProgress(10 + Math.round((addressesDerived / totalAddresses) * 80));
           if (addressesDerived % 3 === 0) await new Promise(r => setTimeout(r, 0));
           const pub = serPub(pointMul(child.k, G));
-          const useLegacy = els.legacyAddrToggle && els.legacyAddrToggle.checked;
           const item = {
             path: `${derivation}/${branch}/${startIdx + i}`,
-            address: st === 'p2tr' || isEthereum || isXrp ? null : await pubToAddress(pub, st, net, useLegacy),
+            address: st === 'p2tr' || isEthereum || isXrp ? null : await pubToAddress(pub, st, net),
             public_key_hex: bytesToHex(pub),
             private_key_hex: bytesToHex(ser256(child.k))
           };
@@ -3639,10 +2984,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       }, new Set()));
       return [
         headers.map(csvEscape).join(','),
-        ...rows.map(row => headers.map(header => {
-          const val = header === 'address' ? displayAddress(row[header], data.coin) : row[header];
-          return csvEscape(val);
-        }).join(','))
+        ...rows.map(row => headers.map(header => csvEscape(row[header])).join(','))
       ].join('\n') + '\n';
     }
 
@@ -3650,12 +2992,11 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       return key.replace(/_/g, ' ');
     }
 
-    function appendTextFields(lines, obj, exclude = [], coin = '') {
+    function appendTextFields(lines, obj, exclude = []) {
       const excluded = new Set(exclude);
       for (const [key, value] of Object.entries(obj || {})) {
         if (excluded.has(key) || value === null || value === undefined) continue;
-        const display = key === 'address' ? displayAddress(value, coin) : value;
-        lines.push(`${textLabel(key)}: ${display}`);
+        lines.push(`${textLabel(key)}: ${value}`);
       }
     }
 
@@ -3679,7 +3020,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
           }
           for (const [itemIndex, item] of items.entries()) {
             lines.push('', `${branch} #${itemIndex}`);
-            appendTextFields(lines, item, [], data.coin);
+            appendTextFields(lines, item);
           }
         }
       }
@@ -3744,14 +3085,12 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       const KEY_LABEL_SZ = 7;
 
       // ?? column config ??????????????????????????????????????????????
-      const COIN_DISPLAY_NAMES = { bitcoin: 'Bitcoin', bitcoincash: 'Bitcoin Cash', litecoin: 'Litecoin', dogecoin: 'Dogecoin', ethereum: 'Ethereum', solana: 'Solana', stellar: 'Stellar', monero: 'Monero', cardano: 'Cardano', xrp: 'XRP' };
+      const COIN_DISPLAY_NAMES = { bitcoin: 'Bitcoin', litecoin: 'Litecoin', dogecoin: 'Dogecoin', ethereum: 'Ethereum', xrp: 'XRP' };
       const coin      = COIN_DISPLAY_NAMES[lastDerivedOutput.coin] || lastDerivedOutput.coin || '';
-      const isHexKeyCoin = lastDerivedOutput.coin === 'ethereum' || lastDerivedOutput.coin === 'solana' || lastDerivedOutput.coin === 'stellar' || lastDerivedOutput.coin === 'monero' || lastDerivedOutput.coin === 'cardano' || lastDerivedOutput.coin === 'xrp';
-      const privKeyCol = lastDerivedOutput.coin === 'monero'
-        ? { key: 'private_spend_key_hex', label: 'Private Spend Key Hex', fixedW: null }
-        : isHexKeyCoin
-          ? { key: 'private_key_hex', label: 'Private Key Hex', fixedW: null }
-          : { key: 'private_key_wif', label: 'Private Key WIF', fixedW: null };
+      const isHexKeyCoin = lastDerivedOutput.coin === 'ethereum' || lastDerivedOutput.coin === 'xrp';
+      const privKeyCol = isHexKeyCoin
+        ? { key: 'private_key_hex', label: 'Private Key Hex', fixedW: null }
+        : { key: 'private_key_wif', label: 'Private Key WIF', fixedW: null };
 
       const COL_DEFS = [
         { key: 'branch',          label: 'Branch',          fixedW: 52  },
@@ -3819,35 +3158,19 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         doc.text('EXTENDED KEYS', MARGIN, y);
         y += 10;
 
-        pairs.forEach(function(pair) {
-          const valueLines = doc.splitTextToSize(String(pair.value), USABLE_W);
-          const blockH = KEY_LINE_H + Math.max(1, valueLines.length) * 10 + 4;
-          if (y + blockH > PAGE_H - MARGIN) {
-            doc.addPage();
-            pageNum++;
-            y = MARGIN;
-            drawTitleBlock();
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(107, 114, 128);
-            doc.text('EXTENDED KEYS', MARGIN, y);
-            y += 10;
-          }
+        const maxValW = USABLE_W - KEY_LABEL_W - COL_GAP;
 
+        pairs.forEach(function(pair) {
           doc.setFontSize(KEY_LABEL_SZ);
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(107, 114, 128);
           doc.text(pair.label.toUpperCase(), MARGIN, y);
-          y += KEY_LINE_H - 3;
 
           doc.setFontSize(KEY_FONT);
-          doc.setFont('courier', 'normal');
+          doc.setFont('helvetica', 'normal');
           doc.setTextColor(17, 24, 39);
-          valueLines.forEach(function(line) {
-            doc.text(line, MARGIN, y);
-            y += 10;
-          });
-          y += 4;
+          doc.text(clipText(pair.value, maxValW), MARGIN + KEY_LABEL_W, y);
+          y += KEY_LINE_H;
         });
 
         y += 6;
@@ -3910,8 +3233,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
         let x = MARGIN + COL_GAP;
         for (const col of cols) {
-          const rawVal = row[col.key] != null ? String(row[col.key]) : '';
-          const val = col.key === 'address' ? String(displayAddress(rawVal, lastDerivedOutput.coin)) : rawVal;
+          const val = row[col.key] != null ? String(row[col.key]) : '';
           const text = clipText(val, col.w - COL_GAP);
           if (col.key === 'branch') {
             doc.setTextColor(val === 'receiving' ? 27 : 107, val === 'receiving' ? 143 : 114, val === 'receiving' ? 47 : 128);
@@ -4210,12 +3532,12 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         handleWordInput();
       }));
       els.coin.addEventListener('change', () => {
-        const coinMap = { Bitcoin: 'bitcoin', 'Bitcoin Cash': 'bitcoincash', Litecoin: 'litecoin', Dogecoin: 'dogecoin', 'Ethereum / ERC-20': 'ethereum', Solana: 'solana', Stellar: 'stellar', Monero: 'monero', Cardano: 'cardano', XRP: 'xrp' };
+        const coinMap = { Bitcoin: 'bitcoin', Litecoin: 'litecoin', Dogecoin: 'dogecoin', 'Ethereum / ERC-20': 'ethereum', XRP: 'xrp' };
         const key = coinMap[els.coin.value] || 'bitcoin';
         els.derivation.value = DEFAULT_ACCOUNT_DERIVATION[key];
-        if (key === 'dogecoin' || key === 'bitcoincash') {
+        if (key === 'dogecoin') {
           els.scriptType.value = 'P2PKH';
-        } else if (key === 'ethereum' || key === 'solana' || key === 'stellar' || key === 'monero' || key === 'cardano' || key === 'xrp') {
+        } else if (key === 'ethereum' || key === 'xrp') {
           els.scriptType.value = 'Auto';
         } else {
           els.scriptType.value = 'P2WPKH';
@@ -4296,25 +3618,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       // address count, or range AFTER a successful derive has already run, re-run
       // automatically after a short debounce so the output stays in sync with the
       // settings without requiring a manual button press.
-      // After a successful derivation of a manually-typed seed, promote it into
-      // importedSeedState and mask it exactly like a generated/imported seed.
-      function maskManuallyEnteredSeed() {
-        if (importedSeedState) return; // already managed — nothing to do
-        const raw = els.mnemonic.value.trim();
-        if (!raw) return;
-        const words = normalizeMnemonicWords(raw);
-        if (words.length !== 12 && words.length !== 24) return;
-        importedSeedState = {
-          mnemonic: words.join(' '),
-          sourceName: 'manually entered seed',
-          kind: 'entered'
-        };
-        showingImportedSeed = false;
-        setObfuscatedSeedInputs(words);
-        els.mnemonic.placeholder = 'Seed hidden. Hold \u201cShow Seed\u201d to reveal.';
-        scheduleRootFingerprintRefresh();
-      }
-
       let _autoderiveTimer = null;
       function scheduleAutoderive() {
         if (!lastDerivedOutput) return; // nothing derived yet ? don't fire
@@ -4331,8 +3634,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             setProgress(100);
             setTimeout(hideProgress, 400);
             showDerivedTable(data);
-            maskManuallyEnteredSeed();
-            uiStatus('Derivation complete. Seed phrase hidden \u2014 hold \u201cShow Seed\u201d to reveal.', 'valid');
+            uiStatus('Derivation complete.', 'valid');
           } catch (e) {
             hideProgress();
             uiStatus(`Error: ${e.message}`, 'invalid');
@@ -4367,8 +3669,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
           setProgress(100);
           setTimeout(hideProgress, 400);
           showDerivedTable(data);
-          maskManuallyEnteredSeed();
-          uiStatus('Derivation complete. Seed phrase hidden \u2014 hold \u201cShow Seed\u201d to reveal.', 'valid');
+          uiStatus('Derivation complete.', 'valid');
         } catch (e) {
           hideProgress();
           uiStatus(`Error: ${e.message}`, 'invalid');
@@ -4678,13 +3979,11 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             const byteLen = enc.length;
             let ver = 1, ecLevel = 0;
             
-            // Correct capacity check: mode indicator (4) + char-count bits (8 or 16)
-            // + data bits (byteLen*8) + terminator (4), rounded up to whole codewords.
+            // Exact capacity check dynamically factoring in version indicator lengths
             for (let v=1;v<=10;v++) {
-              const lenBitsV = v < 10 ? 8 : 16;
-              const totalBits = 4 + lenBitsV + byteLen * 8 + 4;
-              const reqBytes = Math.ceil(totalBits / 8);
+              let reqBytes = Math.ceil((4 + (v < 10 ? 8 : 16) + byteLen * 8) / 8);
               if (CAP[v][0].db >= reqBytes) { ver=v; ecLevel=0; break; }
+              if (v===10 && CAP[v][1].db >= reqBytes) { ver=v; ecLevel=1; break; }
               if (CAP[v][1].db >= reqBytes) { ver=v; ecLevel=1; break; }
             }
             
@@ -4740,70 +4039,26 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
     // Detect the correct BIP21/URI scheme for a given address and return the
     // full URI string that wallet apps expect to scan.
-    // For XRP: raw r-address with optional ?dt=NNNN destination tag.
-    
-    
-    function toBip21Uri(address, memo, coinContext) {
+    // For XRP, an optional numeric destination tag is appended as dt=NNNN ?
+    // the format used by Robinhood, Coinbase, Binance, and XUMM/Xaman.
+    function toBip21Uri(address, memo) {
       const a = address.trim();
       const m = (memo || '').trim();
       if (/^[a-z]+:/i.test(a)) return a;
-      if (coinContext === 'solana') return 'solana:' + a;
-      if (coinContext === 'stellar') return 'web+stellar:pay?destination=' + encodeURIComponent(a);
-      if (coinContext === 'monero') return 'monero:' + a;
-      if (coinContext === 'cardano') return a;
       if (/^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,}/.test(a)) return 'bitcoin:' + a;
-      if (/^bitcoincash:[qp][a-z0-9]{20,}/i.test(a)) return a;
-      if (/^[qp][a-z0-9]{20,}/i.test(a)) return 'bitcoincash:' + a;
       if (/^(ltc1|[LM])[a-zA-HJ-NP-Z0-9]{25,}/.test(a)) return 'litecoin:' + a;
       if (/^[DA9][a-zA-HJ-NP-Z0-9]{25,}/.test(a)) return 'dogecoin:' + a;
       if (/^0x[0-9a-fA-F]{40}$/.test(a)) return 'ethereum:' + a;
-      // XRP: bare r-address; append ?dt=NNNN when a destination tag is present.
-      if (isXrpAddress(a)) return a + '?dt=' + (m ? encodeURIComponent(m) : '00000');
+      if (isXrpAddress(a)) return m ? a + 'dt=' + encodeURIComponent(m) : a;
       return a;
     }
 
-    // Build QR for an XRP address using the raw r-address as the QR content.
-    
-    function renderXrpQr(address, memo) {
-      const canvas  = document.getElementById('qrCanvas');
-      const label   = document.getElementById('qrAddressLabel');
-      const saveRow = document.getElementById('qrSaveRow');
-      const modal   = document.getElementById('qrModal');
-      try {
-        const a   = address.trim();
-        const m   = (memo || '').trim();
-        // Bare r-address with optional ?dt= tag.
-        const uri = a + '?dt=' + (m ? encodeURIComponent(m) : '00000');
-        const matrix = QRGen.generate(uri);
-        // 320 px canvas, 4-module quiet zone, pure B&W for maximum scanner compatibility
-        // Bare address — XRP-aware scanners resolve the r-address directly.
-        QRGen.render(matrix, canvas, { size: 320, quiet: 4, dark: '#000000', light: '#ffffff' });
-        modal.classList.add('xrp-mode');
-        canvas.style.display  = '';
-        label.textContent     = uri;
-        label.style.display   = '';
-        saveRow.style.display = '';
-      } catch(e) {
-        modal.classList.remove('xrp-mode');
-        canvas.style.display  = 'none';
-        label.textContent     = 'Error: ' + e.message;
-        label.style.display   = '';
-        saveRow.style.display = 'none';
-      }
-    }
-
-    function renderQrFromAddress(address, memo, coinContext) {
+    function renderQrFromAddress(address, memo) {
       const canvas   = document.getElementById('qrCanvas');
       const label    = document.getElementById('qrAddressLabel');
       const saveRow  = document.getElementById('qrSaveRow');
-      const coin     = coinContext || document.getElementById('qrAddressInput').dataset.coin || '';
-      // XRP addresses use the dedicated high-quality renderer
-      if (isXrpAddress(address.trim())) {
-        renderXrpQr(address, memo);
-        return;
-      }
       try {
-        const uri = toBip21Uri(address, memo, coin);
+        const uri = toBip21Uri(address, memo);
         const matrix = QRGen.generate(uri);
         QRGen.render(matrix, canvas, { size: 256, quiet: 4, dark: '#000000', light: '#ffffff' });
         canvas.style.display   = '';
@@ -4823,7 +4078,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       document.getElementById('qrAddressLabel').style.display = 'none';
       document.getElementById('qrSaveRow').style.display     = 'none';
       document.getElementById('qrMemoPrompt').style.display  = 'none';
-      document.getElementById('qrModal').classList.remove('xrp-mode');
     }
 
     function openQrModal() {
@@ -4831,7 +4085,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       const input     = document.getElementById('qrAddressInput');
       const memoInput = document.getElementById('qrMemoInput');
       input.value     = '';
-      input.dataset.coin = '';
       memoInput.value = '';
       const dlg = document.getElementById('qrModal');
       if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open','');

@@ -1,17 +1,17 @@
-# Arculus Recovery
+﻿# Arculus Recovery
 
 Offline BIP39/BIP32 recovery and key-derivation tool with:
 
 - a standalone browser-based interface in `Arculus_Recovery.html`
-- a working next-release Beta build in `Arculus_Recovery_Beta.html`
+- a retained long-term-support copy in `Arculus_Recovery_LTS.html`
 - a PySide6 desktop wrapper and Python CLI in `Arculus_Recovery.py`
 - a Tauri desktop package that wraps the same canonical HTML application
 
 This project is designed to run fully offline and uses only local computation. The HTML app remains self-contained; the Python desktop GUI now depends on PySide6 so it can render that exact HTML interface.
 
-## Beta Build
+## Release Channels
 
-`Arculus_Recovery_Beta.html` is the working build for the next release. Use it for current next-release validation while keeping `Arculus_Recovery.html` as the main release HTML until Beta is promoted.
+`Arculus_Recovery.html` is the current promoted release build. The former Beta build has been promoted into this file for v1.6.0. `Arculus_Recovery_LTS.html` preserves the previous long-term-support HTML build for users who need the older stable interface.
 
 ## User Guide
 
@@ -94,7 +94,7 @@ Theme examples:
 - Encrypted seed export/import via `.arc` files
 - Export derived keys/addresses as JSON, CSV, TXT, or PDF
 - PDF export includes title block, root fingerprint, extended keys section, and full address table
-- Hidden seed workflow — manually entered seeds are automatically masked after a successful derivation, matching the behavior of generated and imported seeds
+- Hidden seed workflow â€” manually entered seeds are automatically masked after a successful derivation, matching the behavior of generated and imported seeds
 - Press-and-hold seed reveal
 - Inline root fingerprint display
 - Clear All - wipes all fields and protected seed state in one action
@@ -157,17 +157,17 @@ find Arculus_Recovery.html Arculus_Recovery.py src/arculus_recovery vendor/jspdf
 Expected source, documentation, and build-support hashes:
 
 ```text
-efe027e2e0cc2862dd881b98a4e559aebdeb17e609ff6fc5be9210028b2a98f9  Arculus_Recovery.html
+560656d2e884c5eb9d8d2fb5221acf79ec737b5618587cd4ae03e4de28990219  Arculus_Recovery.html
 a976e8903e13ab4b8d119178a7e66a41492e96d9c47df141afc081ee0601ae00  Arculus_Recovery.py
 30ed88d1a7fb3e490ff5d484fcfe463f233da792b711c01719d47f4ff90b6ce7  docs/Arculus_Recovery_Manual.pdf
 2ff7cc0c97ca91636beca45a652e135d37738044209a751f2e77d11b016f9322  scripts/prepare_tauri_assets.py
 f8138f3c298a75658a2f1164ad22a97dee71593ca93b97e62d5431bdce84b478  src-tauri/icons/icon.icns
 acfd39b73c563b5619ead02613d5408a541ae2293957801a9ec3c41edf675246  src-tauri/icons/icon.ico
 8644382e6e45b95f7c7a2d4af5c7e54f810343a5235407f6dff0752ae4ce71f0  src-tauri/icons/icon.png
-c3debce3ea02bb735a93657464dd0992339a3ed754af358439c37cefcfff335c  src-tauri/tauri.conf.json
+ca86c77679bd9353ff6c9d8149d6659c6dc2406942e255f8dcc2c5eb8cd99289  src-tauri/tauri.conf.json
 4eb95c6f2b61f034f2ce0acfb9f2067bd2807bffb3d0272160b37c55f36944c7  src/arculus_recovery/__init__.py
 34f3f27e4e99234489cf81ad240482c2a41cac708713c6008d0c466988f568e8  src/arculus_recovery/__main__.py
-3dc7da40e2ec617e239ea60c7d703c9780bc32d4ca83a7fedc54bb3211f24472  src/arculus_recovery/assets/Arculus_Recovery.html
+560656d2e884c5eb9d8d2fb5221acf79ec737b5618587cd4ae03e4de28990219  src/arculus_recovery/assets/Arculus_Recovery.html
 b14d2e8f96ac1a4ffa90c8f1ba56e94eb5708d9ad1bf62d6253eeb980771de5c  src/arculus_recovery/assets/__init__.py
 8644382e6e45b95f7c7a2d4af5c7e54f810343a5235407f6dff0752ae4ce71f0  src/arculus_recovery/assets/favicon.png
 98ccf17aa10c20bb1301762618fcc9b6ab3a4e7f26b6071d64d0b41154df3875  src/arculus_recovery/assets/jspdf.umd.min.js
@@ -181,12 +181,7 @@ a9ee5a04ce877bc00a2fbb05d371ffc0b1415e1a4afe190b9d086d29c09bebf7  src/arculus_re
 Expected packaged release hashes:
 
 ```text
-100b83cbc4d97795b03df22c34f983ba41007bf871c5b85a831ac2d0421803e9  releases/tauri/windows/arculus-recovery.exe
-a618364b10262a2499d12ec674fdbeb8c3eba359c3d7cf6a4da4d6e7cf63854a  releases/tauri/windows/Arculus Recovery_1.5.0_x64-setup.exe
-0114949834e8a49aa234b716dfe0643bbb38901da51b63bf52512171671a832c  releases/tauri/windows/Arculus Recovery_1.5.0_x64_en-US.msi
-955efc96e164305a00b5bc52552d81103608fbbe062e61f0ae39f1f0a246c1d6  releases/tauri/macos/Arculus Recovery_1.5.0_aarch64.dmg
-eb0429bad10fe571768ad8c28cad355fd969224425bde5eafd8446514cb2ae2d  releases/tauri/macos/Arculus Recovery_1.5.0_x64.dmg
-1200ee67ae6df38ae3858ae9199fe2eba55459addf5c64e5a5afa18deffb6013  releases/tauri/macos/Arculus Recovery_1.5.0_universal.dmg
+Pending v1.6.0 release builds.
 ```
 
 Update these hashes after each release build.
@@ -221,8 +216,8 @@ The project supports encrypted seed backup and export using the `.arc` file exte
 - `Import Seed` loads a `.arc` file back into the app
 - Imported seeds remain hidden on screen
 - Imported hidden seeds can still be validated and used for key derivation
-- Manually entered seeds are automatically masked after a successful derivation, identical to the behavior of generated and imported seeds — the mnemonic textarea and word grid are replaced with bullet characters, and the seed remains available in memory for all subsequent operations without needing to be re-entered
-- `Show Seed` temporarily reveals any hidden seed only while held down, then re-masks on release — this applies to generated, imported, and manually entered seeds
+- Manually entered seeds are automatically masked after a successful derivation, identical to the behavior of generated and imported seeds â€” the mnemonic textarea and word grid are replaced with bullet characters, and the seed remains available in memory for all subsequent operations without needing to be re-entered
+- `Show Seed` temporarily reveals any hidden seed only while held down, then re-masks on release â€” this applies to generated, imported, and manually entered seeds
 - `Clear All` removes the seed from memory along with all other fields
 
 ### Compatibility
@@ -295,7 +290,7 @@ Open `Arculus_Recovery.html` directly in a browser. No installation required. Th
 - QR Export - generate a QR code from any pasted address, no external dependencies
 - Encrypt/export seed to `.arc`
 - Import encrypted seed from `.arc`
-- Hold-to-show hidden seed — applies to generated, imported, and manually entered seeds; seeds entered manually are masked automatically after a successful derivation
+- Hold-to-show hidden seed â€” applies to generated, imported, and manually entered seeds; seeds entered manually are masked automatically after a successful derivation
 - Clear All button to wipe all fields and protected seed state
 - Root fingerprint display in the action toolbar
 - Derivation path info tooltip when using the Arculus-native `m/0'` path
@@ -415,17 +410,17 @@ cargo tauri build --bundles appimage,deb,rpm
 Local Windows artifacts are copied to:
 
 - `releases/tauri/windows/arculus-recovery.exe`
-- `releases/tauri/windows/Arculus Recovery_1.5.0_x64-setup.exe`
-- `releases/tauri/windows/Arculus Recovery_1.5.0_x64_en-US.msi`
+- `releases/tauri/windows/Arculus Recovery_1.6.0_x64-setup.exe`
+- `releases/tauri/windows/Arculus Recovery_1.6.0_x64_en-US.msi`
 
 Local macOS artifacts are copied to:
 
 - `releases/tauri/macos/Arculus Recovery.app`
 - `releases/tauri/macos/Arculus Recovery x64.app`
 - `releases/tauri/macos/Arculus Recovery Universal.app`
-- `releases/tauri/macos/Arculus Recovery_1.5.0_aarch64.dmg` for Apple Silicon Macs
-- `releases/tauri/macos/Arculus Recovery_1.5.0_x64.dmg` for Intel Macs
-- `releases/tauri/macos/Arculus Recovery_1.5.0_universal.dmg` for a single DMG that supports both Apple Silicon and Intel Macs
+- `releases/tauri/macos/Arculus Recovery_1.6.0_aarch64.dmg` for Apple Silicon Macs
+- `releases/tauri/macos/Arculus Recovery_1.6.0_x64.dmg` for Intel Macs
+- `releases/tauri/macos/Arculus Recovery_1.6.0_universal.dmg` for a single DMG that supports both Apple Silicon and Intel Macs
 
 Local Linux artifacts are copied to:
 
@@ -440,22 +435,22 @@ macOS and Linux Tauri artifacts must be built on native runners. The workflow at
 
 ## GitHub Release Assets
 
-Use `v1.5.0` as the release tag for this version.
+Use `v1.6.0` as the release tag for this version.
 
 Upload these Windows assets to the GitHub release:
 
 - `releases/tauri/windows/arculus-recovery.exe`
-- `releases/tauri/windows/Arculus Recovery_1.5.0_x64-setup.exe`
-- `releases/tauri/windows/Arculus Recovery_1.5.0_x64_en-US.msi`
+- `releases/tauri/windows/Arculus Recovery_1.6.0_x64-setup.exe`
+- `releases/tauri/windows/Arculus Recovery_1.6.0_x64_en-US.msi`
 
 Upload these macOS assets when the native macOS build is produced:
 
 - `releases/tauri/macos/Arculus Recovery.app`
 - `releases/tauri/macos/Arculus Recovery x64.app`
 - `releases/tauri/macos/Arculus Recovery Universal.app`
-- `releases/tauri/macos/Arculus Recovery_1.5.0_aarch64.dmg` for Apple Silicon Macs
-- `releases/tauri/macos/Arculus Recovery_1.5.0_x64.dmg` for Intel Macs
-- `releases/tauri/macos/Arculus Recovery_1.5.0_universal.dmg` for a single DMG that supports both Apple Silicon and Intel Macs
+- `releases/tauri/macos/Arculus Recovery_1.6.0_aarch64.dmg` for Apple Silicon Macs
+- `releases/tauri/macos/Arculus Recovery_1.6.0_x64.dmg` for Intel Macs
+- `releases/tauri/macos/Arculus Recovery_1.6.0_universal.dmg` for a single DMG that supports both Apple Silicon and Intel Macs
 
 Upload these Linux assets when the native Linux build is produced:
 

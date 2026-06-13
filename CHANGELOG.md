@@ -1,4 +1,4 @@
-# Changelog ? Arculus Recovery
+﻿# Changelog ? Arculus Recovery
 
 All notable changes to this project are documented here.
 
@@ -10,15 +10,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Changes on `main` not yet tagged in a formal release.
 
+---
+
+## [1.6.0] - 2026-06-13
+
 ### Changed
 
-**Beta Build**
-- Renamed the next-release working build to `Arculus_Recovery_Beta.html` and documented it as the Beta validation target before promotion to the main HTML.
+**Release Channel Promotion**
+- Promoted the former `Arculus_Recovery_Beta.html` build to the canonical `Arculus_Recovery.html` release file.
+- Renamed the previous canonical HTML build to `Arculus_Recovery_LTS.html` so users can keep an older long-term-support copy available.
+- Updated the UI badge, package metadata, Tauri metadata, README release guidance, and packaged HTML asset version to `1.6.0`.
 
 ### Added
 
-**Seed Auto-Mask After Derivation (`Arculus_Recovery_Beta.html`)**
-- When a manually typed 12-word or 24-word mnemonic is successfully derived, the seed is now automatically masked in the same way as a generated or imported seed — both the mnemonic textarea and the numbered word grid are replaced with bullet characters (`••••`).
+**Seed Auto-Mask After Derivation (`Arculus_Recovery.html`)**
+- When a manually typed 12-word or 24-word mnemonic is successfully derived, the seed is now automatically masked in the same way as a generated or imported seed â€” both the mnemonic textarea and the numbered word grid are replaced with bullet characters (`â€¢â€¢â€¢â€¢`).
 - The seed remains protected in memory via `importedSeedState` (kind: `'entered'`) and is available for all subsequent operations (re-derive, export, copy, encrypt) without needing to be re-entered.
 - The status bar and textarea placeholder update to instruct the user to hold **Show Seed** to reveal the phrase.
 - The **Show Seed** press-and-hold button works identically to its behavior for generated and imported seeds: hold to reveal, release to re-mask.
@@ -27,24 +33,24 @@ Changes on `main` not yet tagged in a formal release.
 
 ### Fixed
 
-**XRP QR Code — Missing `?` in Destination Tag URI (`Arculus_Recovery_Beta.html`)**
+**XRP QR Code â€” Missing `?` in Destination Tag URI (`Arculus_Recovery.html`)**
 - The original `toBip21Uri()` produced `rADDRESS dt=NNNN` (no `?`) for tagged XRP addresses, making the URI malformed and causing scanner failures. Fixed by inserting the missing `?` separator.
 
-**XRP QR Code — Tagless Addresses Not Resolving (`Arculus_Recovery_Beta.html`)**
+**XRP QR Code â€” Tagless Addresses Not Resolving (`Arculus_Recovery.html`)**
 - A bare `rADDRESS` with no query string gave wallet scanners no signal to identify the payload as XRP, causing silent resolution failures. Tagless XRP QR codes now always append `?dt=00000` as a dummy destination tag, matching the format scanners expect without affecting transaction routing.
 
 ### Added
 
-**XRP QR Code — Dedicated `renderXrpQr()` Function (`Arculus_Recovery_Beta.html`)**
+**XRP QR Code â€” Dedicated `renderXrpQr()` Function (`Arculus_Recovery.html`)**
 - Extracted XRP QR rendering into a dedicated function that renders at 320 px (vs 256 px for other coins) with a 4-module quiet zone for improved decode reliability. XRP addresses are now detected and routed to this renderer before the generic `toBip21Uri()` path runs.
 
-**XRP QR Code — `xrp-mode` Modal Widening (`Arculus_Recovery_Beta.html`)**
+**XRP QR Code â€” `xrp-mode` Modal Widening (`Arculus_Recovery.html`)**
 - When displaying an XRP QR, the modal widens to `min(400px, calc(100vw - 40px))` to accommodate the larger 320 px canvas. The `xrp-mode` class is correctly removed on reset so the wider sizing does not persist after closing.
 
-**QR Canvas — Responsive Sizing CSS (`Arculus_Recovery_Beta.html`)**
+**QR Canvas â€” Responsive Sizing CSS (`Arculus_Recovery.html`)**
 - Added `max-width: 100%; height: auto` to `#qrCanvas` so the canvas scales correctly on narrow viewports without overflow.
 
-**QR Code Generator — Capacity Calculation Fix (`Arculus_Recovery_Beta.html`)**
+**QR Code Generator â€” Capacity Calculation Fix (`Arculus_Recovery.html`)**
 - The version-selection loop now correctly accounts for terminator bits (`+4`) before rounding up to whole codewords, and removes a hardcoded `v===10` short-circuit that could cause incorrect QR version selection for certain payload lengths.
 
 **Python GUI - PySide6 HTML Shell**
@@ -446,4 +452,4 @@ Tagged release commit `e7cc84e`. First formal GitHub release.
 
 ## Notes on Versioning
 
-The project uses a `major.minor.patch` version string (e.g. `1.5.0`), surfaced in the UI title bar and via `--version` on the CLI. The `-production` channel suffix used in versions 1.1.0 through 1.4.0 has been dropped from 1.5.0 onwards. The README includes SHA256 hashes for the HTML app, Python launcher, source package, and vendored assets so users can verify the exact file state they are running, independent of the version string.
+The project uses a `major.minor.patch` version string (e.g. `1.6.0`), surfaced in the UI title bar and via `--version` on the CLI. The `-production` channel suffix used in versions 1.1.0 through 1.4.0 has been dropped from 1.5.0 onwards. The README includes SHA256 hashes for the HTML app, Python launcher, source package, and vendored assets so users can verify the exact file state they are running, independent of the version string.
