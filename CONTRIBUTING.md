@@ -1,35 +1,57 @@
 # Contributing to Arculus Recovery
 
-Arculus Recovery handles seed phrases, private keys, and encrypted seed backups. Contributions are welcome, but changes must preserve offline operation, deterministic derivation, and cross-surface compatibility between the HTML app, Python CLI, PySide6 GUI, and Tauri wrapper.
+Arculus Recovery handles funds-controlling secrets. Contributions are welcome,
+but changes must preserve offline execution, deterministic derivation, explicit
+secret boundaries, and compatibility with the canonical v1.6.0 HTML behavior.
 
 ## Project Boundaries
 
-Accepted work should stay inside the project's purpose:
+Accepted work should stay within:
 
-- Offline BIP39 mnemonic validation and generation
-- BIP32/BIP44/BIP49/BIP84/BIP86 derivation
-- Bitcoin, Litecoin, Dogecoin, Ethereum / ERC-20, and XRP address output
-- Encrypted `.arc` seed import/export
-- Local export of derived data
-- Documentation, tests, packaging, and release tooling
+- offline BIP39 mnemonic validation and generation
+- BIP39 passphrase handling
+- deterministic key derivation and address encoding
+- `.arc` seed import/export
+- keyfile and combined credential support
+- local JSON, CSV, TXT, PDF, and QR PNG export
+- Python compatibility CLI and GUI wrappers
+- Tauri desktop packaging
+- documentation, test vectors, and release tooling
 
-Do not add telemetry, analytics, hosted services, remote scripts, CDN dependencies, balance lookups, cloud sync, or automatic update behavior.
+Do not add telemetry, analytics, remote scripts, CDN runtime dependencies,
+hosted recovery flows, balance lookups, automatic updates, cloud sync, or any
+network-required recovery feature.
+
+## Source of Truth
+
+The canonical user-facing implementation is the root `Arculus_Recovery.html`
+file. The docs in `docs/` specify v1.6.0 byte-level behavior. The Python CLI is
+a compatibility surface for the same v1.6.0 coin set.
+
+If HTML, Python, Tauri, and documentation disagree, either fix the disagreement
+or document the compatibility boundary explicitly.
 
 ## Development Rules
 
-- Keep the standalone HTML app usable as a local file with no runtime network dependency.
-- Keep cryptographic behavior deterministic for identical inputs.
-- Maintain parity between HTML and Python behavior unless a difference is deliberate and documented.
-- Treat changes to `.arc`, derivation, address encoding, or export schemas as security-sensitive.
-- Update documentation and test vectors when behavior changes.
-- Avoid broad refactors in security-critical code unless they are required for the change.
+- Keep `Arculus_Recovery.html` usable as a direct local file.
+- Keep runtime recovery independent of internet access.
+- Treat `.arc`, keyfile, BIP39, BIP32, Ed25519, address encoding, QR payload,
+  and export schema changes as security-sensitive.
+- Use deterministic output for identical inputs except where randomness is part
+  of the specification.
+- Update `docs/` and `TestVectors.txt` when byte behavior changes.
+- Rebuild `docs/Arculus_Recovery_Manual.pdf` only after text docs are updated.
+- Avoid unrelated refactors in secret-handling code.
+- Do not log seed words, passphrases, private keys, keyfiles, or decrypted
+  payloads.
 
 ## Local Setup
 
-Python CLI and packaging metadata:
+Python package and CLI:
 
 ```bash
 python -m pip install .
+python Arculus_Recovery.py --help
 ```
 
 Python GUI:
@@ -39,7 +61,7 @@ python -m pip install -r requirements.txt
 python Arculus_Recovery.py --gui
 ```
 
-Tauri packaging:
+Tauri:
 
 ```bash
 npm install
@@ -47,62 +69,74 @@ npm run prepare:tauri
 npm run tauri -- build
 ```
 
-Use the platform-specific build instructions in `README.md` when producing release artifacts.
+Manual PDF:
+
+```bash
+python scripts/build_manual_pdf.py
+```
+
+If system Python lacks ReportLab, use an isolated environment with ReportLab or
+the bundled workspace runtime when available.
 
 ## Required Testing
 
-Before submitting a change, run the checks that match the touched surface:
+Run the checks that match the touched surface:
 
-- Open `Arculus_Recovery.html` locally and confirm no network access is required.
-- Run `python Arculus_Recovery.py --help`.
-- Run CLI derivation against the standard `abandon ... about` mnemonic.
-- Test 12-word and 24-word validation when mnemonic handling changed.
-- Test `.arc` export/import when seed storage changed.
-- Test PDF, JSON, CSV, TXT, and QR export when UI or packaging changed.
-- Test Tauri export behavior when `src-tauri/`, `tauri-dist/`, or asset preparation changed.
-- Rebuild `docs/Arculus_Recovery_Manual.pdf` when files in `docs/` change.
+- Open `Arculus_Recovery.html` locally with networking disabled.
+- Validate the standard `abandon ... about` mnemonic.
+- Generate and validate both 12-word and 24-word mnemonics when BIP39 changed.
+- Derive at least one known Bitcoin address vector.
+- Test expanded HTML coins when their derivation code changes.
+- Export and import protected `.arc` files for password, keyfile, and combined modes when seed protection changed.
+- Test unprotected `.arc` import/export if that path changed.
+- Export JSON, CSV, TXT, PDF, and QR PNG when export or Tauri code changed.
+- Run `python Arculus_Recovery.py --help` when Python code changed.
+- Test Tauri native save behavior when `src-tauri/`, asset preparation, or packaged HTML changes.
+- Rebuild and inspect the manual PDF when root docs or `docs/` change.
+
+## Security Review Checklist
+
+For changes touching mnemonic generation, BIP39, BIP32, SLIP-0010, Ed25519,
+Cardano, Monero, Taproot, Ethereum, XRP, `.arc`, keyfiles, exports, or QR:
+
+- [ ] No reduction in entropy, key length, nonce length, MAC length, or KDF policy.
+- [ ] New randomness uses browser/OS CSPRNG.
+- [ ] Existing supported `.arc` files still import unless a version break is intentional.
+- [ ] MAC verification happens before decryption where specified.
+- [ ] Serialization changes are reflected in `docs/FileFormat.txt`.
+- [ ] Cryptographic transcript changes are reflected in `docs/Encryption.txt`.
+- [ ] Derivation changes are reflected in `docs/Derivation.txt`.
+- [ ] Test vectors are updated or explicitly documented as unchanged.
+- [ ] Sensitive values are not logged or exposed without explicit user action.
+- [ ] Clipboard exposure is not increased silently.
+- [ ] Offline operation still works.
 
 ## Pull Request Checklist
 
 Every PR should include:
 
-- What changed
-- Why it changed
-- User-visible impact
-- Security considerations
-- Testing performed
-- `.arc` compatibility impact, if any
+- Summary of what changed
+- Reason for the change
+- Affected surfaces: HTML, Python CLI, PySide6 GUI, Tauri, docs, release assets
+- Security impact
+- `.arc` compatibility impact
+- Test commands and manual checks performed
 - Screenshots for UI changes
-- Documentation updates, if behavior or workflows changed
-
-## Cryptographic Review Checklist
-
-Complete this checklist for any change touching mnemonic generation, BIP39, BIP32, Taproot, address encoding, `.arc`, private-key handling, or export schemas:
-
-- [ ] Standard primitives only; no custom hash, MAC, KDF, or curve construction added.
-- [ ] No downgrade in entropy, key length, MAC length, or KDF iteration policy.
-- [ ] Existing `.arc` files still import unless a documented version break is intentional.
-- [ ] New `.arc` exports are readable by both supported implementations.
-- [ ] BIP39 seed output matches reference vectors.
-- [ ] BIP32 derivation matches reference vectors.
-- [ ] Taproot output matches reference vectors when touched.
-- [ ] Ethereum EIP-55 and XRP classic-address output match reference vectors when touched.
-- [ ] Sensitive values are not logged.
-- [ ] Clipboard or display exposure is not increased without explicit user action.
-- [ ] HTML and Python behavior remain equivalent, or the difference is documented.
-- [ ] The app still works offline.
+- Documentation updates
 
 ## Commit Style
 
 Use concise conventional-style commits:
 
 ```text
-feat(html): mask entered seed after derivation
-fix(qr): encode XRP destination tag query correctly
-docs: refresh v1.6 manual sources
-build(tauri): prepare desktop export bridge assets
+feat(html): add keyfile arc export mode
+fix(qr): render xrp destination tag payload consistently
+docs: rewrite v1.6 byte-level references
+build(tauri): update native export bridge assets
 ```
 
-## Security Reports
+## Vulnerability Reports
 
-Do not disclose vulnerabilities publicly before maintainers can investigate. Include reproduction steps, affected files, expected behavior, actual behavior, and possible impact.
+Do not disclose vulnerabilities publicly before maintainers can investigate.
+Never include real seed phrases, private keys, funded addresses, or production
+keyfiles in a report.
