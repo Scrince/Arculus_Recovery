@@ -28,10 +28,25 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--script-type",
         choices=["auto", "p2pkh", "p2wpkh-p2sh", "p2wpkh", "p2tr"],
-        default="p2wpkh",
+        default="auto",
     )
     parser.add_argument("--count", type=int, default=5)
-    parser.add_argument("--coin", choices=["bitcoin", "litecoin", "dogecoin", "ethereum", "xrp"], default="bitcoin")
+    parser.add_argument(
+        "--coin",
+        choices=[
+            "bitcoin",
+            "bitcoincash",
+            "litecoin",
+            "dogecoin",
+            "ethereum",
+            "solana",
+            "stellar",
+            "monero",
+            "cardano",
+            "xrp",
+        ],
+        default="bitcoin",
+    )
     parser.add_argument("--testnet", action="store_true")
     parser.add_argument("--output-format", choices=["json", "csv", "txt"], default="json", help="CLI output format.")
     return parser

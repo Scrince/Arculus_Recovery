@@ -1,152 +1,1057 @@
-Arculus Recovery v1.6.0 Operational Security Guide
-==================================================
+Arculus Recovery v1.6.0 - Operational Security Specification
+============================================================
 
 Scope
 -----
 
-This guide describes how to operate Arculus Recovery safely. The cryptographic
-engine is only useful if the surrounding computer, storage, display, and export
-workflow are controlled.
+This document defines the operational security requirements for using
+Arculus_Recovery.html v1.6.0. It is tied to the actual implementation behavior:
+mnemonic generation and entry, BIP39 passphrase use, .arc export/import,
+password and keyfile credential modes, derived-output exports, QR generation,
+clipboard behavior, idle clearing, browser runtime limits, and native Tauri
+save behavior.
+
+This document is not a cryptographic proof. Encryption.txt defines the
+cryptographic envelope. Derivation.txt defines how secrets are transformed into
+keys and addresses. FileFormat.txt defines the serialized artifacts. This
+document defines how an operator should handle those artifacts and runtime
+surfaces so the byte-level protections are not defeated by the environment.
 
 
-Core Rules
-----------
+Primary Rule
+------------
 
-  - Use a trusted offline machine.
-  - Verify the tool before use.
-  - Disable network interfaces before seed entry.
-  - Avoid clipboard use for secrets.
-  - Export only what is required.
-  - Store exports on encrypted removable media.
-  - Clear the session and power down when finished.
+Treat every recovery session as handling live private key material.
 
+Even if the UI currently shows only an address, the same session can contain:
 
-Airgap Requirements
--------------------
+  - mnemonic words
+  - BIP39 wallet passphrase
+  - ARC password
+  - keyfile bytes
+  - combined credential material
+  - BIP39 seed
+  - root private keys
+  - account extended private keys
+  - address private keys
+  - Monero spend/view keys
+  - Stellar secret seeds
+  - Cardano private keys
+  - exported files containing any of the above
 
-Disconnect all network paths before entering seed material:
-
-  - Remove Ethernet cables.
-  - Disable Wi-Fi at the hardware or firmware level when possible.
-  - Disable Bluetooth.
-  - Disable cellular modems.
-  - Do not reconnect while the mnemonic, passphrase, or private output is in
-    memory or on screen.
-
-The network indicator is a convenience signal. Physical disconnection remains
-the security control.
+The correct operational stance is that the browser, operating system, display,
+clipboard, filesystem, removable media, and room are all part of the security
+boundary.
 
 
-Recommended Environment
------------------------
+Threat Model
+------------
 
-Best option:
-  A live operating system with no persistence, no hibernation, and no network.
-  Run the app from a RAM-backed location and power off after the session.
+In scope:
 
-Acceptable alternative:
-  A dedicated offline machine that has never been used for general browsing or
-  email. Persistent storage on this machine should be treated as sensitive after
-  any recovery session.
+  Offline file acquisition:
+      An attacker obtains a protected .arc file or encrypted keyfile after the
+      session. Protection depends on credential entropy and the implemented KDF
+      and MAC. Weak passwords remain weak even with PBKDF2.
 
-Avoid:
-  A daily-use networked computer, a browser profile with extensions enabled, a
-  synced cloud desktop, or a machine that runs remote management software.
+  File tampering:
+      An attacker modifies protected .arc metadata, salt, nonce, ciphertext, or
+      MAC. ARC v2 detects this through MAC verification before decryption.
+
+  Wrong-path recovery error:
+      The mnemonic is correct, but the operator uses the wrong coin, BIP39
+      passphrase, derivation path, script type, branch, or address index range.
+      The tool will derive valid but wrong keys without an error.
+
+  Clipboard exposure:
+      Mnemonic or address data is copied to the OS clipboard and observed by
+      clipboard history, sync, remote desktop, or malware.
+
+  Export mishandling:
+      JSON, CSV, TXT, PDF, raw keyfile, or unprotected .arc artifacts are stored
+      on unsafe media or copied to a networked environment.
+
+  Browser/runtime residue:
+      JavaScript strings, ArrayBuffers, object URLs, downloads, caches, swap,
+      crash dumps, or hibernation files retain sensitive data after the UI is
+      cleared.
+
+Out of scope:
+
+  - A compromised operating system before the session begins.
+  - A malicious browser or browser extension with access to page memory.
+  - Firmware compromise, hardware implants, or physical keyloggers.
+  - Cameras or observers with screen/keyboard visibility.
+  - Coercion.
+  - An attacker who already knows the mnemonic or correct .arc credential.
+  - A malicious copy of Arculus_Recovery.html.
+
+For high-value recovery, assume an ordinary daily-use online computer is not an
+acceptable secret-handling environment.
 
 
-Session Procedure
+Secret Classes
+--------------
+
+Class A: whole-wallet recovery secrets
+
+  - BIP39 mnemonic
+  - BIP39 wallet passphrase when one was used
+  - protected .arc credential that unlocks the mnemonic
+  - raw keyfile used as sole .arc credential
+  - combined-mode password plus keyfile together
+
+Class B: subtree or account secrets
+
+  - root xprv/yprv/zprv/tprv
+  - account xprv/yprv/zprv/tprv
+  - Cardano account private material
+  - Monero private spend/view key pair
+  - Stellar secret seed
+
+Class C: single-address secrets
+
+  - private_key_hex
+  - private_key_wif
+  - taproot output private key
+  - Solana private key material
+  - XRP private key material
+
+Class D: privacy-sensitive public data
+
+  - addresses
+  - xpub/ypub/zpub/tpub
+  - root fingerprint
+  - QR PNG files
+  - derivation paths and account ranges
+
+Class E: operational metadata
+
+  - filenames
+  - created_at timestamps
+  - credential_mode hints
+  - app version
+
+Class A, B, and C must never be copied to networked storage or ordinary cloud
+sync. Class D is public on-chain once used, but still links wallet activity and
+should be handled deliberately.
+
+
+Offline Workstation Requirement
+-------------------------------
+
+The safest operating mode is a machine disconnected from all networks before
+any secret is entered and kept disconnected until after the session is cleared
+and the application is closed.
+
+Disable:
+
+  - Wi-Fi
+  - Ethernet
+  - Bluetooth
+  - cellular modem
+  - cloud sync clients
+  - remote desktop
+  - browser profile sync
+  - browser extensions where practical
+
+The v1.6.0 UI uses navigator.onLine for the network indicator:
+
+  online:
+      networkStatus class "online"
+      title "Network route detected"
+
+  offline:
+      title "No network connection detected"
+
+This indicator is a convenience signal, not proof of isolation. Physical
+disconnection and OS-level controls are authoritative.
+
+
+Recommended Session Procedure
+-----------------------------
+
+Before the session:
+
+  1. Obtain the intended Arculus_Recovery.html build from trusted local media.
+  2. Verify the visible app version is v1.6.0.
+  3. Use a fresh live OS or a dedicated offline machine for high-value work.
+  4. Disable networking before opening the file.
+  5. Close unrelated applications.
+  6. Disable clipboard managers and screenshot tools.
+  7. Confirm no cameras or observers can see the screen or keyboard.
+  8. Decide the exact recovery goal: verify mnemonic, export .arc, derive a
+     specific path, produce QR for an address, or recover a private key.
+
+During the session:
+
+  1. Enter or import only the required mnemonic.
+  2. Enter the BIP39 wallet passphrase only if the original wallet used one.
+  3. Validate the mnemonic before deriving.
+  4. Compare the root fingerprint if a known fingerprint exists.
+  5. Select the coin and derivation path intentionally.
+  6. Derive the smallest address range that solves the task.
+  7. For UTXO wallets, check both receiving and change branches if funds are
+     missing.
+  8. Export the minimum artifact required.
+  9. Prefer protected .arc over unprotected .arc for mnemonic storage.
+  10. Avoid clipboard use for seeds and private keys.
+
+After the session:
+
+  1. Use Clear All.
+  2. Confirm derived output is no longer displayed.
+  3. Close the browser or Tauri wrapper.
+  4. Move required artifacts to controlled storage.
+  5. Delete temporary files from unsafe locations.
+  6. Power off the live OS; do not hibernate.
+  7. For high-value work, reboot before reconnecting networks.
+
+
+Mnemonic Handling
 -----------------
 
-Pre-session:
+Mnemonic input and generated mnemonics are Class A secrets.
 
-1. Prepare a private room and remove cameras from view of the screen.
-2. Boot the trusted offline environment.
-3. Verify the tool hash.
-4. Confirm all network interfaces are disconnected.
-5. Transfer any .arc file using removable media only.
+v1.6.0 behavior:
 
-During session:
+  - Generated seeds use browser CSPRNG.
+  - Generated/imported seeds are hidden after generation/import.
+  - Manually entered seeds are promoted to importedSeedState and hidden after
+    successful derivation.
+  - Hidden seed fields are displayed as bullet masks.
+  - "Show Seed" temporarily reveals the seed while held.
 
-6. Enter or import the mnemonic.
-7. Validate the mnemonic before derivation.
-8. Enter the BIP39 passphrase only if the wallet used one.
-9. Verify the root fingerprint or a known address.
-10. Export only what is needed.
+Operational rules:
 
-Post-session:
+  - Do not type a real mnemonic into a networked browser.
+  - Do not paste a mnemonic from a clipboard populated on another machine.
+  - Do not photograph the word grid.
+  - Do not screen-share a session.
+  - Do not leave the session unattended while Show Seed is active.
+  - Do not rely on UI masking as memory erasure.
 
-11. Click Clear All.
-12. Close the app.
-13. Remove export media and store it securely.
-14. Power off the machine.
+Masking prevents casual shoulder viewing. It does not remove the mnemonic from
+JavaScript memory.
 
 
-Password Guidance for .arc Files
+BIP39 Wallet Passphrase Boundary
 --------------------------------
 
-The .arc password protects against offline guessing when an attacker obtains
-the encrypted file. Use a high-entropy password:
+The passphrase input next to the mnemonic is the BIP39 wallet passphrase. It is
+not the .arc encryption password.
 
-Recommended:
-  Six or more randomly selected Diceware-style words, or a randomly generated
-  20-character password from a broad character set.
+Operational consequences:
 
-Avoid:
-  PINs, dates, names, reused passwords, short phrases, keyboard patterns, or
-  personal information.
+  - Same mnemonic + different BIP39 passphrase = different wallet tree.
+  - Incorrect BIP39 passphrase does not produce an error.
+  - Incorrect BIP39 passphrase produces valid-looking wrong addresses.
+  - The BIP39 passphrase is not stored in protected .arc plaintext.
+  - The BIP39 passphrase must be backed up separately if used.
 
-Store the .arc password separately from the .arc file and separately from the
-mnemonic. If the password is lost, the .arc file cannot be decrypted.
-
-
-Output Handling
----------------
-
-Category A, public or low sensitivity:
-  Addresses and root fingerprints. These do not unlock funds, but addresses
-  can reveal wallet activity when correlated with blockchain history.
-
-Category B, funds-controlling:
-  Mnemonics, BIP39 passphrases, .arc passwords, private keys, WIF keys,
-  extended private keys, and any export containing those values.
-
-Category B material must not be emailed, cloud-synced, photographed with a
-cloud-connected device, printed on a network printer, or stored on ordinary
-unencrypted storage.
+Before moving funds, verify known addresses under the intended passphrase.
 
 
-.arc Backup Verification
-------------------------
+Root Fingerprint Discipline
+---------------------------
 
-Every new .arc file should be verified before it is trusted:
+The UI displays:
 
-1. Export the .arc file.
-2. Import it again in the same offline session.
-3. Enter the password.
-4. Verify the root fingerprint.
-5. Store at least two copies on separate encrypted media.
+  Root Fingerprint: <hex>
 
-Re-verify long-term backups periodically and re-export with the newest release
-when practical.
+Use it as a compact verification artifact when available. It is not a secret on
+the level of a private key, but it links a session to a wallet root.
+
+Procedure:
+
+  - Record a root fingerprint from a known-good wallet before emergency use.
+  - After entering/importing a mnemonic and passphrase, compare the fingerprint.
+  - If the fingerprint differs, stop before exporting or sweeping keys.
+
+A matching fingerprint does not prove path correctness. It only verifies the
+mnemonic/passphrase root.
 
 
-Common Errors
+Derivation Path and Script-Type Risk
+------------------------------------
+
+The tool derives exactly what the UI requests. A wrong path is not a runtime
+error. It is a valid derivation of a different subtree.
+
+High-risk inputs:
+
+  - coin selector
+  - derivation path
+  - script type
+  - address count
+  - range input
+  - BIP39 passphrase
+
+Verification rules:
+
+  - Compare the first known address before using private keys.
+  - For Bitcoin-like wallets, check both receiving branch 0 and change branch 1.
+  - For restored exchange deposit addresses, verify destination tag or memo
+    requirements separately.
+  - For Cardano, verify Shelley-era address expectations.
+  - For Monero, recognize that view/spend material is sensitive even when only
+    one address is shown.
+
+
+.arc Export Security
+--------------------
+
+Protected .arc files contain the mnemonic encrypted under one credential mode:
+
+  password
+  keyfile
+  keyfile + password
+
+Unprotected .arc files contain the plaintext mnemonic inside base64 armor.
+
+Protected .arc requirements:
+
+  - Use high-entropy credentials.
+  - Verify import immediately after export.
+  - Store credential material separately from the .arc file.
+  - Do not upload .arc files to cloud storage unless the threat model explicitly
+    accepts offline password guessing risk.
+
+Unprotected .arc requirements:
+
+  - Use only for test data or controlled offline transfer.
+  - Treat as equivalent to the mnemonic.
+  - Do not store on general-purpose disks.
+
+Default saved filename:
+
+  Arculus_Encrypted_Seed.arc
+
+The filename does not prove the file is encrypted. v1.6.0 uses this filename
+for both protected and unprotected seed exports. Inspect the decoded bundle
+format if protection status matters:
+
+  Protected:
+      format == "arculus-encrypted-seed-v2"
+
+  Unprotected:
+      format == "arculus-plain-seed-v1"
+
+
+Password Mode
 -------------
 
-Wrong BIP39 passphrase:
-  Produces valid-looking but unrelated keys. Verify with a root fingerprint or
-  known address.
+Password mode passes the user-entered password directly to ARC v2 encryption.
 
-Wrong derivation path:
-  Produces valid addresses for the wrong wallet branch. Try standard paths and
-  account indices systematically.
+Minimum operational requirements:
 
-Leaving private exports on disk:
-  Treat the old wallet as exposed if exports reached a networked or untrusted
-  system.
+  - Do not reuse an account password.
+  - Do not use a PIN, date, name, address, phone number, phrase from personal
+    history, or single dictionary word.
+  - Prefer a randomly generated multi-word passphrase or long random string.
+  - Record the password offline.
+  - Store it separately from the .arc file.
 
-Skipping .arc round-trip verification:
-  Can leave you with a backup that cannot be decrypted later.
+Losing the password makes the protected .arc file unrecoverable.
 
-Storing .arc file and password together:
-  Defeats the purpose of encryption.
+
+Keyfile Mode
+------------
+
+Keyfile mode converts keyfile bytes to:
+
+  "arc-keyfile-v1:" + base64(keyfile_bytes)
+
+and uses that string as the .arc credential.
+
+Generated raw keyfiles contain 64 random bytes and are saved as:
+
+  Arculus_Recovery_Keyfile.key
+
+Operational requirements:
+
+  - Treat the raw keyfile as a Class A secret.
+  - Store it separately from the .arc file.
+  - Do not leave a raw keyfile on a networked machine.
+  - Keep at least one verified backup copy.
+  - Verify that the .arc imports with the stored keyfile before relying on it.
+
+If an attacker obtains both the protected .arc and raw keyfile, password
+guessing is unnecessary for Keyfile mode.
+
+
+Keyfile + Password Mode
+-----------------------
+
+Combined mode requires both:
+
+  - keyfile bytes
+  - password
+
+The app derives:
+
+  "arc-combined-v1:" + base64(SHA-256(material))
+
+and uses that as the .arc credential.
+
+Generated encrypted keyfiles are saved as:
+
+  Arculus_Recovery_Keyfile.enc.key
+
+Operational requirements:
+
+  - Store the .arc, encrypted keyfile, and password separately.
+  - Verify the full import path immediately after export.
+  - Do not assume the encrypted keyfile password is recoverable from the .arc.
+  - Do not assume the .arc password can open the encrypted keyfile unless that
+    was the password used when generating it.
+
+Losing any required component prevents recovery.
+
+
+Encrypted Keyfile Security
+--------------------------
+
+Encrypted keyfiles protect keyfile bytes with PBKDF2-HMAC-SHA512 and an
+HMAC-SHA512 stream/MAC construction. They are safer to store than raw keyfiles
+but still require a high-entropy password.
+
+Operational notes:
+
+  - The encrypted keyfile MAC authenticates salt, nonce, and ciphertext.
+  - The encrypted keyfile metadata is less extensively MAC-bound than ARC v2
+    seed metadata.
+  - The decrypted keyfile bytes exist in browser memory during import.
+  - The encrypted keyfile password is separate from the BIP39 wallet passphrase.
+
+
+Derived Output Exports
+----------------------
+
+Derived JSON, CSV, TXT, and PDF exports are plaintext secret-bearing artifacts.
+
+They can contain:
+
+  - root extended private keys
+  - account extended private keys
+  - private_key_hex
+  - private_key_wif
+  - taproot private keys
+  - Stellar secret material
+  - Monero private spend/view keys
+  - Cardano payment and stake private keys
+  - XRP private keys
+
+JSON is the most complete export. CSV and TXT flatten or display fields. PDF is
+optimized for human reading and clips long cells in the table, while extended
+keys are printed separately when present.
+
+Operational rules:
+
+  - Export only the format needed.
+  - Prefer deriving a narrow range.
+  - Do not email, cloud-sync, or chat-share exports.
+  - Delete temporary exports after use.
+  - Remember that PDF files may be indexed by desktop search tools.
+  - Remember that browser downloads may persist in download history.
+
+
+QR Export Boundary
+------------------
+
+QR export is designed for address payloads, not seeds or private keys.
+
+v1.6.0 behavior:
+
+  - QR modal accepts a user-entered address.
+  - XRP r-address input prompts for an optional destination tag.
+  - XRP QR payload is address + "?dt=" + tag-or-00000.
+  - Non-XRP QR payloads may add coin URI schemes.
+  - Cardano QR payload is the raw address.
+  - Save PNG writes qr_<sanitized-address>.png.
+  - Copy Address copies the address input, not necessarily the full QR label.
+
+Operational risks:
+
+  - Address QR codes can link wallet activity when scanned by online services.
+  - XRP destination tags are operational payment metadata and must be verified
+    with the receiving service.
+  - QR PNG files can persist in downloads, photo libraries, or synced folders.
+
+Never encode seed words or private keys in the QR modal.
+
+
+Clipboard Boundary
+------------------
+
+Copy Seed:
+
+  - Shows a confirmation prompt.
+  - Copies normalized mnemonic words joined by spaces.
+  - Displays a 60-second countdown.
+  - Attempts to clear the clipboard by writing an empty string.
+
+Constants:
+
+  CLIPBOARD_CLEAR_SECS = 60
+
+Fallback copy path:
+
+  If navigator.clipboard.writeText is unavailable, the app creates a temporary
+  textarea, selects it, calls document.execCommand("copy"), and removes it.
+
+Limitations:
+
+  - Clipboard managers can retain history.
+  - Cloud clipboard sync can copy secrets to other devices.
+  - Remote desktop software can observe clipboard data.
+  - Some operating systems or browsers may reject clipboard clearing.
+  - Clearing the clipboard does not erase prior clipboard-manager records.
+
+Operational rule:
+
+  Treat clipboard use as an explicit secret export.
+
+
+Idle Timeout and Clear All
+--------------------------
+
+Constants:
+
+  IDLE_TIMEOUT_MS = 5 * 60 * 1000
+  warning time = 60 seconds before timeout
+
+Events that reset the timer:
+
+  mousedown
+  keydown
+  touchstart
+  scroll
+
+At warning:
+
+  Banner:
+      Idle timeout in 60 seconds. All fields will be cleared.
+
+At timeout:
+
+  handleClearAll()
+  Banner:
+      Session cleared due to inactivity.
+
+Clear All behavior:
+
+  - clears imported seed state
+  - clears mnemonic textarea
+  - clears word-grid inputs
+  - removes valid/invalid classes from mnemonic inputs
+  - clears BIP39 passphrase input
+  - clears raw output textarea
+  - clears root fingerprint display
+  - resets output view
+  - sets lastDerivedOutput = null
+  - reports "All fields cleared."
+
+Limitations:
+
+  Clear All does not guarantee erasure from JavaScript engine internals,
+  browser process memory, WebCrypto internals, OS swap, hibernation files,
+  crash dumps, GPU/compositor memory, clipboard managers, download history, or
+  already-saved files.
+
+
+Browser Runtime Risk
+--------------------
+
+Arculus_Recovery.html is a local offline browser application, but browser
+runtimes are not hardened secret vaults.
+
+Risks:
+
+  - JavaScript strings cannot be reliably zeroized.
+  - Browser extensions may observe page content.
+  - Developer tools can inspect memory and DOM state.
+  - Autofill, history, screenshots, accessibility tools, and crash reporters
+    can retain data depending on environment.
+  - Downloads and object URLs are explicit egress paths.
+  - The browser profile may sync settings or metadata.
+
+Controls:
+
+  - Use a clean browser profile.
+  - Disable extensions.
+  - Disable sync.
+  - Avoid developer tools.
+  - Prefer a live OS for high-value sessions.
+  - Close the browser after use.
+
+
+Tauri Native Save Risk
+----------------------
+
+When running inside a Tauri wrapper, saveBlob can pass file content to a native
+save bridge as base64:
+
+  save_export(filename, contentBase64)
+
+Operational consequences:
+
+  - Secret-bearing exports cross from the webview into native code.
+  - The native layer may write to paths outside browser downloads.
+  - The UI may display "Export saved to <path>".
+  - Native export failure is reported and logged to console.
+
+Treat Tauri native save paths as normal filesystem writes of the underlying
+secret-bearing artifact.
+
+
+Storage Media
+-------------
+
+Recommended:
+
+  - encrypted removable media
+  - write-once archival media for finalized backups where appropriate
+  - physically separate storage for .arc, keyfile, and password
+  - printed or engraved password backups for high-value offline storage
+
+Avoid:
+
+  - cloud-synced folders
+  - email attachments
+  - chat uploads
+  - unencrypted USB drives
+  - daily-use Downloads folders
+  - network shares
+  - managed corporate endpoints
+
+SSD warning:
+
+  Secure deletion on SSDs is not reliable because of wear leveling and spare
+  blocks. Avoid writing plaintext secrets to SSDs rather than relying on later
+  deletion.
+
+
+Verification Before Funds Movement
+----------------------------------
+
+Before sweeping, importing, or moving funds:
+
+  - Confirm coin.
+  - Confirm network is mainnet if intended.
+  - Confirm BIP39 passphrase.
+  - Confirm derivation path.
+  - Confirm script type.
+  - Confirm address index range.
+  - Compare at least one known historical address.
+  - For UTXO assets, check receiving and change branches.
+  - For XRP, confirm destination tag requirements separately.
+  - For Stellar, confirm memo requirements separately.
+  - For Ethereum/ERC-20, confirm chain/network in the destination wallet.
+
+Never conclude that a seed is empty until plausible alternate paths and change
+branches have been checked.
+
+
+Incident Response
+-----------------
+
+If a mnemonic was exposed:
+
+  1. Assume all assets controlled by that mnemonic are at risk.
+  2. Use a clean offline environment to derive needed keys.
+  3. Move funds to a new seed generated on trusted hardware/software.
+  4. Do not reuse the exposed seed.
+
+If an account extended private key was exposed:
+
+  1. Treat all descendants below that account as compromised.
+  2. Move funds from affected paths.
+  3. Do not keep using that account subtree.
+
+If a single private key was exposed:
+
+  1. Move funds from that address.
+  2. For UTXO wallets, consider address reuse and change-output exposure.
+
+If a protected .arc file was exposed:
+
+  1. Evaluate credential entropy.
+  2. If the credential was weak or reused, treat the mnemonic as compromised.
+  3. If using Keyfile mode, determine whether the keyfile was also exposed.
+  4. If using combined mode, determine whether both factors were exposed.
+  5. Re-export with stronger credentials if the mnemonic remains trusted.
+
+If a raw keyfile was exposed:
+
+  1. Treat any .arc protected only by that keyfile as exposed if the .arc file
+     is also accessible to the attacker.
+  2. Re-export affected .arc files with a new keyfile or combined mode.
+
+If an encrypted keyfile was exposed:
+
+  1. Evaluate encrypted-keyfile password entropy.
+  2. If weak, generate a new keyfile and re-export.
+
+
+Disposal Procedure
+------------------
+
+After recovery:
+
+  - Close the QR modal.
+  - Clear visible seed and output state.
+  - Delete unneeded derived exports.
+  - Empty browser downloads only if doing so is meaningful for the storage
+    medium.
+  - Remove temporary files from removable media.
+  - Power down the offline system.
+  - Store required backups in separate physical locations.
+
+For high-value sessions, prefer destroying the live session by full power-off
+rather than trusting in-app clearing.
+
+
+Minimum Acceptable Handling by Artifact
+---------------------------------------
+
+Protected .arc:
+
+  Store on encrypted removable media. Store password/keyfile separately.
+
+Unprotected .arc:
+
+  Store only like a raw mnemonic. Avoid except for controlled test/offline use.
+
+Raw keyfile:
+
+  Store like a high-value secret. Separate from .arc.
+
+Encrypted keyfile:
+
+  Store separately from .arc and password. Use a high-entropy password.
+
+Derived JSON/CSV/TXT/PDF:
+
+  Treat as plaintext private-key export. Delete after use unless there is a
+  deliberate archival reason.
+
+QR PNG:
+
+  Treat as address metadata. Avoid cloud photo sync and public sharing if wallet
+  privacy matters.
+
+Printed notes:
+
+  Store in tamper-evident physical controls. Separate mnemonic, passphrase,
+  .arc credential, and keyfile where possible.
+
+
+Operator Checklist
+------------------
+
+Before entering a real seed:
+
+  - v1.6.0 build confirmed
+  - offline state confirmed
+  - clean browser/profile confirmed
+  - no extensions or sync
+  - private physical environment
+  - intended path/coin/range known
+  - output destination selected
+
+Before exporting:
+
+  - mnemonic checksum valid
+  - root fingerprint checked if available
+  - BIP39 passphrase checked
+  - credential mode chosen intentionally
+  - export type understood
+
+Before ending:
+
+  - import-tested any new .arc backup
+  - copied required keyfile/password material
+  - deleted unneeded plaintext exports
+  - Clear All executed
+  - app closed
+  - offline machine powered down
+
+
+Non-Negotiable Warnings
+-----------------------
+
+  - A protected .arc is only as strong as the credential needed to open it.
+  - A raw keyfile plus its .arc is equivalent to the ability to recover the
+    mnemonic.
+  - A derived-output JSON file can be more immediately dangerous than a
+    protected .arc because it may contain private keys in plaintext.
+  - The BIP39 wallet passphrase is not saved in the .arc file.
+  - UI masking is not memory erasure.
+  - Clipboard clearing is best effort.
+  - Browser offline operation is necessary but not sufficient on a compromised
+    machine.
+  - Wrong derivation settings produce valid wrong addresses.
+
+
+Airgap Preparation Detail
+-------------------------
+
+For high-value sessions, perform these checks before opening the HTML file:
+
+  - Remove Ethernet cables physically.
+  - Disable Wi-Fi in firmware or hardware controls where possible.
+  - Disable Bluetooth in firmware or hardware controls where possible.
+  - Remove USB network adapters.
+  - Disable cellular modems.
+  - Use a local copy of Arculus_Recovery.html, not a remote URL.
+  - Confirm the browser did not restore prior tabs into online services.
+  - Confirm password managers and form-fill extensions are disabled.
+  - Confirm no cloud storage client is syncing the working directory.
+
+The navigator.onLine indicator can be wrong in both directions. It can report
+offline when a specialized route exists, and it can report online due to local
+network conditions. Treat it as a reminder, not an attestation.
+
+
+Live OS Guidance
+----------------
+
+The preferred high-value environment is a live operating system that does not
+write session state to persistent storage.
+
+Recommended properties:
+
+  - no persistent home directory
+  - no swap partition
+  - hibernation disabled
+  - browser profile created fresh for the session
+  - no browser sync
+  - no extensions
+  - no network autoconnect
+
+If a live OS is not available, use a dedicated offline machine. A dedicated
+machine is still weaker than a live OS if it has persistent storage, because
+secrets can survive in swap, browser cache, crash dumps, filesystem journals,
+thumbnails, or search indexes.
+
+
+Password Entropy Guidance
+-------------------------
+
+Use high-entropy credentials for protected .arc files and encrypted keyfiles.
+
+Unacceptable:
+
+  - one dictionary word
+  - names
+  - dates
+  - phone numbers
+  - addresses
+  - keyboard patterns
+  - reused website passwords
+  - short phrases from memory
+  - PINs
+
+Acceptable:
+
+  - randomly generated multi-word passphrase from a large wordlist
+  - randomly generated long character string
+  - password-manager-generated secret recorded offline
+
+The KDF slows each guess. It does not make a predictable password safe. A
+captured protected .arc file can be tested offline without interacting with the
+original machine.
+
+
+Backup Separation Patterns
+--------------------------
+
+Password mode:
+
+  Location A:
+      protected .arc
+
+  Location B:
+      password record
+
+  Optional Location C:
+      BIP39 wallet passphrase record if used
+
+Keyfile mode:
+
+  Location A:
+      protected .arc
+
+  Location B:
+      raw keyfile
+
+  Optional Location C:
+      BIP39 wallet passphrase record if used
+
+Combined mode:
+
+  Location A:
+      protected .arc
+
+  Location B:
+      keyfile or encrypted keyfile
+
+  Location C:
+      combined-mode password
+
+  Optional Location D:
+      BIP39 wallet passphrase record if used
+
+Do not store all factors in one bag, one cloud account, one password manager
+entry, one USB drive, or one safe if the threat model includes theft of that
+container.
+
+
+Validation of New Backups
+-------------------------
+
+Every newly created seed backup must be tested before it is trusted.
+
+Protected .arc validation:
+
+  1. Export protected .arc.
+  2. Clear the current session or open a fresh offline session.
+  3. Import the .arc with the intended credential.
+  4. Confirm BIP39 validation succeeds.
+  5. Confirm the root fingerprint matches the pre-export session.
+  6. Confirm at least one expected address derives.
+
+Keyfile validation:
+
+  1. Verify the stored keyfile can be selected and read.
+  2. Verify encrypted keyfiles decrypt with the recorded password.
+  3. Verify the keyfile opens the protected .arc.
+
+Failure to test a backup is equivalent to not having a backup.
+
+
+Handling Legacy Files
+---------------------
+
+v1.6.0 can import older seed formats. Legacy import support is for migration,
+not for continued archival use.
+
+After importing a legacy .arc:
+
+  1. Confirm the mnemonic and root fingerprint.
+  2. Export a new protected v1.6.0 .arc.
+  3. Test import of the new file.
+  4. Retire the legacy file according to the sensitivity of the original
+     storage medium.
+
+Legacy files may have lower KDF cost or weaker metadata authentication. Keeping
+them indefinitely preserves the older risk profile.
+
+
+Printing and Paper Handling
+---------------------------
+
+Printing derived outputs or recovery material changes the risk from digital
+storage to physical custody.
+
+Rules:
+
+  - Do not print from a networked printer.
+  - Do not use office or shared printers.
+  - Do not print through cloud print services.
+  - Verify printer memory and job history behavior if possible.
+  - Retrieve pages immediately.
+  - Destroy misprints.
+  - Store paper in tamper-evident physical controls.
+
+PDF export is not encrypted. Printing a PDF does not erase the PDF file.
+
+
+Camera and Optical Risks
+------------------------
+
+Seed words, private keys, QR codes, and addresses can be captured optically.
+
+Controls:
+
+  - Cover laptop cameras if not needed.
+  - Remove phones and smart watches from the workspace.
+  - Avoid rooms with security cameras.
+  - Avoid reflective surfaces facing the display.
+  - Do not use video calls during recovery.
+  - Do not create screenshots as notes.
+
+QR images are easy to scan at a distance when shown full-size. Treat QR display
+as public disclosure of the payload.
+
+
+Multi-Asset Recovery Planning
+-----------------------------
+
+When recovering wallets that may contain multiple coins:
+
+  - Work one coin at a time.
+  - Record derivation settings used for each coin.
+  - Verify addresses before exporting private keys.
+  - Avoid exporting all coins if only one asset needs recovery.
+  - Avoid mixing test mnemonics and real mnemonics in the same session.
+  - Clear state between unrelated recoveries.
+
+The blast radius of a full JSON export is larger than the blast radius of a
+single address private key. Choose the smallest artifact that completes the
+recovery.
+
+
+Audit Trail Without Secret Leakage
+----------------------------------
+
+For operational records, keep non-secret metadata separate from secrets.
+
+Safe-ish metadata to record:
+
+  - app version v1.6.0
+  - date of backup creation
+  - coin
+  - derivation path
+  - script type
+  - address count or range
+  - root fingerprint
+  - storage location labels
+
+Do not include:
+
+  - mnemonic
+  - BIP39 passphrase
+  - .arc password
+  - keyfile bytes
+  - private keys
+  - xprv values
+  - screenshots of the app
+
+Even public addresses can be privacy-sensitive. If privacy matters, record only
+the minimum needed to reproduce the recovery.
+
+
+End-State Decision
+------------------
+
+After an emergency recovery, decide whether the original seed remains trusted.
+
+Keep using the seed only if:
+
+  - it was never exposed outside the intended offline environment
+  - no plaintext private-key exports were mishandled
+  - no weak .arc credential was exposed with the .arc file
+  - no malware or physical observer risk was discovered
+
+Retire the seed if:
+
+  - mnemonic was copied to a networked clipboard
+  - derived JSON/PDF with broad private material was uploaded or synced
+  - a raw keyfile and protected .arc were both exposed
+  - a weak password protected an exposed .arc
+  - the recovery was performed on a machine later believed compromised
+
+Seed retirement means moving funds to a newly generated wallet under a new
+mnemonic and new backup set.

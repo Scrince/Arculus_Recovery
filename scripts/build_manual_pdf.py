@@ -284,7 +284,7 @@ def header_footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Helvetica", 7)
     canvas.setFillColor(colors.HexColor("#6B7280"))
-    canvas.drawString(doc.leftMargin, 0.45 * inch, "Arculus Recovery v1.5.0 User Guide")
+    canvas.drawString(doc.leftMargin, 0.45 * inch, "Arculus Recovery v1.6.0 User Guide")
     canvas.drawRightString(letter[0] - doc.rightMargin, 0.45 * inch, f"Page {doc.page}")
     canvas.restoreState()
 
@@ -298,13 +298,13 @@ def build():
         leftMargin=0.65 * inch,
         topMargin=0.65 * inch,
         bottomMargin=0.65 * inch,
-        title="Arculus Recovery v1.5.0 User Guide",
+        title="Arculus Recovery v1.6.0 User Guide",
         author="Arculus Recovery",
     )
 
     story = [
         Spacer(1, 1.35 * inch),
-        Paragraph("Arculus Recovery v1.5.0", styles["title"]),
+        Paragraph("Arculus Recovery v1.6.0", styles["title"]),
         Paragraph("User Guide and Technical Reference", styles["subtitle"]),
         Paragraph(
             "Offline BIP39/BIP32 recovery, encrypted seed backup, QR export, "
@@ -318,7 +318,7 @@ def build():
                 ["Desktop GUI", "PySide6 WebEngine wrapper"],
                 ["Desktop Package", "Tauri wrapper with native export bridge"],
                 ["CLI", "Python derivation and export interface"],
-                ["Generated", "June 7, 2026"],
+                ["Generated", "June 14, 2026"],
             ],
             colWidths=[1.6 * inch, 4.7 * inch],
             style=TableStyle(

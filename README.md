@@ -1,78 +1,81 @@
 # Arculus Recovery
 
-Arculus Recovery is an offline BIP39/BIP32 recovery and key-derivation tool for Arculus-compatible recovery work and general HD wallet inspection. It can validate or generate BIP39 mnemonics, derive addresses and private keys, import or export encrypted `.arc` seed backups, and export derived results without contacting any server.
+Arculus Recovery is an offline seed recovery, deterministic key derivation, and encrypted seed-backup tool. The canonical v1.6.0 application is [Arculus_Recovery.html](/T:/Arculus_Recovery/Arculus_Recovery.html): a standalone browser file that validates or generates BIP39 mnemonics, derives wallet addresses and private keys, imports or exports `.arc` seed backups, exports derived material, and generates address QR codes without contacting a server.
 
-The canonical app is the standalone `Arculus_Recovery.html` file. The PySide6 and Tauri desktop apps package that same HTML interface. The Python CLI uses the Python derivation engine for scripted recovery sessions.
+Use this tool only on a trusted offline machine. It handles seed phrases, BIP39 passphrases, private keys, extended private keys, WIF keys, Monero spend/view keys, Stellar secret seeds, Cardano private keys, and plaintext export files.
 
-## Release Channels
+## Current Build
 
-- `Arculus_Recovery.html` is the current promoted v1.6.0 HTML release.
-- `Arculus_Recovery_LTS.html` keeps the previous long-term-support HTML build.
-- `Arculus_Recovery.py` is the compatibility launcher for the PySide6 GUI and CLI.
-- `releases/tauri/` contains locally built desktop artifacts when present.
+| Surface | Current role |
+| --- | --- |
+| `Arculus_Recovery.html` | Canonical v1.6.0 standalone HTML app and source of truth |
+| `Arculus_Recovery_LTS.html` | Previous long-term-support HTML copy |
+| `src/arculus_recovery/assets/Arculus_Recovery.html` | Packaged HTML asset used by Python/Tauri preparation flows |
+| `Arculus_Recovery.py` | Compatibility launcher for Python GUI and CLI |
+| Python CLI | Scripted derivation/export compatibility surface for the v1.6.0 coin set |
+| PySide6 GUI | Desktop wrapper around the packaged HTML asset |
+| Tauri wrapper | Desktop WebView wrapper with native save bridge |
 
-Use the current project files as a set. Do not mix a new HTML file with an older `src/`, packaged asset, or desktop wrapper.
+Do not mix files from different releases. The root HTML, packaged assets, Python package, Tauri wrapper, documentation, and release artifacts should be treated as one build set.
 
-## Safety First
+## Safety Rules
 
-Use this tool offline on a trusted machine.
+1. Verify hashes before entering real seed material.
+2. Disconnect Wi-Fi, Ethernet, Bluetooth, sync tools, and remote access.
+3. Use a clean browser profile or live operating system when practical.
+4. Do not paste seed phrases or private keys into online pages, chat systems, or hosted tools.
+5. Export only what you need, store exports on encrypted media, then click **Clear All** and close the app.
 
-1. Verify file hashes before using real seed material.
-2. Disconnect Ethernet, Wi-Fi, Bluetooth, and any other network interfaces.
-3. Use a clean browser profile or a live operating system where practical.
-4. Never share a seed phrase, BIP39 passphrase, `.arc` password, private key, WIF key, or derived export.
-5. Click **Clear All** and close the app when finished.
+No local recovery tool can protect secrets from malware, keyloggers, browser extensions, screen capture, clipboard monitors, firmware compromise, or an already-compromised operating system.
 
-No recovery tool can protect secrets from malware, keyloggers, screen capture, clipboard monitors, or an already-compromised operating system.
+## v1.6.0 HTML Features
 
-## Main Features
-
-- BIP39 validation for 12-word and 24-word English mnemonics
-- Cryptographically random 12-word or 24-word mnemonic generation
-- Numbered word grid with inline word-list feedback
-- Hidden-seed workflow for generated, imported, and manually entered seeds
+- 12-word and 24-word BIP39 English mnemonic validation
+- CSPRNG-based 12-word and 24-word mnemonic generation
+- Numbered word grid and normalized textarea input
+- Hidden-seed workflow for generated, imported, and successfully derived manually entered seeds
 - Press-and-hold seed reveal
-- Root fingerprint display for verification
-- Address derivation for Bitcoin, Litecoin, Dogecoin, Ethereum / ERC-20, and XRP
-- Bitcoin, Litecoin, and Dogecoin support for P2PKH, P2WPKH-P2SH, and P2WPKH
-- Taproot / BIP86 support where enabled by the selected coin
-- Ethereum EIP-55 account addresses
-- XRP classic `r...` addresses
-- Encrypted `.arc` seed export/import
-- Derived-output export as JSON, CSV, TXT, or PDF
-- Self-contained QR export with XRP destination-tag handling
+- BIP39 passphrase support with root fingerprint display
+- Bitcoin, Bitcoin Cash, Litecoin, Dogecoin, Ethereum / ERC-20, Solana, Stellar, Monero, Cardano, and XRP derivation
+- P2PKH, P2WPKH-P2SH, P2WPKH, and P2TR address output where supported
+- Bitcoin Cash CashAddr output with legacy Base58 toggle
+- Ethereum EIP-55 checksummed addresses
+- XRP classic addresses, with QR destination-tag prompt
+- SLIP-0010 Ed25519 derivation for Solana, Stellar, and Monero
+- Cardano Icarus/CIP-1852 Shelley base address derivation
+- Encrypted and unprotected `.arc` seed import/export
+- Password, keyfile, and keyfile + password `.arc` protection modes
+- JSON, CSV, TXT, and PDF derived-output export
+- Self-contained QR encoder and PNG export
 - Light, Dark, Dark+, and Terminal themes
-- Tauri desktop save bridge for native file export in packaged builds
+- Five-minute idle timeout with visible one-minute warning
 
 ## Quick Start
 
 ### Browser
 
-Open `Arculus_Recovery.html` directly in a browser:
+Open the canonical file directly:
 
 ```text
 Arculus_Recovery.html
 ```
 
-The file is self-contained. Runtime use does not require npm, Python, Tauri, `vendor/`, a CDN, or network access.
+The browser app is local-file capable. Runtime recovery use does not require npm, Python, Tauri, a CDN, or internet access.
 
 ### Python GUI
-
-Install the GUI dependency, then launch the desktop wrapper:
 
 ```bash
 python -m pip install -r requirements.txt
 python Arculus_Recovery.py --gui
 ```
 
-The GUI renders the canonical HTML app in PySide6 WebEngine.
+The GUI uses PySide6 WebEngine to render the packaged HTML asset.
 
 ### Python CLI
 
-CLI mode does not require the GUI extra when installed as a package:
-
 ```bash
 python -m pip install .
+python Arculus_Recovery.py --help
 ```
 
 Example:
@@ -87,126 +90,121 @@ python Arculus_Recovery.py \
   --output-format json
 ```
 
-Important CLI flags:
+CLI coin support is currently `bitcoin`, `bitcoincash`, `litecoin`, `dogecoin`, `ethereum`, `solana`, `stellar`, `monero`, `cardano`, and `xrp`.
 
-| Flag | Description |
-| --- | --- |
-| `--gui` | Launch the PySide6 desktop GUI |
-| `--mnemonic` | BIP39 mnemonic, quoted as one string |
-| `--passphrase` | Optional BIP39 passphrase |
-| `--derivation` | Account-level BIP32 path |
-| `--all-common` | Derive common purpose paths for the selected coin |
-| `--script-type` | `auto`, `p2pkh`, `p2wpkh-p2sh`, `p2wpkh`, or `p2tr` |
-| `--count` | Address count per branch |
-| `--coin` | `bitcoin`, `litecoin`, `dogecoin`, `ethereum`, or `xrp` |
-| `--testnet` | Enable supported testnet parameters |
-| `--output-format` | `json`, `csv`, or `txt` |
-| `--version` | Print the Python core version |
+## Default HTML v1.6.0 Paths
 
-## Recovery Workflow
+The canonical HTML app and upgraded Python CLI support the full v1.6.0 coin set
+below.
 
-1. Start the app on an offline machine.
-2. Enter a 12-word or 24-word mnemonic, generate one, or import an encrypted `.arc` file.
-3. Validate the mnemonic and resolve any word-list or checksum errors.
-4. Enter the BIP39 passphrase only if the wallet used one.
-5. Choose the coin, path, script type, count, and range.
-6. Derive keys and addresses.
-7. Verify the root fingerprint or at least one known address before exporting.
-8. Export only the material you need.
-9. Store exports on encrypted media and clear the session.
+| Coin | Internal ID | Default path | Notes |
+| --- | --- | --- | --- |
+| Bitcoin | `bitcoin` | `m/0'` | Arculus-native default; UI initially selects P2WPKH |
+| Bitcoin Cash | `bitcoincash` | `m/0'` | Default CashAddr, optional legacy Base58 |
+| Litecoin | `litecoin` | `m/84'/2'/0'` | Native SegWit default |
+| Dogecoin | `dogecoin` | `m/44'/3'/0'` | P2PKH default |
+| Ethereum / ERC-20 | `ethereum` | `m/44'/60'/0'` | ERC-20 tokens use same account address |
+| Solana | `solana` | `m/44'/501'/0'` | SLIP-0010 Ed25519 |
+| Stellar | `stellar` | `m/44'/148'/0'` | StrKey public and secret seed output |
+| Monero | `monero` | `m/44'/128'/0'` | Mainnet standard address output |
+| Cardano | `cardano` | `m/1852'/1815'/0'/0/0` | Shelley base address output |
+| XRP | `xrp` | `m/44'/144'/0'` | Destination tags are not derived |
 
-The `.arc` decryption password and the BIP39 passphrase are separate secrets. Decrypting a `.arc` file restores the mnemonic only; any BIP39 passphrase must still be entered for derivation.
+Auto script selection uses the first purpose component: `49'` -> P2WPKH-P2SH, `84'` -> P2WPKH, `86'` -> P2TR, otherwise P2PKH. Ethereum and XRP ignore UTXO script type and use account-address logic. Solana, Stellar, Monero, and Cardano use their coin-specific Ed25519-family derivation flows.
 
-## Default Paths
+## `.arc` Seed Backups
 
-| Coin | Default path | Notes |
-| --- | --- | --- |
-| Bitcoin | `m/0'` | Arculus-native default |
-| Litecoin | `m/84'/2'/0'` | Native SegWit default |
-| Dogecoin | `m/44'/3'/0'` | Legacy BIP44 default |
-| Ethereum / ERC-20 | `m/44'/60'/0'` | ERC-20 tokens use the same account address |
-| XRP | `m/44'/144'/0'` | Destination tags are not derived |
-
-Common UTXO account paths:
-
-| Purpose | Script type | Bitcoin | Litecoin | Dogecoin |
-| --- | --- | --- | --- | --- |
-| BIP44 | P2PKH | `m/44'/0'/0'` | `m/44'/2'/0'` | `m/44'/3'/0'` |
-| BIP49 | P2WPKH-P2SH | `m/49'/0'/0'` | `m/49'/2'/0'` | `m/49'/3'/0'` |
-| BIP84 | P2WPKH | `m/84'/0'/0'` | `m/84'/2'/0'` | `m/84'/3'/0'` |
-| BIP86 | P2TR | `m/86'/0'/0'` | `m/86'/2'/0'` | Not supported |
-
-Use `Auto` script type when deriving standard BIP44, BIP49, BIP84, or BIP86 paths. If recovering a wallet created outside Arculus, match that wallet's path and script type before relying on output.
-
-## Encrypted `.arc` Files
-
-Current exports use the armored `ARCULUS-ARC-V2` format:
+Current v1.6.0 exports are armored text files:
 
 ```text
 ARCULUS-ARC-V2
 <base64 compact JSON bundle>
 ```
 
-High-level properties:
+Protected ARC V2 properties:
 
-- Passwords are Unicode NFKD-normalized before key derivation.
-- PBKDF2-HMAC-SHA512 derives a 64-byte master key from a 32-byte random salt.
-- New exports use 1,000,000 KDF iterations.
-- Version 2 imports with at least 600,000 iterations remain supported.
-- Encryption and authentication keys are separated with HMAC-SHA512 labels.
-- Plaintext is encrypted with an HMAC-SHA512 counter stream and authenticated with HMAC-SHA512.
-- New exports are readable by both the browser app and Python implementation.
+- 32-byte random salt
+- 24-byte random nonce
+- PBKDF2-HMAC-SHA512 with 1,000,000 iterations for new exports
+- minimum accepted ARC V2 iteration count of 600,000
+- HMAC-SHA512-labeled encryption and authentication key separation
+- HMAC-SHA512 counter stream named `HMAC-SHA512-CTR`
+- HMAC-SHA512 MAC over typed metadata, salt, nonce, and ciphertext
 
-Supported import formats include current armored V2, raw JSON V2, legacy Python V1, legacy headerless XOR-HMAC files, and browser V1 AES-GCM files in the browser implementation.
+Protection modes:
+
+- Password: password string after Unicode NFKD normalization
+- Keyfile: 64 random keyfile bytes encoded into an `arc-keyfile-v1:` secret
+- Keyfile + Password: encrypted keyfile plus `arc-combined-v1:` SHA-256 secret binding
+- Unprotected: plaintext mnemonic JSON inside `.arc` armor, for controlled test/offline handling only
+
+The `.arc` file stores the mnemonic only. It does not store the BIP39 passphrase.
+
+## Derived Exports
+
+| Format | Filename | Contents |
+| --- | --- | --- |
+| JSON | `Arculus_Derived_Keys_Addresses.json` | Full structured object and nested key/address material |
+| CSV | `Arculus_Derived_Keys_Addresses.csv` | Flattened address rows |
+| TXT | `Arculus_Derived_Keys_Addresses.txt` | Human-readable deterministic text report |
+| PDF | `Arculus_Key_Export_<Coin>.pdf` | jsPDF A4 landscape export with extended keys and address table |
+| QR PNG | `qr_<sanitized_address>.png` | Address URI QR image only |
+
+JSON, CSV, TXT, and PDF exports can contain private keys. Treat them as critical secrets.
 
 ## Documentation
 
-The PDF manual is generated from the text files in `docs/`:
+The text files in `docs/` are byte-level v1.6.0 specifications:
 
 - `docs/UserGuide.txt`
-- `docs/Recovery.txt`
-- `docs/OpSec.txt`
-- `docs/Passphrase.txt`
 - `docs/FileFormat.txt`
 - `docs/Encryption.txt`
 - `docs/Derivation.txt`
 - `docs/QR.txt`
+- `docs/Passphrase.txt`
+- `docs/Recovery.txt`
+- `docs/OpSec.txt`
 - `docs/TestVectors.txt`
-- `docs/Notice.txt`
 
-Build the manual with ReportLab:
-
-```bash
-python -m pip install reportlab
-python scripts/build_manual_pdf.py
-```
-
-Generated output:
+The generated manual is:
 
 ```text
 docs/Arculus_Recovery_Manual.pdf
 ```
 
-## Screenshots
+Build it with:
 
-![Main recovery workspace](docs/screenshots/arculus-main-recovery.png)
+```bash
+python scripts/build_manual_pdf.py
+```
 
-![Derived output table](docs/screenshots/arculus-derived-output.png)
+If your system Python lacks ReportLab, use the bundled Codex runtime or install the dependency in an isolated environment.
 
-![QR export modal](docs/screenshots/arculus-qr-export.png)
+## Tauri Build
 
-![Settings dialog](docs/screenshots/arculus-settings.png)
+Prepare assets:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\prepare-tauri-assets.ps1
+```
+
+or:
+
+```bash
+python scripts/prepare_tauri_assets.py
+```
+
+Build:
+
+```bash
+npm run tauri -- build
+```
+
+The Tauri wrapper uses the Rust `save_export` command and the `window.arculusTauriSaveExport` bridge for PDF, JSON, CSV, TXT, `.arc`, keyfile, and QR PNG saves.
 
 ## Hash Verification
 
-Verify source and documentation files before operational use. On macOS or Linux:
-
-```bash
-find Arculus_Recovery.html Arculus_Recovery_LTS.html Arculus_Recovery.py src vendor scripts src-tauri docs \
-  -type f ! -name '._*' ! -path '*/screenshots/*' -print0 | sort -z | xargs -0 shasum -a 256
-```
-
-On Windows PowerShell:
+Windows PowerShell:
 
 ```powershell
 Get-ChildItem -Recurse -File Arculus_Recovery.html,Arculus_Recovery_LTS.html,Arculus_Recovery.py,src,vendor,scripts,src-tauri,docs |
@@ -215,53 +213,19 @@ Get-ChildItem -Recurse -File Arculus_Recovery.html,Arculus_Recovery_LTS.html,Arc
   Get-FileHash -Algorithm SHA256
 ```
 
-Expected Windows release hashes for v1.6.0:
-
-| Artifact | SHA-256 |
-| --- | --- |
-| `releases/tauri/windows/arculus-recovery.exe` | `354B04845E543BE4050BCD256D4F918D1AB97995260AA0021253452D0E278878` |
-| `releases/tauri/windows/Arculus Recovery_1.6.0_x64-setup.exe` | `3CFAF01E9DB8EF245852BC84BBA17ADE99117981647E0419737CC9E33C590130` |
-| `releases/tauri/windows/Arculus Recovery_1.6.0_x64_en-US.msi` | `8AE9EB9873CD4805B4E641A4183AC0070E2129F8A3E4DCB039A97842A25B649E` |
-
-## Repository Layout
-
-| Path | Purpose |
-| --- | --- |
-| `Arculus_Recovery.html` | Current standalone HTML app |
-| `Arculus_Recovery_LTS.html` | Previous LTS HTML copy |
-| `Arculus_Recovery.py` | Python compatibility launcher |
-| `src/arculus_recovery/core.py` | Python derivation, export, encryption, and QR helpers |
-| `src/arculus_recovery/cli.py` | CLI argument handling |
-| `src/arculus_recovery/gui.py` | PySide6 WebEngine wrapper |
-| `src/arculus_recovery/assets/` | Packaged HTML and GUI assets |
-| `docs/` | Manual sources, references, screenshots, and generated PDF |
-| `vendor/jspdf/` | Vendored jsPDF source used for packaging support |
-| `src-tauri/` | Tauri v2 desktop wrapper |
-| `scripts/` | Manual and packaging build helpers |
-| `releases/` | Local release artifacts when built |
-
-## Tauri Builds
-
-Prepare assets on Windows:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\prepare-tauri-assets.ps1
-```
-
-Prepare assets on macOS or Linux:
+macOS/Linux:
 
 ```bash
-python3 scripts/prepare_tauri_assets.py
+find Arculus_Recovery.html Arculus_Recovery_LTS.html Arculus_Recovery.py src vendor scripts src-tauri docs \
+  -type f ! -name '._*' ! -path '*/screenshots/*' -print0 | sort -z | xargs -0 shasum -a 256
 ```
 
-Build from the Tauri project environment:
+Publish hashes for release artifacts with the exact build they came from. This repository currently contains v1.6.0 Windows installer artifacts and older v1.5.0 macOS DMGs.
 
-```bash
-cargo tauri build
-```
+## Repository Map
 
-The packaged WebView uses `window.arculusTauriSaveExport` and the Rust `save_export` command for PDF, JSON, CSV, TXT, `.arc`, and QR PNG saves. Keep `src-tauri/capabilities/default.json` and `src-tauri/permissions/export.toml` in place when rebuilding desktop artifacts.
+See [RepoTree.txt](/T:/Arculus_Recovery/RepoTree.txt) for the current root tree.
 
-## Release Notes
+## License
 
-Use `CHANGELOG.md` for version history and release preparation notes. For v1.6.0, upload desktop artifacts that match the final built version and refresh the release hash list before publishing.
+Project-specific source and documentation are MIT licensed. Vendored third-party components retain their own upstream notices and license terms. See [LICENSE.md](/T:/Arculus_Recovery/LICENSE.md).

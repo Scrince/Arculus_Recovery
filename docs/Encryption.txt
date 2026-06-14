@@ -1,201 +1,1769 @@
-Arculus Recovery v1.6.0 Encryption Subsystem Internals
-======================================================
+Arculus Recovery v1.6.0 - Encryption Subsystem Internals
+=========================================================
 
 Scope
 -----
 
-This document specifies the current .arc encrypted seed format at the byte and
-algorithm level. It covers the V2 key schedule, stream cipher, MAC transcript,
-and import/export behavior.
+This document is the byte-level specification of the seed-file and keyfile
+encryption subsystem implemented by Arculus_Recovery.html v1.6.0. It specifies
+the protected .arc envelope, the unprotected .arc envelope, raw keyfiles,
+encrypted keyfiles, the Keyfile + Password combined-secret mode, legacy import
+formats, key derivation, stream generation, authentication transcripts, import
+validation, and failure behavior.
+
+The encryption subsystem protects mnemonic storage at rest. It does not specify
+address derivation, BIP32 trees, Ed25519 trees, QR payloads, derived-output
+exports, or wallet passphrase semantics except where those concepts touch seed
+export/import. Those topics are specified in the other files in this directory.
+
+The current v1.6.0 implementation is the single-file browser build:
+
+  Arculus_Recovery.html
+
+Normative references to function names in this document refer to that file.
 
 
-Design Goals
-------------
+Design Constraints
+------------------
 
-  - No external cryptographic runtime dependency.
-  - Byte-compatible browser and Python implementations.
-  - Encrypt-then-MAC.
-  - MAC-bound metadata, including KDF parameters.
-  - Backward-compatible import for older .arc formats.
+The encryption subsystem is built under these constraints:
 
+  1. Browser-native cryptography only.
+     The canonical v1.6.0 HTML build uses WebCrypto primitives exposed through
+     crypto.subtle and random bytes from crypto.getRandomValues. It does not
+     require an external cryptographic package or network access.
 
-Current Format Summary
-----------------------
+  2. File formats must be inspectable and recoverable offline.
+     Protected files are text files. The outer armor is an ASCII header plus a
+     standard base64 body. Internal binary fields are standard base64 strings.
+     A future offline recovery implementation can parse them using only UTF-8,
+     JSON, base64, PBKDF2, HMAC, SHA-256, SHA-512, AES-GCM for legacy v1, and
+     byte-array operations.
 
-  Armor header:             ARCULUS-ARC-V2
-  Internal format ID:       arculus-encrypted-seed-v2
-  Version integer:          2
-  Password normalization:   Unicode NFKD, then UTF-8
-  KDF:                      PBKDF2-HMAC-SHA512
-  KDF output length:        64 bytes
-  New export iterations:    1000000
-  Minimum V2 import floor:  600000
-  Salt:                     32 random bytes
-  Nonce:                    24 random bytes
-  Cipher:                   HMAC-SHA512 counter stream
-  Authentication:           HMAC-SHA512
-  MAC length:               64 bytes
+  3. New protected seed exports use encrypt-then-MAC.
+     v1.6.0 protected .arc exports derive independent encryption and MAC keys
+     from PBKDF2-HMAC-SHA512, encrypt with an HMAC-SHA512 counter-mode stream,
+     and authenticate all cryptographic metadata before decryption.
 
+  4. The current format must reject downgrade attempts.
+     The v2 MAC commits to the KDF algorithm, KDF hash, iteration count, cipher
+     name, salt, nonce, ciphertext, magic string, format string, version, and
+     creation timestamp. v2 imports reject KDF iteration counts below 600000.
 
-Constants
----------
+  5. Credential modes are operational wrappers around the same .arc envelope.
+     Password, Keyfile, and Keyfile + Password all ultimately produce a secret
+     string. That string is passed to the same ARC v2 seed-file key schedule.
 
-  ARC_MAGIC                 = "ARCULUS-ARC"
-  ARC_ARMOR_HEADER          = "ARCULUS-ARC-V2"
-  ARC_V2_FORMAT             = "arculus-encrypted-seed-v2"
-  ARC_V2_VERSION            = 2
-  ARC_V2_KDF_NAME           = "PBKDF2"
-  ARC_V2_KDF_HASH           = "SHA-512"
-  ARC_V2_KDF_ITERATIONS     = 1000000
-  ARC_V2_MIN_KDF_ITERATIONS = 600000
-  ARC_V2_SALT_BYTES         = 32
-  ARC_V2_NONCE_BYTES        = 24
-  ARC_V2_MAC_BYTES          = 64
-  ARC_V2_MASTER_KEY_BYTES   = 64
-  ARC_V2_CIPHER_NAME        = "HMAC-SHA512-CTR"
-
-Domain labels:
-
-  ENC_LABEL    = b"Arculus ARC v2 encryption key"
-  MAC_LABEL    = b"Arculus ARC v2 authentication key"
-  STREAM_LABEL = b"Arculus ARC v2 stream\x00"
-  MAC_PREFIX   = b"Arculus ARC v2 MAC"
+  6. The wallet passphrase is separate.
+     The BIP39 passphrase field changes wallet derivation. It is not the .arc
+     encryption password and is not stored in protected .arc plaintext.
 
 
-Plaintext Payload
------------------
+Terminology
+-----------
 
-The encrypted plaintext is compact UTF-8 JSON:
+The following terms are used exactly:
+
+  mnemonic:
+      The BIP39 English recovery phrase, normalized as 12 or 24 lower-case
+      words separated by U+0020 SPACE before encryption.
+
+  wallet passphrase:
+      The optional BIP39 passphrase used by BIP39 seed stretching. This is a
+      derivation parameter, not an .arc encryption password.
+
+  .arc password:
+      The secret string passed into ARC v2 seed-file encryption. Depending on
+      UI mode, this may be a human password, a keyfile-derived secret string,
+      or a combined keyfile+password secret string.
+
+  raw keyfile:
+      A JSON or base64 file containing random bytes. v1.6.0-generated raw
+      keyfiles contain 64 bytes.
+
+  encrypted keyfile:
+      A JSON file containing a password-encrypted raw keyfile payload. It is
+      protected independently from the .arc file.
+
+  ARC v2:
+      The current protected seed-file format with magic "ARCULUS-ARC", format
+      "arculus-encrypted-seed-v2", and armor header "ARCULUS-ARC-V2".
+
+  plain .arc:
+      The unprotected seed-file format with format "arculus-plain-seed-v1".
+      It uses the same outer armor but has no encryption and no MAC.
+
+
+Byte Conventions
+----------------
+
+Unless a section states otherwise:
+
+  Text encoding:
+      UTF-8.
+
+  JSON encoding:
+      ECMAScript JSON as emitted by JSON.stringify in the HTML implementation.
+
+  Newline emitted by producers:
+      LF, byte 0x0a.
+
+  Newline accepted by armor parser:
+      CRLF or LF.
+
+  Base64:
+      RFC 4648 standard base64, alphabet A-Z a-z 0-9 + /, with "=" padding.
+      The implementation uses btoa and atob-compatible standard base64.
+
+  Hex:
+      Lowercase, two hexadecimal characters per byte, no "0x" prefix.
+
+  Integer-to-byte conversion for stream counters:
+      Fixed-width unsigned big-endian using intToBytes(value, length).
+
+  Password normalization:
+      Unicode NFKD, then UTF-8:
+
+        password_bytes = UTF-8(NFKD(password_string))
+
+  Separator byte in ARC v2 MAC transcript:
+      0x00.
+
+
+Implementation Constants
+------------------------
+
+The v1.6.0 HTML implementation defines these constants:
+
+  ARC_MAGIC                    = "ARCULUS-ARC"
+  ARC_ARMOR_HEADER             = "ARCULUS-ARC-V2"
+  ARC_V2_FORMAT                = "arculus-encrypted-seed-v2"
+  ARC_PLAIN_FORMAT             = "arculus-plain-seed-v1"
+  ARC_V2_KDF_ITERATIONS        = 1000000
+  ARC_V2_MIN_KDF_ITERATIONS    = 600000
+  ARC_V2_SALT_BYTES            = 32
+  ARC_V2_NONCE_BYTES           = 24
+
+  ARC_KEYFILE_MAGIC            = "ARCULUS-KEYFILE"
+  ARC_KEYFILE_ENC_MAGIC        = "ARCULUS-KEYFILE-ENC"
+  ARC_KEYFILE_FORMAT           = "arculus-recovery-keyfile-v1"
+  ARC_KEYFILE_ENC_FORMAT       = "arculus-recovery-keyfile-enc-v1"
+  ARC_KEYFILE_BYTES            = 64
+  ARC_KEYFILE_KDF_ITERATIONS   = 200000
+
+Derived string constants:
+
+  ARC v2 KDF name              = "PBKDF2"
+  ARC v2 KDF hash              = "SHA-512"
+  ARC v2 cipher name           = "HMAC-SHA512-CTR"
+  ARC v2 encryption label      = "Arculus ARC v2 encryption key"
+  ARC v2 authentication label  = "Arculus ARC v2 authentication key"
+  ARC v2 stream label          = "Arculus ARC v2 stream\0"
+  ARC v2 MAC prefix            = "Arculus ARC v2 MAC"
+
+Keyfile encrypted format constants:
+
+  keyfile KDF algo             = "PBKDF2-SHA512"
+  keyfile cipher name          = "HMAC-SHA512-CTR"
+
+Combined credential constants:
+
+  keyfile secret prefix        = "arc-keyfile-v1:"
+  combined secret prefix       = "arc-combined-v1:"
+  combined secret label        = "arc-combined-v1\n"
+
+
+Outer .arc Armor
+----------------
+
+Every v1.6.0 seed export, encrypted or unprotected, is serialized by
+serializeSeedBundle(bundle):
+
+  json_bytes = UTF-8(JSON.stringify(bundle))
+  body       = base64(json_bytes)
+  file_text  = "ARCULUS-ARC-V2" || LF || body || LF
+
+Byte layout:
+
+  bytes 0..13:       ASCII "ARCULUS-ARC-V2"
+  byte 14:           0x0a
+  bytes 15..N-2:     standard base64 of UTF-8 JSON bundle
+  byte N-1:          0x0a
+
+No byte-order mark is written. No line wrapping is inserted in the base64 body.
+
+The parser parseSeedBundle(text) performs:
+
+  trimmed = text.trim()
+  if trimmed.startsWith("ARCULUS-ARC-V2"):
+      encoded = trimmed.split(/\r?\n/).slice(1).join("").trim()
+      bundle = JSON.parse(bytesToText(base64ToBytes(encoded)))
+  else:
+      bundle = JSON.parse(text)
+
+Important parser consequences:
+
+  - Leading and trailing whitespace outside the armor are ignored.
+  - CRLF and LF are both accepted between armor lines.
+  - If the base64 body is manually wrapped across multiple lines, those lines
+    are joined without separators before decoding.
+  - The parser does not require the final LF after trimming.
+  - Files without the armor header are treated as raw JSON legacy inputs.
+  - The same outer header is used for encrypted and unprotected .arc bundles.
+
+
+Protected .arc Bundle Structure
+-------------------------------
+
+The protected seed bundle produced by encrypt_v2(mnemonic, password) is a JSON
+object with this v1.6.0 insertion order before credential_mode is appended:
 
   {
-    "mnemonic": "word1 word2 ... wordN",
-    "word_count": 12,
-    "created_at": "2026-06-13T00:00:00.000Z"
+    "magic": "ARCULUS-ARC",
+    "format": "arculus-encrypted-seed-v2",
+    "version": 2,
+    "created_at": "<Date.toISOString string>",
+    "kdf": {
+      "name": "PBKDF2",
+      "hash": "SHA-512",
+      "iterations": 1000000,
+      "salt_b64": "<base64 32 bytes>"
+    },
+    "cipher": {
+      "name": "HMAC-SHA512-CTR",
+      "nonce_b64": "<base64 24 bytes>"
+    },
+    "ciphertext_b64": "<base64 ciphertext bytes>",
+    "mac_b64": "<base64 64 bytes>"
   }
 
-Only the mnemonic is protected by .arc encryption. The BIP39 passphrase and all
-derived-output exports are outside the .arc file.
+After encryptSeedBundle returns, handleEncryptExportSeed appends:
 
+  "credential_mode": "password" | "keyfile" | "both"
 
-Key Schedule
-------------
+credential_mode is a UI hint. It is appended after MAC calculation in v1.6.0.
+Therefore, it is not part of the MAC transcript for files produced by v1.6.0.
+Import also accepts the aliases credentialMode and protection as UI hints:
 
-1. Normalize password:
-
-   password_bytes = NFKD(password).encode("utf-8")
-
-2. Derive master key:
-
-   master_key = PBKDF2-HMAC-SHA512(
-       password=password_bytes,
-       salt=salt,
-       iterations=iterations,
-       dklen=64
-   )
-
-3. Derive encryption key:
-
-   enc_key = HMAC-SHA512(master_key, ENC_LABEL)
-
-4. Derive authentication key:
-
-   mac_key = HMAC-SHA512(master_key, MAC_LABEL)
-
-
-Stream Cipher
--------------
-
-For counter i = 0, 1, 2, ...
-
-  block_i = HMAC-SHA512(
-      key=enc_key,
-      msg=STREAM_LABEL || nonce || uint64_be(i)
+  hintedMode = normalizeArcCredentialMode(
+      bundle.credential_mode || bundle.credentialMode || bundle.protection
   )
 
-The keystream is the concatenation of blocks truncated to the plaintext length.
-Encryption and decryption are XOR with the keystream.
+The credential hint selects or locks the import dialog mode. It is not a
+cryptographic policy field and must not be used as proof of protection type.
 
 
-MAC Transcript
---------------
+Protected .arc Plaintext Payload
+--------------------------------
 
-The MAC transcript is NUL-separated:
+The encrypted plaintext is produced by:
 
-  MAC_PREFIX
-  magic
-  format
-  version as decimal text
-  created_at
-  kdf.name
-  kdf.hash
-  kdf.iterations as decimal text
-  cipher.name
-  raw salt
-  raw nonce
-  raw ciphertext
+  words = normalizeMnemonicWords(mnemonic)
+  createdAt = new Date().toISOString()
 
-  transcript = b"\x00".join(parts)
-  mac = HMAC-SHA512(mac_key, transcript)
+  payload = {
+    mnemonic: words.join(" "),
+    word_count: words.length,
+    created_at: createdAt
+  }
 
-The MAC must be verified before decryption.
+  plaintext = UTF-8(JSON.stringify(payload))
+
+Properties:
+
+  - words.length must be 12 or 24.
+  - words are joined by exactly one U+0020 SPACE.
+  - JSON.stringify is called without indentation.
+  - No trailing LF is included in the plaintext.
+  - created_at inside the plaintext equals bundle.created_at.
+
+The plaintext does not contain:
+
+  - BIP39 wallet passphrase
+  - derived private keys
+  - WIF strings
+  - xprv/yprv/zprv/tprv
+  - xpub/ypub/zpub/tpub
+  - addresses
+  - derivation paths
+  - coin selection
+  - output table data
+  - QR payloads
 
 
-Export Procedure
+Mnemonic Normalization on Export and Import
+-------------------------------------------
+
+Export uses normalizeMnemonicWords(mnemonic) before encryption. Import uses
+normalizeDecryptedMnemonic(payload) after decryption.
+
+normalizeDecryptedMnemonic requires:
+
+  payload is a non-null object
+  payload.mnemonic normalizes to at least one word
+  if payload.word_count is present:
+      Number(payload.word_count) == normalized word count
+
+It returns:
+
+  normalized_words.join(" ")
+
+handleImportSeedFile then checks the returned mnemonic with checkMnemonic using
+the current UI wallet passphrase field. A protected file can decrypt correctly
+and still be rejected by the UI if the recovered phrase is not valid BIP39.
+
+
+ARC v2 Key Schedule
+-------------------
+
+Function:
+
+  arcV2Keys(password, saltBytes, iterations)
+
+Inputs:
+
+  password:
+      JavaScript string. In Password mode, this is the user-entered password.
+      In Keyfile mode, this is a keyfile secret string. In combined mode, this
+      is a combined secret string.
+
+  saltBytes:
+      32 bytes for protected .arc files.
+
+  iterations:
+      Integer KDF iteration count from bundle.kdf.iterations during import or
+      ARC_V2_KDF_ITERATIONS during export.
+
+Validation:
+
+  Number.isInteger(iterations) must be true.
+  iterations >= 600000.
+
+Failure message:
+
+  "Encrypted seed file uses too few KDF iterations."
+
+Step 1: normalize password:
+
+  password_bytes = UTF-8(NFKD(password))
+
+Step 2: derive master key:
+
+  master_key = PBKDF2-HMAC-SHA512(
+      password   = password_bytes,
+      salt       = saltBytes,
+      iterations = iterations,
+      dkLen      = 64
+  )
+
+Step 3: derive encryption key:
+
+  enc_key = HMAC-SHA512(
+      key  = master_key,
+      data = UTF-8("Arculus ARC v2 encryption key")
+  )
+
+Step 4: derive authentication key:
+
+  mac_key = HMAC-SHA512(
+      key  = master_key,
+      data = UTF-8("Arculus ARC v2 authentication key")
+  )
+
+Outputs:
+
+  enc_key: 64 bytes
+  mac_key: 64 bytes
+
+The master key is not directly used for encryption or authentication. The
+domain-separated labels prevent reuse of the same PBKDF2 output as both a
+stream-generation key and a MAC key.
+
+
+PBKDF2-HMAC-SHA512 Details
+--------------------------
+
+Function:
+
+  pbkdf2Sha512(passwordBytes, saltBytes, iterations, dkLen)
+
+Cryptographic primitive:
+
+  WebCrypto PBKDF2 with hash "SHA-512"
+
+Output length:
+
+  dkLen bytes. ARC v2 uses 64. Encrypted keyfiles also use 64.
+
+The effective PBKDF2 input for ordinary Password mode is:
+
+  UTF-8(NFKD(user_password_string))
+
+The effective PBKDF2 input for Keyfile mode is:
+
+  UTF-8(NFKD("arc-keyfile-v1:" || base64(keyfile_bytes)))
+
+The effective PBKDF2 input for Keyfile + Password mode is:
+
+  UTF-8(NFKD("arc-combined-v1:" || base64(SHA-256(material))))
+
+where material is specified in the combined credential section.
+
+
+ARC v2 HMAC-SHA512 Counter Stream
+---------------------------------
+
+Function:
+
+  arcV2StreamCrypt(data, keyBytes, nonceBytes)
+
+This transform is symmetric. The same function encrypts plaintext and decrypts
+ciphertext.
+
+Inputs:
+
+  data:
+      Bytes to XOR with the generated stream.
+
+  keyBytes:
+      HMAC key. For ARC v2 seed files this is the 64-byte enc_key. For
+      encrypted keyfiles this is the 32-byte encKey slice from keyfile PBKDF2.
+
+  nonceBytes:
+      Nonce bytes. Protected .arc files use 24 bytes. Encrypted keyfiles use
+      16 bytes.
+
+Internal constants:
+
+  label = UTF-8("Arculus ARC v2 stream\0")
+  counter_initial = 0
+  counter_width = 8 bytes
+  counter_endian = big-endian
+  block_size = 64 bytes
+
+For each block i:
+
+  counter_i = uint64_be(i)
+
+  block_i = HMAC-SHA512(
+      key  = keyBytes,
+      data = label || nonceBytes || counter_i
+  )
+
+Keystream:
+
+  stream = block_0 || block_1 || block_2 || ...
+
+Output:
+
+  out[j] = data[j] XOR stream[j]
+
+The final block is truncated to the remaining data length. No padding is
+applied. A zero-length input produces a zero-length output.
+
+
+Why the Current Protected .arc Format Is Not AES-GCM
+----------------------------------------------------
+
+New v1.6.0 protected .arc exports use HMAC-SHA512-CTR plus HMAC-SHA512
+authentication, not AES-GCM. AES-GCM appears only in the legacy
+"arculus-encrypted-seed-v1" import path.
+
+The current construction is:
+
+  PBKDF2-HMAC-SHA512 -> HMAC-derived enc_key and mac_key
+  HMAC-SHA512-CTR    -> ciphertext
+  HMAC-SHA512        -> MAC over metadata and ciphertext
+
+This is an encrypt-then-MAC construction. Import verifies the MAC before
+decrypting. It is not AEAD by API, but the MAC transcript authenticates the
+same material that an AEAD associated-data field would need to cover.
+
+
+ARC v2 MAC Transcript
+---------------------
+
+Function:
+
+  arcV2MacData(bundle, saltBytes, nonceBytes, ciphertext)
+
+The MAC transcript is not the raw JSON string. It is an explicitly constructed
+byte sequence. This avoids dependence on JSON key order or whitespace.
+
+The function builds:
+
+  sep = 0x00
+
+  textParts = [
+    "Arculus ARC v2 MAC",
+    String(bundle.magic || ""),
+    String(bundle.format || ""),
+    String(bundle.version || ""),
+    String(bundle.created_at || ""),
+    String(bundle.kdf.name || ""),
+    String(bundle.kdf.hash || ""),
+    String(bundle.kdf.iterations || ""),
+    String(bundle.cipher.name || "")
+  ]
+
+For each text part:
+
+  encoded.push(UTF-8(part), sep)
+
+Then append:
+
+  saltBytes || sep || nonceBytes || sep || ciphertext
+
+Full transcript:
+
+  UTF8("Arculus ARC v2 MAC")           || 00 ||
+  UTF8(bundle.magic)                   || 00 ||
+  UTF8(bundle.format)                  || 00 ||
+  UTF8(String(bundle.version))         || 00 ||
+  UTF8(bundle.created_at)              || 00 ||
+  UTF8(bundle.kdf.name)                || 00 ||
+  UTF8(bundle.kdf.hash)                || 00 ||
+  UTF8(String(bundle.kdf.iterations))  || 00 ||
+  UTF8(bundle.cipher.name)             || 00 ||
+  saltBytes                            || 00 ||
+  nonceBytes                           || 00 ||
+  ciphertext
+
+MAC:
+
+  mac = HMAC-SHA512(
+      key  = mac_key,
+      data = transcript
+  )
+
+Stored value:
+
+  mac_b64 = base64(mac)
+
+Stored length:
+
+  64 bytes before base64 encoding.
+
+Authenticated fields:
+
+  - magic
+  - format
+  - version
+  - created_at
+  - kdf.name
+  - kdf.hash
+  - kdf.iterations
+  - cipher.name
+  - salt bytes
+  - nonce bytes
+  - ciphertext bytes
+
+Not authenticated by v1.6.0 producer:
+
+  - credential_mode
+
+The NUL separators prevent transcript collisions caused by moving bytes between
+adjacent variable-length fields.
+
+
+Protected .arc Export Procedure
+-------------------------------
+
+Function path:
+
+  handleEncryptExportSeed
+    -> requestArcCredential("export")
+    -> encryptSeedBundle(mnemonic, credential.secret)
+    -> encrypt_v2(mnemonic, password)
+    -> serializeSeedBundle(bundle)
+
+Procedure:
+
+  1. Read active mnemonic.
+  2. Validate BIP39 words and checksum with checkMnemonic.
+  3. Ask for credential mode:
+       password
+       keyfile
+       both
+       or advanced unprotected export
+  4. If protected, obtain credential.secret.
+  5. Normalize mnemonic words.
+  6. Reject word counts other than 12 or 24.
+  7. Generate salt:
+       crypto.getRandomValues(new Uint8Array(32))
+  8. Generate nonce:
+       crypto.getRandomValues(new Uint8Array(24))
+  9. Generate createdAt:
+       new Date().toISOString()
+  10. Build initial bundle containing magic, format, version, created_at, kdf,
+      and cipher objects.
+  11. Build plaintext payload JSON.
+  12. Derive enc_key and mac_key with ARC v2 key schedule and 1000000
+      iterations.
+  13. Encrypt plaintext with arcV2StreamCrypt.
+  14. Store ciphertext_b64.
+  15. Compute HMAC-SHA512 over ARC v2 MAC transcript.
+  16. Store mac_b64.
+  17. Append credential_mode as a UI hint.
+  18. Armor with ARCULUS-ARC-V2 header.
+  19. Save as:
+       Arculus_Encrypted_Seed.arc
+
+For the same mnemonic and same credential secret, repeated exports should
+produce different protected files because salt and nonce are freshly sampled.
+
+
+Protected .arc Import Procedure
+-------------------------------
+
+Function path:
+
+  handleImportSeedFile(file)
+    -> parseSeedBundle(text)
+    -> requestArcCredential("import", hintedMode, lockMode)
+    -> decryptSeedBundle(bundle, credential.secret)
+    -> decrypt(bundle, password)
+    -> decryptV2(bundle, password)
+
+Procedure:
+
+  1. Read selected file as text.
+  2. Parse armor or raw JSON.
+  3. Read credential hint from credential_mode, credentialMode, or protection.
+  4. If bundle is plain .arc, skip credential dialog.
+  5. Otherwise request credential secret.
+  6. Dispatch:
+       if magic == "ARCULUS-ARC" and format == "arculus-plain-seed-v1":
+           normalize plain mnemonic
+       else if magic == "ARCULUS-ARC" or version == 2:
+           decryptV2
+       else:
+           decryptV1 legacy path
+
+decryptV2 validation:
+
+  bundle.magic must equal "ARCULUS-ARC"
+  bundle.version must equal 2
+  bundle.format must equal "arculus-encrypted-seed-v2"
+  bundle.kdf must exist
+  bundle.cipher must exist
+  bundle.kdf.name must equal "PBKDF2"
+  bundle.kdf.hash must equal "SHA-512"
+  bundle.cipher.name must equal "HMAC-SHA512-CTR"
+  bundle.kdf.iterations must be an integer >= 600000
+  salt_b64 must decode to exactly 32 bytes
+  nonce_b64 must decode to exactly 24 bytes
+  mac_b64 must decode to exactly 64 bytes
+  ciphertext_b64 must decode successfully; no fixed length is required
+
+decryptV2 authentication:
+
+  expectedMac = decoded mac_b64
+  { encKey, macKey } = arcV2Keys(password, salt, iterations)
+  actualMac = HMAC-SHA512(macKey, arcV2MacData(...))
+  equalBytes(actualMac, expectedMac) must be true
+
+Only after MAC success:
+
+  decrypted = arcV2StreamCrypt(ciphertext, encKey, nonce)
+  payload = JSON.parse(TextDecoder().decode(decrypted))
+  mnemonic = normalizeDecryptedMnemonic(payload)
+
+After decryptSeedBundle returns:
+
+  checkMnemonic(mnemonic, current_wallet_passphrase)
+
+If the BIP39 check fails, the UI raises:
+
+  "Imported file decrypted successfully, but the mnemonic is not valid BIP-39."
+
+
+Constant-Time Comparison
+------------------------
+
+Function:
+
+  equalBytes(a, b)
+
+Behavior:
+
+  if a.length !== b.length:
+      return false
+
+  diff = 0
+  for i in 0..a.length-1:
+      diff |= a[i] ^ b[i]
+
+  return diff === 0
+
+For equal-length arrays, every byte is read before returning. This prevents
+prefix-length timing leakage during MAC comparison. The length check occurs
+before the XOR loop. For ARC v2 MACs, the stored MAC length is validated to 64
+bytes before equalBytes is called.
+
+
+Base64 Decoding and Length Checks
+---------------------------------
+
+General base64 conversion:
+
+  base64ToBytes(text):
+      binary = atob(text)
+      out = new Uint8Array(binary.length)
+      for each byte position:
+          out[i] = binary.charCodeAt(i)
+
+Required protected .arc fields use:
+
+  b64DecodeRequired(value, fieldName, expectedLength = null)
+
+Validation:
+
+  - value must be a non-empty string
+  - atob-compatible base64 decoding must succeed
+  - if expectedLength is not null, decoded length must equal expectedLength
+
+Failure messages are field-specific:
+
+  "Encrypted seed file is missing <fieldName>."
+  "Encrypted seed file has invalid <fieldName>."
+  "Encrypted seed file has invalid <fieldName> length."
+
+The ciphertext field is required but not length-constrained:
+
+  b64DecodeRequired(bundle.ciphertext_b64, "ciphertext_b64")
+
+
+Unprotected .arc Bundle
+-----------------------
+
+The unprotected .arc path exists for controlled offline handling and test data.
+It uses the same ARCULUS-ARC-V2 outer armor but a plaintext internal bundle.
+
+Function:
+
+  makePlainSeedBundle(mnemonic)
+
+Structure:
+
+  {
+    "magic": "ARCULUS-ARC",
+    "format": "arculus-plain-seed-v1",
+    "version": 1,
+    "created_at": "<Date.toISOString string>",
+    "mnemonic": "<normalized 12 or 24 words>",
+    "word_count": 12 or 24,
+    "encrypted": false
+  }
+
+Serialization:
+
+  serializeSeedBundle(bundle)
+
+Import:
+
+  decrypt(bundle, password) detects:
+
+    bundle.magic == "ARCULUS-ARC"
+    bundle.format == "arculus-plain-seed-v1"
+
+  It then returns normalizeDecryptedMnemonic(bundle).
+
+Security properties:
+
+  - No encryption.
+  - No MAC.
+  - Anyone with the file can read the mnemonic after base64-decoding the armor.
+  - The outer armor is only a container, not a protection mechanism.
+
+
+Credential Modes
 ----------------
 
-1. Normalize and validate mnemonic.
-2. Generate 32-byte salt and 24-byte nonce with the platform CSPRNG.
-3. Create UTC timestamp.
-4. Derive enc_key and mac_key.
-5. Encrypt compact plaintext JSON.
-6. Build bundle metadata.
-7. Compute MAC over the transcript.
-8. Serialize compact JSON.
-9. Base64 encode the bundle and prepend ARCULUS-ARC-V2.
+The credential dialog supports three protected modes:
 
-Two exports of the same mnemonic and password should produce different files
-because salt and nonce are freshly generated.
+  password:
+      User-entered password string is passed directly as ARC v2 password.
+
+  keyfile:
+      A raw or encrypted keyfile is converted to a secret string:
+
+        "arc-keyfile-v1:" || base64(keyfile_bytes)
+
+      That secret string is passed as ARC v2 password.
+
+  both:
+      The selected/generated keyfile is converted to the keyfile secret string.
+      The UI password and keyfile secret are combined with SHA-256 into a
+      combined secret string:
+
+        "arc-combined-v1:" || base64(sha256(material))
+
+      The combined secret string is passed as ARC v2 password.
+
+The credential dialog also has an advanced unprotected export option:
+
+  unprotected:
+      makePlainSeedBundle is used instead of encrypt_v2.
+
+Password mode export requirements:
+
+  - Password must be non-empty.
+  - Password confirmation must match.
+
+Keyfile mode export requirements:
+
+  - A keyfile secret must be available, either by generating a new keyfile or
+    choosing an existing keyfile through the advanced keyfile chooser.
+
+Combined mode export requirements:
+
+  - Password must be non-empty.
+  - Password confirmation must match.
+  - A keyfile secret must be available.
+
+Import with a credential hint:
+
+  - If credential_mode is one of password, keyfile, both, the dialog selects
+    and locks that mode.
+  - If no valid hint exists, the user chooses the mode.
 
 
-Import Procedure
+Raw Keyfile Secret
+------------------
+
+Function:
+
+  arcKeyfileSecretFromBytes(bytes)
+
+Validation:
+
+  bytes must be a Uint8Array.
+  bytes.length must be at least 32.
+
+Failure:
+
+  "Keyfile must contain at least 256 bits of key material."
+
+Secret string:
+
+  keyfile_secret = "arc-keyfile-v1:" || base64(bytes)
+
+Generated keyfiles use:
+
+  key = crypto.getRandomValues(new Uint8Array(64))
+
+Generated keyfile entropy:
+
+  64 bytes = 512 bits.
+
+The keyfile_secret string is not itself stored inside the .arc file. It is
+reconstructed from the keyfile during export/import and used as the ARC v2
+password input.
+
+
+Raw Keyfile File Format
+-----------------------
+
+Function:
+
+  makeArcKeyfile(password = "")
+
+If password is empty, output object:
+
+  {
+    "magic": "ARCULUS-KEYFILE",
+    "format": "arculus-recovery-keyfile-v1",
+    "version": 1,
+    "created_at": "<Date.toISOString string>",
+    "key_b64": "<base64 64 bytes>"
+  }
+
+Serialization:
+
+  JSON.stringify(obj, null, 2) || LF
+
+Filename:
+
+  Arculus_Recovery_Keyfile.key
+
+Import accepts:
+
+  - JSON object with:
+      magic == "ARCULUS-KEYFILE"
+      format == "arculus-recovery-keyfile-v1"
+      key_b64 present
+
+  - Base64-only file:
+      file text may contain base64 characters and whitespace
+      whitespace is removed
+      decoded bytes must be at least 32 bytes
+
+  - Legacy JSON object:
+      magic == "KEYFILE"
+      key contains base64 raw key bytes
+
+
+Encrypted Keyfile Format
+------------------------
+
+Function:
+
+  encryptArcKeyfileBytes(keyBytes, password)
+
+Input keyBytes:
+
+  64 random bytes for v1.6.0-generated keyfiles.
+
+Password:
+
+  Must be non-empty.
+
+Failure:
+
+  "Password cannot be empty when using Keyfile + Password."
+
+Random parameters:
+
+  salt  = crypto.getRandomValues(new Uint8Array(16))
+  nonce = crypto.getRandomValues(new Uint8Array(16))
+
+Key derivation:
+
+  derived = PBKDF2-HMAC-SHA512(
+      password   = UTF-8(NFKD(password)),
+      salt       = salt,
+      iterations = 200000,
+      dkLen      = 64
+  )
+
+Split:
+
+  encKey = derived[0:32]
+  macKey = derived[32:64]
+
+Encryption:
+
+  ciphertext = arcV2StreamCrypt(keyBytes, encKey, nonce)
+
+Although the function name is arcV2StreamCrypt, encrypted keyfiles use:
+
+  keyBytes = 32-byte encKey slice
+  nonceBytes = 16 bytes
+  stream label = "Arculus ARC v2 stream\0"
+  counter = uint64_be starting at 0
+  HMAC-SHA512 block output = 64 bytes
+
+Authentication:
+
+  mac = HMAC-SHA512(
+      key  = macKey,
+      data = salt || nonce || ciphertext
+  )
+
+Stored object:
+
+  {
+    "magic": "ARCULUS-KEYFILE-ENC",
+    "format": "arculus-recovery-keyfile-enc-v1",
+    "version": 1,
+    "created_at": "<Date.toISOString string>",
+    "kdf": {
+      "algo": "PBKDF2-SHA512",
+      "iterations": 200000,
+      "salt_b64": "<base64 16 bytes>"
+    },
+    "cipher": {
+      "name": "HMAC-SHA512-CTR",
+      "nonce_b64": "<base64 16 bytes>"
+    },
+    "ciphertext_b64": "<base64 ciphertext bytes>",
+    "mac_b64": "<base64 64 bytes>"
+  }
+
+Serialization:
+
+  JSON.stringify(obj, null, 2) || LF
+
+Filename:
+
+  Arculus_Recovery_Keyfile.enc.key
+
+Memory cleanup:
+
+  encryptArcKeyfileBytes calls fill(0) on derived, encKey, and macKey after
+  computing the encrypted keyfile object. This is best-effort JavaScript heap
+  cleanup and does not guarantee erasure of copies held internally by the
+  browser engine or WebCrypto implementation.
+
+
+Encrypted Keyfile Import
+------------------------
+
+Function:
+
+  decryptArcKeyfileObject(obj, password)
+
+Password:
+
+  Must be non-empty.
+
+Failure:
+
+  "Enter the same password used with Keyfile + Password before loading this encrypted keyfile."
+
+Accepted field names:
+
+  salt:
+      obj.kdf.salt_b64 or obj.kdf.s
+
+  nonce:
+      obj.cipher.nonce_b64 or obj.n
+
+  ciphertext:
+      obj.ciphertext_b64 or obj.ct
+
+  MAC:
+      obj.mac_b64 or obj.mac
+
+  iterations:
+      obj.kdf.iterations or obj.kdf.i or 200000 default
+
+Derivation:
+
+  derived = PBKDF2-HMAC-SHA512(
+      password   = UTF-8(NFKD(password)),
+      salt       = decoded salt,
+      iterations = Number(iterations),
+      dkLen      = 64
+  )
+
+Split:
+
+  encKey = derived[0:32]
+  macKey = derived[32:64]
+
+Authentication:
+
+  actualMac = HMAC-SHA512(macKey, salt || nonce || ciphertext)
+  equalBytes(actualMac, expectedMac) must be true
+
+Failure:
+
+  "Unable to decrypt keyfile. The password may be incorrect or the keyfile may be corrupted."
+
+Only after MAC success:
+
+  plain = arcV2StreamCrypt(ciphertext, encKey, nonce)
+
+The caller then converts plain bytes into:
+
+  "arc-keyfile-v1:" || base64(plain)
+
+and zeroes the plain Uint8Array with fill(0).
+
+Accepted encrypted keyfile objects:
+
+  - magic == "ARCULUS-KEYFILE-ENC"
+    format == "arculus-recovery-keyfile-enc-v1"
+
+  - legacy magic == "KEYFILE-ENC"
+
+
+Combined Keyfile + Password Secret
+----------------------------------
+
+Function:
+
+  combinedArcSecret(password, keyfileSecret)
+
+Inputs:
+
+  password:
+      UI password string.
+
+  keyfileSecret:
+      String produced by arcKeyfileSecretFromBytes:
+
+        "arc-keyfile-v1:" || base64(keyfile_bytes)
+
+Material:
+
+  material = UTF-8(
+      "arc-combined-v1\n" ||
+      NFKD(password) ||
+      "\n" ||
+      keyfileSecret
+  )
+
+Digest:
+
+  digest = SHA-256(material)
+
+Combined secret:
+
+  "arc-combined-v1:" || base64(digest)
+
+The combined secret is the password argument passed to encryptSeedBundle and
+decryptSeedBundle. It is then normalized again with NFKD by arcV2Keys before
+PBKDF2. The string consists of ASCII prefix and standard base64 output, so
+NFKD does not alter generated combined secrets.
+
+Security consequence:
+
+  The protected .arc file cannot be opened with only the password or only the
+  keyfile. Both are required to reconstruct the same combined secret.
+
+Operational consequence:
+
+  The same password used for combined mode also encrypts the generated encrypted
+  keyfile when the user generates a password-protected keyfile during export.
+  Losing either the .arc file, the keyfile, or the password makes recovery
+  impossible for combined-mode backups.
+
+
+Credential Mode Normalization
+-----------------------------
+
+Function:
+
+  normalizeArcCredentialMode(mode)
+
+Accepted values:
+
+  "password"             -> "password"
+  "keyfile"              -> "keyfile"
+  "both"                 -> "both"
+  "keyfile + password"   -> "both"
+  "keyfile-password"     -> "both"
+
+Any other value returns:
+
+  ""
+
+This function is used for UI hint normalization only.
+
+
+Legacy Seed Import Family: HMAC-SHA256 Stream
+---------------------------------------------
+
+Function:
+
+  decryptV1(bundle, password)
+
+This branch accepts:
+
+  bundle.format == "arculus-encrypted-seed-v2"
+  or
+  bundle.format == "arculus-encrypted-seed-python-v1"
+
+This is a legacy compatibility branch and is distinct from current ARC v2.
+
+Legacy inputs:
+
+  salt       = base64ToBytes(bundle.kdf.salt_b64 || "")
+  nonce      = base64ToBytes(bundle.cipher.nonce_b64 || "")
+  ciphertext = base64ToBytes(bundle.ciphertext_b64 || "")
+  expected   = base64ToBytes(bundle.mac_b64 || "")
+  iterations = Number(bundle.kdf.iterations || 250000)
+
+Password:
+
+  passwordBytes = UTF-8(NFKD(password))
+
+KDF:
+
+  derived = PBKDF2-HMAC-SHA256(
+      password   = passwordBytes,
+      salt       = salt,
+      iterations = iterations,
+      dkLen      = 64
+  )
+
+Split:
+
+  encKey = derived[0:32]
+  macKey = derived[32:64]
+
+MAC:
+
+  actualMac = HMAC-SHA256(macKey, nonce || ciphertext)
+
+Comparison:
+
+  equalBytes(actualMac, expectedMac)
+
+Stream:
+
+  xorStreamCrypt(ciphertext, encKey, nonce)
+
+Legacy stream block:
+
+  block_i = SHA-256(encKey || nonce || uint32_be(i))
+
+where i begins at 0 and is encoded as 4 bytes big-endian. The block size is
+32 bytes because SHA-256 output is 32 bytes.
+
+Plaintext:
+
+  JSON.parse(TextDecoder().decode(decrypted))
+  normalizeDecryptedMnemonic(payload)
+
+New v1.6.0 exports do not produce this format.
+
+
+Legacy Seed Import Family: AES-GCM v1
+-------------------------------------
+
+Function:
+
+  decryptV1(bundle, password)
+
+This branch accepts:
+
+  bundle.format == "arculus-encrypted-seed-v1"
+
+Legacy inputs:
+
+  salt       = base64ToBytes(bundle.kdf.salt_b64 || "")
+  iv         = base64ToBytes(bundle.cipher.iv_b64 || "")
+  ciphertext = base64ToBytes(bundle.ciphertext_b64 || "")
+  iterations = Number(bundle.kdf.iterations || 250000)
+
+Password:
+
+  passwordBytes = UTF-8(NFKD(password))
+
+KDF:
+
+  WebCrypto PBKDF2 with:
+      hash       = "SHA-256"
+      salt       = salt
+      iterations = iterations
+
+Derived key:
+
+  AES-GCM 256-bit CryptoKey
+
+Decrypt:
+
+  crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: iv },
+      key,
+      ciphertext
+  )
+
+The ciphertext field is the WebCrypto AES-GCM ciphertext including its
+authentication tag, as returned by the earlier implementation.
+
+Plaintext:
+
+  JSON.parse(TextDecoder().decode(decrypted))
+  normalizeDecryptedMnemonic(payload)
+
+New v1.6.0 exports do not produce this format.
+
+
+Dispatch Matrix
+---------------
+
+decrypt(bundle, password) dispatches as follows:
+
+  if bundle is not an object:
+      reject as unsupported encrypted seed file format
+
+  if bundle.magic == "ARCULUS-ARC"
+     and bundle.format == "arculus-plain-seed-v1":
+      return normalizeDecryptedMnemonic(bundle)
+
+  if bundle.magic == "ARCULUS-ARC"
+     or bundle.version == 2:
+      return decryptV2(bundle, password)
+
+  otherwise:
+      return decryptV1(bundle, password)
+
+Compatibility notes:
+
+  - Current protected v2 exports use magic "ARCULUS-ARC" and version 2.
+  - Current plain exports use magic "ARCULUS-ARC" and format
+    "arculus-plain-seed-v1".
+  - Legacy raw JSON files without the armor header are still parsed as JSON.
+  - A malformed object with version 2 but without current v2 fields is routed
+    to decryptV2 and rejected by v2 validation.
+
+
+Format Compatibility Matrix
+---------------------------
+
+Seed file formats:
+
+  ARCULUS-ARC-V2 armored protected v2
+      Export: yes
+      Import: yes
+      Protection: PBKDF2-HMAC-SHA512, HMAC-SHA512-CTR, HMAC-SHA512 MAC
+
+  ARCULUS-ARC-V2 armored plain v1
+      Export: yes, advanced option
+      Import: yes
+      Protection: none
+
+  Raw JSON current protected v2 object
+      Export: no, but JSON parser accepts it
+      Import: yes if fields validate
+      Protection: same as current protected v2
+
+  Legacy HMAC-SHA256 stream object
+      Export: no
+      Import: yes
+      Protection: PBKDF2-HMAC-SHA256, SHA256 XOR stream, HMAC-SHA256 MAC
+
+  Legacy AES-GCM v1 object
+      Export: no
+      Import: yes in browser
+      Protection: PBKDF2-HMAC-SHA256, AES-GCM-256
+
+Keyfile formats:
+
+  ARCULUS-KEYFILE raw JSON
+      Export: yes
+      Import: yes
+
+  Base64-only raw key material
+      Export: no
+      Import: yes
+
+  ARCULUS-KEYFILE-ENC encrypted JSON
+      Export: yes
+      Import: yes
+
+  KEYFILE legacy JSON
+      Export: no
+      Import: yes
+
+  KEYFILE-ENC legacy JSON
+      Export: no
+      Import: yes
+
+
+Protected Fields and Unprotected Fields
+---------------------------------------
+
+Protected by current ARC v2 seed-file encryption:
+
+  - mnemonic plaintext confidentiality at rest
+  - mnemonic plaintext integrity after MAC success and JSON parse
+  - magic string
+  - protected format identifier
+  - version integer
+  - created_at timestamp
+  - KDF name
+  - KDF hash
+  - KDF iteration count
+  - salt bytes
+  - cipher name
+  - nonce bytes
+  - ciphertext bytes
+
+Not protected by current ARC v2 seed-file encryption:
+
+  - credential_mode hint appended after MAC generation
+  - outer armor header itself
+  - filesystem filename
+  - file modification timestamp
+  - mnemonic while displayed in the browser
+  - mnemonic while held in JavaScript memory
+  - .arc password while typed or held in memory
+  - keyfile bytes while held in memory
+  - generated raw keyfile if stored unencrypted
+  - wallet passphrase field
+  - derived-output JSON/CSV/TXT/PDF exports
+  - clipboard contents
+  - screenshots, screen recording, browser extensions, or compromised OS state
+
+Protected by encrypted keyfile format:
+
+  - keyfile bytes at rest
+  - salt, nonce, and ciphertext integrity through HMAC-SHA512 over
+    salt || nonce || ciphertext
+
+Not protected by encrypted keyfile format:
+
+  - filename
+  - created_at metadata
+  - kdf/cipher metadata integrity as a structured transcript
+  - magic and format fields by MAC commitment
+
+The encrypted keyfile MAC is simpler than ARC v2 seed-file MAC. It authenticates
+the raw salt, nonce, and ciphertext bytes but does not bind the metadata strings
+through a separate transcript.
+
+
+Failure Behavior
 ----------------
 
-1. Detect armor or legacy JSON.
-2. Parse bundle.
-3. Validate required fields.
-4. Reject V2 iteration counts below 600000.
-5. Decode salt, nonce, ciphertext, and MAC.
-6. Derive enc_key and mac_key from the supplied password.
-7. Recompute MAC and compare in constant time.
-8. Decrypt only after MAC success.
-9. Parse plaintext and validate the mnemonic.
+Protected .arc structural failures:
 
-MAC failure should not distinguish wrong password, corrupted file, or tampered
-metadata.
+  - unsupported magic/version/format
+  - missing kdf or cipher object
+  - unsupported KDF name or hash
+  - unsupported cipher name
+  - KDF iterations below 600000
+  - invalid or missing base64 fields
+  - invalid decoded salt length
+  - invalid decoded nonce length
+  - invalid decoded MAC length
+
+Protected .arc authentication failure:
+
+  If equalBytes(actualMac, expectedMac) is false, decryptV2 throws:
+
+    "Unable to decrypt seed file. The password may be incorrect or the file may be corrupted."
+
+No decryption is attempted before this check succeeds.
+
+Protected .arc plaintext failures:
+
+  - decrypted bytes are not valid UTF-8 JSON
+  - parsed plaintext is not an object
+  - mnemonic is missing or normalizes to empty
+  - word_count does not match normalized mnemonic length
+  - final BIP39 check fails
+
+Encrypted keyfile failures:
+
+  - missing password
+  - invalid JSON and not base64-only material
+  - unsupported keyfile magic/format
+  - decoded raw key material shorter than 32 bytes
+  - MAC mismatch
+
+The user-facing messages deliberately avoid distinguishing wrong password from
+corruption for protected seed files and encrypted keyfiles.
 
 
-Compatibility
--------------
+KDF Iteration Rationale
+-----------------------
 
-  Format                                  Export  Import
-  --------------------------------------  ------  ----------------------------
-  ARCULUS-ARC-V2 armored V2               yes     yes
-  Raw JSON arculus-encrypted-seed-v2      no      yes
-  Legacy PBKDF2-SHA256/XOR-HMAC           no      yes
-  arculus-encrypted-seed-python-v1        no      yes
-  arculus-encrypted-seed-v1 AES-GCM       no      browser implementation only
+Current protected seed exports use:
 
-Import a legacy file and export it again to migrate to current armored V2.
+  PBKDF2-HMAC-SHA512, 1000000 iterations
+
+Current protected seed imports require:
+
+  iterations >= 600000
+
+This import floor allows files from recent hardened builds while preventing an
+attacker from lowering the stored iteration count to make password guessing
+cheaper. The iteration count is also included in the ARC v2 MAC transcript, so
+an attacker cannot modify it without causing MAC failure.
+
+Encrypted keyfiles use:
+
+  PBKDF2-HMAC-SHA512, 200000 iterations
+
+The keyfile KDF protects random 64-byte key material rather than a mnemonic
+directly. In combined mode, the keyfile password protects the encrypted keyfile,
+while the final .arc envelope is protected by the combined secret derived from
+both password and keyfile material.
+
+PBKDF2 is CPU-hard but not memory-hard. It slows offline guessing linearly with
+the iteration count. It does not rescue weak passwords. A captured .arc file can
+be attacked offline by testing candidate credentials until MAC verification
+succeeds.
 
 
-Storage Limits
---------------
+Password Entropy Boundary
+-------------------------
 
-.arc protects the mnemonic at rest only. It does not protect:
+The cryptographic strength of Password mode is bounded by the entropy of the
+user password and the PBKDF2 cost. A short password, common phrase, reused
+password, PIN, or personally meaningful phrase should be treated as weak even
+with 1000000 PBKDF2 iterations.
 
-  - Mnemonic after decryption in memory.
-  - BIP39 passphrase.
-  - Private keys or extended private keys.
-  - Plaintext derived exports.
-  - Clipboard or screen contents.
-  - Files against an attacker who knows or guesses the password.
+The cryptographic strength of Keyfile mode is bounded by possession of the
+keyfile bytes. v1.6.0-generated keyfiles contain 64 random bytes. If the keyfile
+is copied to cloud storage, email, screenshots, or a compromised machine, the
+.arc file protected only by that keyfile should be considered compromised by
+anyone who obtains both files.
+
+The cryptographic strength of Keyfile + Password mode requires both:
+
+  - the password
+  - the keyfile bytes
+
+This mode provides better loss-of-one-factor resistance, but it also increases
+backup fragility. Recovery requires preserving both factors exactly.
+
+
+Operational Backup Procedure
+----------------------------
+
+For Password mode:
+
+  1. Load or generate the mnemonic.
+  2. Export protected .arc with a high-entropy password.
+  3. Import the .arc file immediately on the same offline system.
+  4. Confirm BIP39 validation succeeds.
+  5. Store the .arc and password separately.
+
+For Keyfile mode:
+
+  1. Generate or select a keyfile.
+  2. Export protected .arc using Keyfile mode.
+  3. Import the .arc using the same keyfile.
+  4. Confirm BIP39 validation succeeds.
+  5. Store .arc and keyfile separately.
+  6. If the raw keyfile is not password-encrypted, treat it as a high-value
+     secret equivalent to the ability to open the .arc file.
+
+For Keyfile + Password mode:
+
+  1. Generate or select a keyfile.
+  2. Use a high-entropy password.
+  3. Export protected .arc using combined mode.
+  4. Import the .arc using the same keyfile and password.
+  5. Confirm BIP39 validation succeeds.
+  6. Store .arc, keyfile, and password in separate controlled locations.
+
+For unprotected .arc:
+
+  Use only for test data or tightly controlled offline procedures. The mnemonic
+  is available to anyone who can base64-decode the armored JSON body.
+
+
+Recovery Requirements
+---------------------
+
+To recover from a protected .arc file:
+
+  Password mode:
+      Need .arc file and exact password string after NFKD normalization.
+
+  Keyfile mode:
+      Need .arc file and exact keyfile bytes.
+
+  Keyfile + Password mode:
+      Need .arc file, exact keyfile bytes, and exact password string after NFKD
+      normalization.
+
+  Plain .arc:
+      Need only the .arc file.
+
+The BIP39 wallet passphrase is not stored in any .arc file. Recovering the same
+wallet tree also requires knowing whether a wallet passphrase was used during
+address derivation.
+
+
+Implementation Function Map
+---------------------------
+
+Core byte helpers:
+
+  base64ToBytes(text)
+      Standard base64 decode via atob into Uint8Array.
+
+  bytesToBase64(bytes)
+      Standard base64 encode.
+
+  textToBytes(text)
+      UTF-8 encode.
+
+  bytesToText(bytes)
+      UTF-8 decode.
+
+  normalizeNFKD(text)
+      Unicode NFKD string normalization.
+
+  intToBytes(value, length)
+      Big-endian fixed-width integer encoding.
+
+  concatBytes(...arrays)
+      Byte-array concatenation.
+
+  equalBytes(a, b)
+      Equal-length XOR-accumulation comparison.
+
+ARC v2 protected seed functions:
+
+  arcV2Keys(password, saltBytes, iterations)
+      PBKDF2-SHA512 master key plus HMAC-SHA512 domain-separated enc/mac keys.
+
+  arcV2StreamCrypt(data, keyBytes, nonceBytes)
+      HMAC-SHA512 counter-mode XOR transform.
+
+  arcV2MacData(bundle, saltBytes, nonceBytes, ciphertext)
+      NUL-separated metadata transcript plus salt, nonce, and ciphertext.
+
+  encrypt_v2(mnemonic, password)
+      Current protected seed export.
+
+  decryptV2(bundle, password)
+      Current protected seed import.
+
+  encryptSeedBundle(mnemonic, password)
+      Wrapper for encrypt_v2.
+
+  decryptSeedBundle(bundle, password)
+      Wrapper for decrypt.
+
+  serializeSeedBundle(bundle)
+      ARCULUS-ARC-V2 armor writer.
+
+  parseSeedBundle(text)
+      Armor/raw JSON parser.
+
+Plain .arc functions:
+
+  makePlainSeedBundle(mnemonic)
+      Creates unprotected arculus-plain-seed-v1 bundle.
+
+Legacy seed functions:
+
+  decryptV1(bundle, password)
+      Handles PBKDF2-SHA256 stream family and AES-GCM v1 family.
+
+  xorStreamCrypt(data, keyBytes, nonceBytes)
+      Legacy SHA-256 stream XOR transform.
+
+Keyfile functions:
+
+  arcKeyfileSecretFromBytes(bytes)
+      Validates key material and returns arc-keyfile-v1 secret string.
+
+  encryptArcKeyfileBytes(keyBytes, password)
+      Password-encrypts keyfile bytes.
+
+  decryptArcKeyfileObject(obj, password)
+      Authenticates and decrypts encrypted keyfile JSON.
+
+  makeArcKeyfile(password = "")
+      Generates raw or encrypted keyfile text.
+
+  parseArcKeyfileText(text, password)
+      Parses raw, encrypted, base64-only, or legacy keyfile input.
+
+  readArcKeyfile(file, password)
+      Reads browser File text and parses it.
+
+Credential functions:
+
+  combinedArcSecret(password, keyfileSecret)
+      Creates arc-combined-v1 secret.
+
+  normalizeArcCredentialMode(mode)
+      Converts credential hint aliases into password, keyfile, both, or empty.
+
+  requestArcCredential(context, preferredMode, lockMode)
+      Opens the credential dialog and returns selected secret data.
+
+  submitArcCredentialDialog()
+      Validates the selected credential mode and constructs the correct secret.
+
+UI integration:
+
+  handleEncryptExportSeed()
+      Validates mnemonic, obtains credential, writes .arc file.
+
+  handleImportSeedFile(file)
+      Parses .arc, obtains credential, decrypts or loads mnemonic.
+
+
+Security Classification
+-----------------------
+
+Treat these as highly sensitive secrets:
+
+  - BIP39 mnemonic
+  - .arc password
+  - raw keyfile bytes
+  - encrypted keyfile password
+  - combined-mode password
+  - combined secret string
+  - decrypted .arc plaintext JSON
+  - decrypted keyfile plaintext
+
+Treat these as sensitive encrypted artifacts:
+
+  - protected .arc files
+  - encrypted keyfile files
+
+Treat these as plaintext secret-bearing artifacts:
+
+  - unprotected .arc files
+  - raw keyfile files
+  - derived-output JSON exports
+  - derived-output CSV exports
+  - derived-output TXT exports
+  - derived-output PDF exports
+  - screenshots showing mnemonics or keys
+
+Treat these as non-secret but integrity-relevant:
+
+  - ARC v2 constants
+  - KDF iteration counts
+  - MAC transcript field order
+  - stream labels
+  - credential mode hint names
+  - legacy dispatch format strings
+
+
+Compliance Checklist
+--------------------
+
+An implementation is compatible with Arculus_Recovery.html v1.6.0 protected
+.arc exports if it satisfies all of the following:
+
+  - Parses ARCULUS-ARC-V2 armor exactly enough to recover JSON bundle bytes.
+  - Uses UTF-8 for all text fields.
+  - Applies NFKD normalization to the credential string before PBKDF2.
+  - Requires current v2 magic, format, version, KDF name/hash, and cipher name.
+  - Requires salt length 32 bytes.
+  - Requires nonce length 24 bytes.
+  - Requires MAC length 64 bytes.
+  - Requires iterations >= 600000.
+  - Derives 64-byte PBKDF2-HMAC-SHA512 master key.
+  - Derives enc_key and mac_key with the exact label strings.
+  - Constructs the MAC transcript with the exact field order and 0x00
+    separators.
+  - Verifies HMAC-SHA512 before decrypting.
+  - Generates HMAC-SHA512 stream blocks from:
+
+        UTF8("Arculus ARC v2 stream\0") || nonce || uint64_be(counter)
+
+  - XORs ciphertext with the stream to recover plaintext.
+  - Parses plaintext JSON as UTF-8.
+  - Normalizes mnemonic words and validates word_count if present.
+
+An implementation is compatible with v1.6.0 encrypted keyfiles if it:
+
+  - Parses JSON keyfile objects.
+  - Accepts current encrypted magic/format.
+  - Accepts documented legacy aliases.
+  - Applies NFKD password normalization.
+  - Uses PBKDF2-HMAC-SHA512 with 200000 default iterations for generated files.
+  - Splits derived bytes into 32-byte encKey and 32-byte macKey.
+  - Verifies HMAC-SHA512 over salt || nonce || ciphertext before decrypting.
+  - Decrypts with the same HMAC-SHA512 stream transform.
+  - Requires recovered key material to be at least 32 bytes before building
+    the arc-keyfile-v1 secret string.
+
+
+Non-Goals
+---------
+
+The v1.6.0 encryption subsystem does not:
+
+  - fetch network state
+  - use remote key escrow
+  - store the BIP39 wallet passphrase
+  - encrypt derived-output exports
+  - encrypt QR payloads
+  - protect against malware on the active machine
+  - protect against screen capture
+  - guarantee JavaScript memory erasure
+  - prevent offline guessing if an attacker has a protected .arc file and the
+    credential has low entropy
+
+The encryption subsystem is a local at-rest protection layer for exported seed
+files and keyfiles. It is not a complete operational-security system by itself.

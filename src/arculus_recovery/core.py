@@ -13,9 +13,10 @@ import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict, List, Tuple
+from urllib.parse import quote
 
 
-APP_VERSION = "1.5.0"
+APP_VERSION = "1.6.0"
 
 
 # --- Embedded BIP39 English word list ---
@@ -2130,6 +2131,17 @@ DOGE_MAINNET = {
     "hrp": "doge",
 }
 
+BCH_MAINNET = {
+    "p2pkh": {"xprv": 0x0488ADE4, "xpub": 0x0488B21E},
+    "p2wpkh-p2sh": None,
+    "p2wpkh": None,
+    "p2tr": None,
+    "wif": 0x80,
+    "p2pkh_prefix": 0x00,
+    "p2sh_prefix": 0x05,
+    "cashaddr_prefix": "bitcoincash",
+}
+
 ETH_MAINNET = {
     "p2pkh": {"xprv": 0x0488ADE4, "xpub": 0x0488B21E},
     "p2wpkh-p2sh": {"xprv": 0x0488ADE4, "xpub": 0x0488B21E},
@@ -2148,19 +2160,34 @@ XRP_MAINNET = {
     "address_family": "xrp",
 }
 
+SOLANA_MAINNET = {"address_family": "solana"}
+STELLAR_MAINNET = {"address_family": "stellar"}
+MONERO_MAINNET = {"address_family": "monero"}
+CARDANO_MAINNET = {"address_family": "cardano"}
+
 COINS = {
     "bitcoin": {"coin_type": 0, "mainnet": BTC_MAINNET, "testnet": BTC_TESTNET},
+    "bitcoincash": {"coin_type": 0, "mainnet": BCH_MAINNET, "testnet": None},
     "litecoin": {"coin_type": 2, "mainnet": LTC_MAINNET, "testnet": None},
     "dogecoin": {"coin_type": 3, "mainnet": DOGE_MAINNET, "testnet": None},
     "ethereum": {"coin_type": 60, "mainnet": ETH_MAINNET, "testnet": None},
+    "solana": {"coin_type": 501, "mainnet": SOLANA_MAINNET, "testnet": None},
+    "stellar": {"coin_type": 148, "mainnet": STELLAR_MAINNET, "testnet": None},
+    "monero": {"coin_type": 128, "mainnet": MONERO_MAINNET, "testnet": None},
+    "cardano": {"coin_type": 1815, "mainnet": CARDANO_MAINNET, "testnet": None},
     "xrp": {"coin_type": 144, "mainnet": XRP_MAINNET, "testnet": None},
 }
 
 DEFAULT_ACCOUNT_DERIVATION = {
     "bitcoin": "m/0'",
+    "bitcoincash": "m/0'",
     "litecoin": "m/84'/2'/0'",
     "dogecoin": "m/44'/3'/0'",
     "ethereum": "m/44'/60'/0'",
+    "solana": "m/44'/501'/0'",
+    "stellar": "m/44'/148'/0'",
+    "monero": "m/44'/128'/0'",
+    "cardano": "m/1852'/1815'/0'/0/0",
     "xrp": "m/44'/144'/0'",
 }
 
@@ -2338,6 +2365,291 @@ def segwit_addr_v0(hrp: str, witprog: bytes) -> str:
 
 def segwit_addr_v1(hrp: str, witprog: bytes) -> str:
     return bech32m_encode(hrp, [1] + convertbits(witprog, 8, 5))
+
+
+def cashaddr_polymod(values: List[int]) -> int:
+    gen = [0x98F2BC8E61, 0x79B76D99E2, 0xF33E5FB3C4, 0xAE2EABE2A8, 0x1E4F43E470]
+    chk = 1
+    for value in values:
+        top = chk >> 35
+        chk = ((chk & 0x07FFFFFFFF) << 5) ^ value
+        for i, g in enumerate(gen):
+            if (top >> i) & 1:
+                chk ^= g
+    return chk ^ 1
+
+
+def cashaddr_prefix_expand(prefix: str) -> List[int]:
+    return [ord(c) & 31 for c in prefix.lower()] + [0]
+
+
+def cashaddr_encode(prefix: str, type_value: int, payload_hash: bytes) -> str:
+    if len(payload_hash) != 20:
+        raise ValueError("unsupported Bitcoin Cash hash length")
+    version = (type_value << 3) | 0
+    payload = convertbits(bytes([version]) + payload_hash, 8, 5, True)
+    values = cashaddr_prefix_expand(prefix) + payload + [0] * 8
+    checksum_value = cashaddr_polymod(values)
+    checksum = [(checksum_value >> (5 * (7 - i))) & 31 for i in range(8)]
+    return prefix.lower() + ":" + "".join(BECH32_ALPHABET[v] for v in payload + checksum)
+
+
+ED25519_P = (1 << 255) - 19
+ED25519_D = (-121665 * pow(121666, -1, ED25519_P)) % ED25519_P
+ED25519_G = (
+    15112221349535400772501151409588531511454012693041857206046113283949847762202,
+    46316835694926478169428394003475163141307993866256225615783033603165251855960,
+)
+ED25519_L = (1 << 252) + 27742317777372353535851937790883648493
+
+
+def le_bytes_to_int(data: bytes) -> int:
+    return int.from_bytes(data, "little")
+
+
+def int_to_le_bytes(value: int, length: int) -> bytes:
+    return int(value).to_bytes(length, "little")
+
+
+def ed25519_point_add(p1, p2):
+    if p1 is None:
+        return p2
+    if p2 is None:
+        return p1
+    x1, y1 = p1
+    x2, y2 = p2
+    xy = (ED25519_D * x1 * x2 * y1 * y2) % ED25519_P
+    x3 = ((x1 * y2 + y1 * x2) * pow((1 + xy) % ED25519_P, -1, ED25519_P)) % ED25519_P
+    y3 = ((y1 * y2 + x1 * x2) * pow((1 - xy) % ED25519_P, -1, ED25519_P)) % ED25519_P
+    return (x3, y3)
+
+
+def ed25519_point_mul(k: int, point=ED25519_G):
+    n = int(k)
+    result = (0, 1)
+    addend = point
+    while n > 0:
+        if n & 1:
+            result = ed25519_point_add(result, addend)
+        addend = ed25519_point_add(addend, addend)
+        n >>= 1
+    return result
+
+
+def ed25519_public_key_from_seed(seed: bytes) -> bytes:
+    digest = hashlib.sha512(seed).digest()
+    scalar = bytearray(digest[:32])
+    scalar[0] &= 248
+    scalar[31] &= 127
+    scalar[31] |= 64
+    point = ed25519_point_mul(le_bytes_to_int(bytes(scalar)))
+    encoded = bytearray(int_to_le_bytes(point[1], 32))
+    encoded[31] = (encoded[31] & 0x7F) | ((point[0] & 1) << 7)
+    return bytes(encoded)
+
+
+def ed25519_public_key_from_scalar_bytes(scalar_bytes: bytes) -> bytes:
+    point = ed25519_point_mul(le_bytes_to_int(scalar_bytes))
+    encoded = bytearray(int_to_le_bytes(point[1], 32))
+    encoded[31] = (encoded[31] & 0x7F) | ((point[0] & 1) << 7)
+    return bytes(encoded)
+
+
+def reduce_ed25519_scalar(data: bytes) -> bytes:
+    scalar = le_bytes_to_int(data) % ED25519_L
+    if scalar == 0:
+        scalar = 1
+    return int_to_le_bytes(scalar, 32)
+
+
+def master_from_seed_ed25519(seed: bytes) -> Dict[str, bytes]:
+    digest = hmac_sha512(b"ed25519 seed", seed)
+    return {"k": digest[:32], "c": digest[32:]}
+
+
+def ckd_priv_ed25519(node: Dict[str, bytes], index: int) -> Dict[str, bytes]:
+    if not (index & HARDENED):
+        raise ValueError("Ed25519 derivation requires hardened path indexes")
+    digest = hmac_sha512(node["c"], b"\x00" + node["k"] + ser32(index))
+    return {"k": digest[:32], "c": digest[32:]}
+
+
+def derive_ed25519(node: Dict[str, bytes], path: str) -> Dict[str, bytes]:
+    cur = node
+    for index in parse_path(path):
+        cur = ckd_priv_ed25519(cur, index)
+    return cur
+
+
+def path_from_indexes(indexes: List[int]) -> str:
+    if not indexes:
+        return "m"
+    return "m/" + "/".join(f"{i - HARDENED}'" if (i & HARDENED) else str(i) for i in indexes)
+
+
+def solana_path_for_index(base_path: str, index: int) -> str:
+    ints = parse_path(base_path)
+    if (
+        len(ints) >= 4
+        and (ints[0] & 0x7FFFFFFF) == 44
+        and (ints[1] & 0x7FFFFFFF) == 501
+        and (ints[-1] & 0x7FFFFFFF) == 0
+    ):
+        next_path = list(ints)
+        next_path[2] = (index | HARDENED) & 0xFFFFFFFF
+        return path_from_indexes(next_path)
+    return normalize_path(base_path) if index == 0 else normalize_path(base_path) + f"/{index}'"
+
+
+def account_path_for_index(base_path: str, coin_type: int, index: int) -> str:
+    ints = parse_path(base_path)
+    if len(ints) >= 3 and (ints[0] & 0x7FFFFFFF) == 44 and (ints[1] & 0x7FFFFFFF) == coin_type:
+        next_path = list(ints)
+        next_path[2] = (index | HARDENED) & 0xFFFFFFFF
+        return path_from_indexes(next_path)
+    return normalize_path(base_path) if index == 0 else normalize_path(base_path) + f"/{index}'"
+
+
+def monero_base58_encode(data: bytes) -> str:
+    encoded_block_sizes = [0, 2, 3, 5, 6, 7, 9, 10, 11]
+    out = []
+    for offset in range(0, len(data), 8):
+        block = data[offset : offset + 8]
+        num = int.from_bytes(block, "big")
+        enc = ""
+        while num > 0:
+            num, mod_value = divmod(num, 58)
+            enc = chr(B58_ALPHABET[mod_value]) + enc
+        out.append(enc.rjust(encoded_block_sizes[len(block)], chr(B58_ALPHABET[0])))
+    return "".join(out)
+
+
+def monero_address_from_spend_key(private_spend_key: bytes) -> Dict[str, bytes | str]:
+    private_view_key = reduce_ed25519_scalar(keccak256(private_spend_key))
+    public_spend_key = ed25519_public_key_from_scalar_bytes(private_spend_key)
+    public_view_key = ed25519_public_key_from_scalar_bytes(private_view_key)
+    body = b"\x12" + public_spend_key + public_view_key
+    checksum = keccak256(body)[:4]
+    return {
+        "address": monero_base58_encode(body + checksum),
+        "private_view_key": private_view_key,
+        "public_spend_key": public_spend_key,
+        "public_view_key": public_view_key,
+    }
+
+
+BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+
+
+def base32_encode_no_padding(data: bytes) -> str:
+    bits = 0
+    value = 0
+    out = []
+    for byte in data:
+        value = (value << 8) | byte
+        bits += 8
+        while bits >= 5:
+            out.append(BASE32_ALPHABET[(value >> (bits - 5)) & 31])
+            bits -= 5
+    if bits:
+        out.append(BASE32_ALPHABET[(value << (5 - bits)) & 31])
+    return "".join(out)
+
+
+def crc16_xmodem(data: bytes) -> bytes:
+    crc = 0
+    for byte in data:
+        crc ^= byte << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0x1021) if (crc & 0x8000) else (crc << 1)
+            crc &= 0xFFFF
+    return bytes([crc & 0xFF, (crc >> 8) & 0xFF])
+
+
+def stellar_strkey(version_byte: int, payload: bytes) -> str:
+    body = bytes([version_byte]) + payload
+    return base32_encode_no_padding(body + crc16_xmodem(body))
+
+
+def stellar_public_address(public_key: bytes) -> str:
+    return stellar_strkey(6 << 3, public_key)
+
+
+def stellar_secret_seed(private_seed: bytes) -> str:
+    return stellar_strkey(18 << 3, private_seed)
+
+
+def mnemonic_entropy_bytes(mnemonic: str) -> bytes:
+    words = normalize_mnemonic_words(mnemonic)
+    checksum_bits = len(words) // 3
+    entropy_bits = len(words) * 11 - checksum_bits
+    acc = 0
+    for word in words:
+        acc = (acc << 11) | BIP39_WORD_INDEX[word]
+    entropy = acc >> checksum_bits
+    return entropy.to_bytes(entropy_bits // 8, "big")
+
+
+def cardano_icarus_master_from_entropy(entropy: bytes) -> Dict[str, bytes]:
+    key_bytes = bytearray(hashlib.pbkdf2_hmac("sha512", b"", entropy, 4096, dklen=96))
+    key_bytes[0] &= 0xF8
+    key_bytes[31] &= 0x1F
+    key_bytes[31] |= 0x40
+    return {"k": bytes(key_bytes[:64]), "c": bytes(key_bytes[64:96])}
+
+
+def ser32_le(index: int) -> bytes:
+    return (index & 0xFFFFFFFF).to_bytes(4, "little")
+
+
+def cardano_public_key_from_private(private_key: bytes) -> bytes:
+    return ed25519_public_key_from_scalar_bytes(private_key[:32])
+
+
+def ckd_priv_cardano(node: Dict[str, bytes], index: int) -> Dict[str, bytes]:
+    idx = ser32_le(index)
+    priv = node["k"]
+    pub = cardano_public_key_from_private(priv)
+    if index & HARDENED:
+        z = hmac_sha512(node["c"], b"\x00" + priv + idx)
+        c_digest = hmac_sha512(node["c"], b"\x01" + priv + idx)
+    else:
+        z = hmac_sha512(node["c"], b"\x02" + pub + idx)
+        c_digest = hmac_sha512(node["c"], b"\x03" + pub + idx)
+    kl = le_bytes_to_int(priv[:32])
+    kr = le_bytes_to_int(priv[32:64])
+    zl = le_bytes_to_int(z[:28])
+    zr = le_bytes_to_int(z[32:64])
+    child_left = kl + (8 * zl)
+    if child_left % ED25519_L == 0:
+        raise ValueError("invalid Cardano child key")
+    child_right = (kr + zr) % (1 << 256)
+    return {"k": int_to_le_bytes(child_left, 32) + int_to_le_bytes(child_right, 32), "c": c_digest[32:64]}
+
+
+def derive_cardano(node: Dict[str, bytes], path: str) -> Dict[str, bytes]:
+    cur = node
+    for index in parse_path(path):
+        cur = ckd_priv_cardano(cur, index)
+    return cur
+
+
+def cardano_paths_for_index(base_path: str, index: int) -> Dict[str, str]:
+    ints = parse_path(base_path)
+    account = HARDENED
+    if len(ints) >= 3 and (ints[0] & 0x7FFFFFFF) == 1852 and (ints[1] & 0x7FFFFFFF) == 1815:
+        account = ints[2]
+    return {
+        "payment_path": path_from_indexes([1852 | HARDENED, 1815 | HARDENED, account, 0, index]),
+        "staking_path": path_from_indexes([1852 | HARDENED, 1815 | HARDENED, account, 2, 0]),
+    }
+
+
+def cardano_shelley_base_address(payment_public_key: bytes, staking_public_key: bytes) -> str:
+    payment_hash = hashlib.blake2b(payment_public_key, digest_size=28).digest()
+    stake_hash = hashlib.blake2b(staking_public_key, digest_size=28).digest()
+    raw = bytes([0x01]) + payment_hash + stake_hash
+    return bech32_encode("addr", convertbits(raw, 8, 5, True))
 
 
 def inv_mod(a: int, n: int) -> int:
@@ -2962,6 +3274,8 @@ def taproot_key_material(privkey: int) -> Dict:
 def pubkey_to_address(pubkey: bytes, script_type: str, netcfg: dict) -> str:
     pkh = hash160(pubkey)
     if script_type == "p2pkh":
+        if netcfg.get("cashaddr_prefix"):
+            return cashaddr_encode(netcfg["cashaddr_prefix"], 0, pkh)
         return b58check(bytes([netcfg["p2pkh_prefix"]]) + pkh)
     if script_type == "p2wpkh":
         return segwit_addr_v0(netcfg["hrp"], pkh)
@@ -2986,6 +3300,8 @@ def derive_account(mnemonic: str, passphrase: str, derivation: str, script_type:
     y_versions = netcfg["p2wpkh-p2sh"]
     z_versions = netcfg["p2wpkh"]
     tr_versions = netcfg["p2tr"]
+    if st not in ("ethereum", "xrp") and not netcfg.get(st):
+        raise ValueError(f"{st} is not supported for this coin/network")
     if st == "p2tr" and not tr_versions:
         raise ValueError("taproot is not supported for this coin/network")
 
@@ -3037,7 +3353,7 @@ def derive_account(mnemonic: str, passphrase: str, derivation: str, script_type:
             elif is_xrp:
                 item["address"] = xrp_classic_address_from_public_key(pub)
                 item["xrp_classic_address"] = item["address"]
-                item["xrp_note"] = "XRP Ledger classic address. Destination tags, when required by an exchange or custodian, are not derived from the seed."
+                item["xrp_note"] = "XRP Ledger classic address. Destination tags, when required by an exchange or custodian, must be supplied separately from the seed."
             else:
                 item["private_key_wif"] = to_wif(child.k, netcfg)
             if st == "p2tr":
@@ -3053,6 +3369,146 @@ def derive_account(mnemonic: str, passphrase: str, derivation: str, script_type:
                 item["taproot_output_key_parity"] = taproot["output_key_parity"]
             result[key].append(item)
     return result
+
+
+def _empty_account(derivation: str, script_type: str) -> Dict:
+    return {
+        "derivation": derivation,
+        "account_script_type_used": script_type,
+        "receiving": [],
+        "change": [],
+    }
+
+
+def derive_solana_output(seed: bytes, derivation: str, count: int, start_index: int, word_count: int, network: str) -> Dict:
+    root = master_from_seed_ed25519(seed)
+    account = derive_ed25519(root, derivation)
+    out_account = _empty_account(derivation, "solana")
+    out_account.update(
+        {
+            "root_private_key_hex": root["k"].hex(),
+            "root_chain_code_hex": root["c"].hex(),
+            "root_public_key_hex": ed25519_public_key_from_seed(root["k"]).hex(),
+            "account_private_key_hex": account["k"].hex(),
+            "account_chain_code_hex": account["c"].hex(),
+            "account_public_key_hex": ed25519_public_key_from_seed(account["k"]).hex(),
+        }
+    )
+    for i in range(start_index, start_index + count):
+        path = solana_path_for_index(derivation, i)
+        child = account if i == 0 and normalize_path(path) == normalize_path(derivation) else derive_ed25519(root, path)
+        public_key = ed25519_public_key_from_seed(child["k"])
+        out_account["receiving"].append(
+            {
+                "path": path,
+                "address": b58encode(public_key),
+                "public_key_hex": public_key.hex(),
+                "private_key_hex": child["k"].hex(),
+            }
+        )
+    return {"coin": "solana", "network": network, "word_count": word_count, "accounts": [out_account]}
+
+
+def derive_stellar_output(seed: bytes, derivation: str, count: int, start_index: int, word_count: int, network: str) -> Dict:
+    root = master_from_seed_ed25519(seed)
+    account = derive_ed25519(root, derivation)
+    out_account = _empty_account(derivation, "stellar")
+    out_account.update(
+        {
+            "root_private_key_hex": root["k"].hex(),
+            "root_chain_code_hex": root["c"].hex(),
+            "root_public_key_hex": ed25519_public_key_from_seed(root["k"]).hex(),
+            "account_private_key_hex": account["k"].hex(),
+            "account_chain_code_hex": account["c"].hex(),
+            "account_public_key_hex": ed25519_public_key_from_seed(account["k"]).hex(),
+        }
+    )
+    for i in range(start_index, start_index + count):
+        path = account_path_for_index(derivation, 148, i)
+        child = account if i == 0 and normalize_path(path) == normalize_path(derivation) else derive_ed25519(root, path)
+        public_key = ed25519_public_key_from_seed(child["k"])
+        out_account["receiving"].append(
+            {
+                "path": path,
+                "address": stellar_public_address(public_key),
+                "public_key_hex": public_key.hex(),
+                "private_key_hex": child["k"].hex(),
+                "stellar_secret_seed": stellar_secret_seed(child["k"]),
+            }
+        )
+    return {"coin": "stellar", "network": network, "word_count": word_count, "accounts": [out_account]}
+
+
+def derive_monero_output(seed: bytes, derivation: str, count: int, start_index: int, word_count: int, network: str) -> Dict:
+    root = master_from_seed_ed25519(seed)
+    account = derive_ed25519(root, derivation)
+    root_spend = reduce_ed25519_scalar(root["k"])
+    root_addr = monero_address_from_spend_key(root_spend)
+    account_spend = reduce_ed25519_scalar(account["k"])
+    account_addr = monero_address_from_spend_key(account_spend)
+    out_account = _empty_account(derivation, "monero")
+    out_account.update(
+        {
+            "root_private_key_hex": root["k"].hex(),
+            "root_chain_code_hex": root["c"].hex(),
+            "root_private_spend_key_hex": root_spend.hex(),
+            "root_private_view_key_hex": root_addr["private_view_key"].hex(),
+            "root_public_spend_key_hex": root_addr["public_spend_key"].hex(),
+            "root_public_view_key_hex": root_addr["public_view_key"].hex(),
+            "account_private_key_hex": account["k"].hex(),
+            "account_chain_code_hex": account["c"].hex(),
+            "account_private_spend_key_hex": account_spend.hex(),
+            "account_private_view_key_hex": account_addr["private_view_key"].hex(),
+            "account_public_spend_key_hex": account_addr["public_spend_key"].hex(),
+            "account_public_view_key_hex": account_addr["public_view_key"].hex(),
+        }
+    )
+    out_account["receiving"].append(
+        {
+            "path": derivation,
+            "address": account_addr["address"],
+            "public_spend_key_hex": account_addr["public_spend_key"].hex(),
+            "public_view_key_hex": account_addr["public_view_key"].hex(),
+            "private_spend_key_hex": account_spend.hex(),
+            "private_view_key_hex": account_addr["private_view_key"].hex(),
+        }
+    )
+    return {"coin": "monero", "network": network, "word_count": word_count, "accounts": [out_account]}
+
+
+def derive_cardano_output(mnemonic: str, derivation: str, count: int, start_index: int, word_count: int, network: str) -> Dict:
+    entropy = mnemonic_entropy_bytes(mnemonic)
+    root = cardano_icarus_master_from_entropy(entropy)
+    account = derive_cardano(root, derivation)
+    out_account = _empty_account(derivation, "cardano")
+    out_account.update(
+        {
+            "root_private_key_hex": root["k"].hex(),
+            "root_chain_code_hex": root["c"].hex(),
+            "root_public_key_hex": cardano_public_key_from_private(root["k"]).hex(),
+            "account_private_key_hex": account["k"].hex(),
+            "account_chain_code_hex": account["c"].hex(),
+            "account_public_key_hex": cardano_public_key_from_private(account["k"]).hex(),
+        }
+    )
+    for i in range(start_index, start_index + count):
+        paths = cardano_paths_for_index(derivation, i)
+        payment = account if i == 0 and normalize_path(paths["payment_path"]) == normalize_path(derivation) else derive_cardano(root, paths["payment_path"])
+        staking = derive_cardano(root, paths["staking_path"])
+        payment_pub = cardano_public_key_from_private(payment["k"])
+        staking_pub = cardano_public_key_from_private(staking["k"])
+        out_account["receiving"].append(
+            {
+                "path": paths["payment_path"],
+                "staking_path": paths["staking_path"],
+                "address": cardano_shelley_base_address(payment_pub, staking_pub),
+                "public_key_hex": payment_pub.hex(),
+                "stake_public_key_hex": staking_pub.hex(),
+                "private_key_hex": payment["k"].hex(),
+                "stake_private_key_hex": staking["k"].hex(),
+            }
+        )
+    return {"coin": "cardano", "network": network, "word_count": word_count, "accounts": [out_account]}
 
 
 def run_derivation(
@@ -3087,7 +3543,22 @@ def run_derivation(
 
     coin_type = coin_cfg["coin_type"]
     base_derivation = (derivation or "").strip() or DEFAULT_ACCOUNT_DERIVATION[coin_key]
+    base_derivation = normalize_path(base_derivation)
+    network_name = "testnet" if testnet else "mainnet"
+    word_count = len(normalize_mnemonic_words(mnemonic))
+    address_family = netcfg.get("address_family")
+    if address_family == "solana":
+        return derive_solana_output(bip39_to_seed(mnemonic, passphrase), base_derivation, count, start_index, word_count, network_name)
+    if address_family == "stellar":
+        return derive_stellar_output(bip39_to_seed(mnemonic, passphrase), base_derivation, count, start_index, word_count, network_name)
+    if address_family == "monero":
+        return derive_monero_output(bip39_to_seed(mnemonic, passphrase), base_derivation, count, start_index, word_count, network_name)
+    if address_family == "cardano":
+        return derive_cardano_output(mnemonic, base_derivation, count, start_index, word_count, network_name)
+
     if all_common and coin_key in ("ethereum", "xrp"):
+        derivations = [f"m/44'/{coin_type}'/0'"]
+    elif all_common and coin_key == "bitcoincash":
         derivations = [f"m/44'/{coin_type}'/0'"]
     else:
         derivations = (
@@ -3097,8 +3568,8 @@ def run_derivation(
 
     out = {
         "coin": coin_key,
-        "network": "testnet" if testnet else "mainnet",
-        "word_count": len(normalize_mnemonic_words(mnemonic)),
+        "network": network_name,
+        "word_count": word_count,
         "accounts": [],
     }
     for d in derivations:
@@ -3201,9 +3672,14 @@ def _pdf_clip(text: object, max_chars: int) -> str:
 def _coin_display_name(coin: str) -> str:
     return {
         "bitcoin": "Bitcoin",
+        "bitcoincash": "Bitcoin Cash",
         "litecoin": "Litecoin",
         "dogecoin": "Dogecoin",
         "ethereum": "Ethereum",
+        "solana": "Solana",
+        "stellar": "Stellar",
+        "monero": "Monero",
+        "cardano": "Cardano",
         "xrp": "XRP",
     }.get(coin, coin or "export")
 
@@ -3276,13 +3752,19 @@ def save_derived_pdf(data: Dict, path: str, root_fingerprint: str = "") -> None:
     if root_fp.lower().startswith("root fingerprint:"):
         root_fp = root_fp.split(":", 1)[1].strip()
 
-    is_hex_key_coin = data.get("coin") in ("ethereum", "xrp")
-    private_col = "private_key_hex" if is_hex_key_coin else "private_key_wif"
+    coin_id = data.get("coin")
+    is_hex_key_coin = coin_id in ("ethereum", "solana", "stellar", "cardano", "xrp")
+    if coin_id == "monero":
+        private_col = "private_spend_key_hex"
+        private_header = "PRIVATE SPEND KEY HEX"
+    else:
+        private_col = "private_key_hex" if is_hex_key_coin else "private_key_wif"
+        private_header = "PRIVATE KEY HEX" if is_hex_key_coin else "PRIVATE KEY WIF"
     cols = [
         ("branch", "BRANCH", 52, 9),
         ("path", "PATH", 110, 22),
         ("address", "ADDRESS", 270, 46),
-        (private_col, "PRIVATE KEY HEX" if is_hex_key_coin else "PRIVATE KEY WIF", usable_w - 52 - 110 - 270 - 18, 52),
+        (private_col, private_header, usable_w - 52 - 110 - 270 - 18, 52),
     ]
 
     account = (data.get("accounts") or [{}])[0] or {}
@@ -3661,15 +4143,22 @@ def qr_save_png(matrix, path: str, module_px: int = 3, quiet: int = 4):
 def is_xrp_address(a: str) -> bool:
     return bool(_re.match(r'^r[1-9A-HJ-NP-Za-km-z]{24,}', a.strip()))
 
-def to_bip21_uri(address: str, memo: str = '') -> str:
+def to_bip21_uri(address: str, memo: str = '', coin_context: str = '') -> str:
     a = address.strip()
     m = (memo or '').strip()
+    coin = (coin_context or '').strip().lower()
     if _re.match(r'^[a-zA-Z]+:', a): return a
+    if coin == 'solana': return 'solana:' + a
+    if coin == 'stellar': return 'web+stellar:pay?destination=' + quote(a, safe='')
+    if coin == 'monero': return 'monero:' + a
+    if coin == 'cardano': return a
+    if coin == 'bitcoincash': return 'bitcoincash:' + a
     if _re.match(r'^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,}', a): return 'bitcoin:' + a
+    if _re.match(r'^[qp][023456789acdefghjklmnpqrstuvwxyz]{41,}', a): return 'bitcoincash:' + a
     if _re.match(r'^(ltc1|[LM])[a-zA-HJ-NP-Z0-9]{25,}', a): return 'litecoin:' + a
     if _re.match(r'^[DA9][a-zA-HJ-NP-Z0-9]{25,}', a): return 'dogecoin:' + a
     if _re.match(r'^0x[0-9a-fA-F]{40}$', a): return 'ethereum:' + a
-    if is_xrp_address(a): return (a + '?dt=' + m) if m else a
+    if is_xrp_address(a): return a + '?dt=' + (quote(m, safe='') if m else '00000')
     return a
 
 

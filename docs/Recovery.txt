@@ -1,145 +1,950 @@
-Arculus Recovery v1.6.0 Recovery Procedures
-===========================================
+Arculus Recovery v1.6.0 - Recovery Procedure and Data Boundary Specification
+============================================================================
 
 Scope
 -----
 
-This document gives step-by-step recovery procedures for direct mnemonic entry,
-.arc import, CLI derivation, address discovery, and fund sweeping.
+This document defines recovery procedures for Arculus_Recovery.html v1.6.0. It
+covers direct mnemonic entry, generated/imported seed handling, protected and
+unprotected .arc import, credential-mode selection, BIP39 passphrase checks,
+derivation path recovery, address range selection, output export, QR generation,
+and session cleanup.
+
+The tool is a deterministic offline recovery engine. It does not sign
+transactions, broadcast transactions, query balances, discover used addresses,
+estimate fees, identify token holdings, or validate exchange memo requirements.
 
 
-Prerequisites
--------------
-
-Before starting:
-
-  [ ] The machine is offline.
-  [ ] The operating system is trusted.
-  [ ] The app hash was verified.
-  [ ] You have the mnemonic or .arc file.
-  [ ] You know whether a BIP39 passphrase was used, or have candidates.
-  [ ] You know the target coin.
-  [ ] You have a known address or root fingerprint if possible.
-
-
-Procedure 1: Direct Mnemonic Entry
-----------------------------------
-
-1. Open Arculus_Recovery.html, the PySide6 GUI, or the Tauri app.
-2. Select 12 or 24 words.
-3. Enter the mnemonic in the word grid or paste it into the input.
-4. Validate the mnemonic and fix any word-list or checksum errors.
-5. Enter the BIP39 passphrase only if the wallet used one.
-6. Select the coin.
-7. Select Auto script type unless you need a specific UTXO script.
-8. Enter the account path.
-9. Set the address count or range.
-10. Derive keys and addresses.
-11. Verify the root fingerprint or a known address.
-12. Export only the needed material.
-13. Clear All and close the app.
-
-
-Procedure 2: Recovery from .arc
--------------------------------
-
-1. Transfer the .arc file to the offline machine.
-2. Open the app.
-3. Click Import Seed and select the .arc file.
-4. Enter the .arc password.
-5. If import succeeds, verify the root fingerprint.
-6. Enter the BIP39 passphrase separately if the wallet used one.
-7. Continue with coin, path, script type, and derivation.
-8. Clear All when finished.
-
-The .arc password decrypts the file. It is not the BIP39 passphrase.
-
-
-Procedure 3: Python CLI Recovery
---------------------------------
-
-Example:
-
-  python Arculus_Recovery.py \
-    --mnemonic "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about" \
-    --passphrase "" \
-    --derivation "m/84'/0'/0'" \
-    --script-type p2wpkh \
-    --coin bitcoin \
-    --count 10 \
-    --output-format json
-
-When the originating wallet is unknown, use:
-
-  python Arculus_Recovery.py \
-    --mnemonic "word1 word2 ... word12" \
-    --coin bitcoin \
-    --all-common \
-    --count 20 \
-    --output-format txt
-
-Redirect output only to trusted storage. CLI exports are plaintext.
-
-
-Standard Path Reference
------------------------
-
-  Coin      Script type      Path              Prefix
-  --------  ---------------  ----------------  ----------------
-  Bitcoin   P2PKH            m/44'/0'/0'       1...
-  Bitcoin   P2WPKH-P2SH      m/49'/0'/0'       3...
-  Bitcoin   P2WPKH           m/84'/0'/0'       bc1q...
-  Bitcoin   P2TR             m/86'/0'/0'       bc1p...
-  Bitcoin   Arculus default  m/0'              commonly bc1q...
-  Litecoin  P2PKH            m/44'/2'/0'       L...
-  Litecoin  P2WPKH-P2SH      m/49'/2'/0'       M...
-  Litecoin  P2WPKH           m/84'/2'/0'       ltc1q...
-  Litecoin  P2TR             m/86'/2'/0'       ltc1p...
-  Dogecoin  P2PKH            m/44'/3'/0'       D...
-  Dogecoin  P2WPKH-P2SH      m/49'/3'/0'       9... or A...
-  Dogecoin  P2WPKH           m/84'/3'/0'       doge1q...
-  Ethereum  Account          m/44'/60'/0'      0x...
-  XRP       Account          m/44'/144'/0'     r...
-
-
-Address Discovery
------------------
-
-Use this process when the path, script type, or passphrase is unknown:
-
-1. Start with the empty BIP39 passphrase.
-2. Try the most likely path for the coin.
-3. Compare receiving addresses against a known address.
-4. If no match, try known passphrase candidates.
-5. Try standard paths for that coin.
-6. Increase the address count to 25, 50, or 100.
-7. Check the change branch.
-8. Try account indices 1 and 2 if account 0 fails.
-9. Record the confirmed path, script type, passphrase status, and root
-   fingerprint.
-
-
-Sweeping Funds
+Recovery Model
 --------------
 
-Sweeping means importing derived private keys into a networked wallet and moving
-funds to a new wallet. This exposes the swept keys to the networked device.
+Every recovery result is a deterministic function of local inputs:
 
-1. Derive and export only keys for funded addresses.
-2. Move the export to a trusted networked machine.
-3. Import or sweep individual private keys, not whole extended private keys,
-   where the wallet software supports it.
-4. Send funds to a new wallet generated on trusted hardware.
-5. Confirm transactions on-chain.
-6. Treat the old mnemonic and exported keys as exposed after sweep.
+  mnemonic
+  BIP39 passphrase
+  coin
+  derivation path
+  script type
+  address count or range
+  .arc credential if importing a protected .arc file
+
+No external service is contacted. If an address does not appear, the tool cannot
+discover the correct path from chain state. The operator must supply or search
+the correct derivation settings.
 
 
-Verification Checklist
+Required Inputs
+---------------
+
+At minimum:
+
+  - 12- or 24-word BIP39 English mnemonic, or importable .arc seed file
+  - target coin
+  - intended derivation path
+  - intended address range
+
+Conditionally required:
+
+  - BIP39 passphrase if the wallet used one
+  - script type for UTXO-like coins if Auto is not sufficient
+  - .arc password for password-protected .arc
+  - keyfile for keyfile-protected .arc
+  - keyfile plus password for combined-mode .arc
+  - encrypted keyfile password if the keyfile is encrypted
+
+For exchange or custodian deposits:
+
+  - XRP destination tag if required by receiver
+  - Stellar memo if required by receiver
+
+Destination tags and memos are not derived from the seed.
+
+
+Pre-Session Checklist
+---------------------
+
+Before entering real recovery material:
+
+  - Confirm local file is Arculus_Recovery.html v1.6.0.
+  - Disconnect networking.
+  - Disable browser sync and extensions where practical.
+  - Use a private physical environment.
+  - Decide whether the goal is verification, seed backup, address discovery,
+    private-key export, QR export, or migration.
+  - Know whether a BIP39 passphrase was used.
+  - Gather any known historical addresses or root fingerprint.
+  - Prepare storage for any exported artifacts.
+
+Do not start recovery on a machine you believe is compromised.
+
+
+Mnemonic Entry Procedure
+------------------------
+
+Use direct mnemonic entry when the words are available.
+
+Procedure:
+
+  1. Select 12 or 24 words.
+  2. Enter words in the mnemonic textarea or numbered word grid.
+  3. The internal mnemonic normalization is:
+
+       NFKD((text || "").trim().split(/\s+/).filter(Boolean).join(" "))
+
+  4. Validate word count.
+  5. Validate every word against the BIP39 English list.
+  6. Reconstruct the BIP39 bitstring from 11-bit indexes.
+  7. Split entropy and checksum bits.
+  8. Compute SHA-256(entropy).
+  9. Compare expected checksum bits.
+  10. If checksum is invalid, stop and correct the phrase.
+
+Supported word counts:
+
+  - 12 words: 128 entropy bits, 4 checksum bits
+  - 24 words: 256 entropy bits, 8 checksum bits
+
+v1.6.0 does not support 15-, 18-, or 21-word mnemonic recovery.
+
+
+Generated Seed Procedure
+------------------------
+
+Generate Seed creates a new mnemonic, not a recovery of an existing wallet.
+
+Procedure:
+
+  1. Select 12 or 24 words.
+  2. Click Generate Seed.
+  3. Entropy bytes are sampled with crypto.getRandomValues.
+  4. Checksum bits are computed with SHA-256(entropy).
+  5. 11-bit indexes map into BIP39_WORDS.
+  6. The generated mnemonic is validated.
+  7. The seed phrase is hidden on screen.
+
+Use generated seeds only when intentionally creating a new recovery phrase.
+Generating a seed cannot recover an existing wallet.
+
+
+BIP39 Passphrase Procedure
+--------------------------
+
+If the wallet used a BIP39 passphrase, enter it in the main Passphrase field
+before validation/derivation.
+
+BIP39 seed:
+
+  PBKDF2-HMAC-SHA512(
+      password   = UTF-8(NFKD(normalized mnemonic)),
+      salt       = UTF-8("mnemonic" + NFKD(passphrase)),
+      iterations = 2048,
+      dkLen      = 64
+  )
+
+Rules:
+
+  - Empty passphrase is valid.
+  - Wrong passphrase gives no error.
+  - Wrong passphrase gives valid wrong keys.
+  - The .arc file does not store the BIP39 passphrase.
+  - The .arc password is a different secret.
+
+Verification:
+
+  - Compare root fingerprint when known.
+  - Compare known addresses.
+  - Do not rely on checksum alone.
+
+
+.arc Import Procedure
+---------------------
+
+Seed file import reads the selected file as text and calls parseSeedBundle.
+
+Armor path:
+
+  if trimmed file starts with "ARCULUS-ARC-V2":
+      remove first line
+      join remaining lines
+      base64-decode
+      parse decoded UTF-8 JSON
+
+Raw JSON path:
+
+  if no armor header:
+      parse file text as JSON
+
+Plain .arc:
+
+  magic == "ARCULUS-ARC"
+  format == "arculus-plain-seed-v1"
+
+  The mnemonic is read directly, normalized, and BIP39-validated. No credential
+  is requested.
+
+Protected .arc:
+
+  magic == "ARCULUS-ARC"
+  format == "arculus-encrypted-seed-v2"
+  version == 2
+
+  The user supplies the required credential mode. MAC verification occurs before
+  decryption. If MAC verification fails, the password/keyfile is wrong or the
+  file is corrupted/tampered.
+
+Credential hint:
+
+  credential_mode, credentialMode, or protection can select/lock the import
+  dialog mode. This hint is operational and must not be treated as proof of
+  cryptographic policy.
+
+After import:
+
+  - The mnemonic is hidden on screen.
+  - Seed state remains available internally for validation, copy, export, and
+    derivation.
+  - The root fingerprint refresh is scheduled.
+
+
+Protected .arc Credential Decision
+----------------------------------
+
+Password mode:
+
+  Need exact ARC password.
+
+Keyfile mode:
+
+  Need exact keyfile bytes.
+
+Combined mode:
+
+  Need exact keyfile bytes and exact combined-mode password.
+
+Encrypted keyfile:
+
+  Need exact encrypted-keyfile password to recover keyfile bytes.
+
+If import fails:
+
+  - Check that the credential mode is correct.
+  - Check that the selected keyfile is the original one.
+  - Check password spacing and capitalization.
+  - Check whether the keyfile itself is encrypted.
+  - Do not assume the BIP39 passphrase can open the .arc; it cannot unless it
+    was deliberately reused as the ARC credential.
+
+
+Default Derivation Paths
+------------------------
+
+v1.6.0 default paths:
+
+  bitcoin       m/0'
+  bitcoincash   m/0'
+  litecoin      m/84'/2'/0'
+  dogecoin      m/44'/3'/0'
+  ethereum      m/44'/60'/0'
+  solana        m/44'/501'/0'
+  stellar       m/44'/148'/0'
+  monero        m/44'/128'/0'
+  cardano       m/1852'/1815'/0'/0/0
+  xrp           m/44'/144'/0'
+
+The Bitcoin and Bitcoin Cash default m/0' reflects Arculus-specific recovery
+behavior. Other wallets often use BIP44/BIP49/BIP84/BIP86 account paths.
+
+
+Common Path Reference
+---------------------
+
+Bitcoin:
+
+  Legacy P2PKH:
+      m/44'/0'/0'
+      addresses begin 1
+
+  Wrapped SegWit:
+      m/49'/0'/0'
+      addresses begin 3
+
+  Native SegWit:
+      m/84'/0'/0'
+      addresses begin bc1q
+
+  Taproot:
+      m/86'/0'/0'
+      addresses begin bc1p
+
+  Arculus native:
+      m/0'
+
+Bitcoin Cash:
+
+  Arculus/native default:
+      m/0'
+
+  Common BIP44:
+      m/44'/145'/0'
+
+Litecoin:
+
+  Legacy:
+      m/44'/2'/0'
+
+  Wrapped SegWit:
+      m/49'/2'/0'
+
+  Native SegWit:
+      m/84'/2'/0'
+
+Dogecoin:
+
+  Default:
+      m/44'/3'/0'
+
+Ethereum:
+
+  m/44'/60'/0'
+
+Solana:
+
+  m/44'/501'/0'
+
+Stellar:
+
+  m/44'/148'/0'
+
+Monero:
+
+  m/44'/128'/0'
+
+Cardano:
+
+  m/1852'/1815'/0'/0/0
+
+XRP:
+
+  m/44'/144'/0'
+
+
+Path Parser Rules
+-----------------
+
+parsePath(path):
+
+  - trims path
+  - splits on "/"
+  - skips leading "m" if present
+  - ignores empty path components
+  - hardened suffixes: "'", "h", "H"
+  - indexes must match /^\d+$/
+  - index must be >= 0 and < 0x80000000 before hardening
+  - hardened index adds 0x80000000
+
+normalizePath(path):
+
+  - parses the path
+  - emits "m" for empty path
+  - emits "m/<index>'" for hardened components and "m/<index>" otherwise
+
+Invalid path components stop derivation.
+
+
+Auto Script Resolution
 ----------------------
 
-  [ ] Mnemonic checksum passed.
-  [ ] Root fingerprint matches, or a known address matches.
-  [ ] Passphrase value was checked.
-  [ ] Path and script type match the originating wallet.
-  [ ] Export destination is trusted.
-  [ ] Clear All was used before ending the session.
+purposeToScript(path):
+
+  - parse path
+  - if no components: p2pkh
+  - first component without hardened bit determines purpose
+
+Mapping:
+
+  86 -> p2tr
+  84 -> p2wpkh
+  49 -> p2wpkh-p2sh
+  otherwise -> p2pkh
+
+Therefore:
+
+  m/0' maps to p2pkh
+  m/44'/... maps to p2pkh
+  m/49'/... maps to p2wpkh-p2sh
+  m/84'/... maps to p2wpkh
+  m/86'/... maps to p2tr
+
+If the original wallet used a non-standard script type, select it explicitly
+instead of relying on Auto.
+
+
+Address Count and Range
+-----------------------
+
+Without range:
+
+  count input determines indexes:
+
+    0 through count - 1
+
+With range A-B:
+
+  start = max(0, A)
+  end = max(start, B)
+  count = end - start + 1
+
+UTXO-style secp256k1 output:
+
+  For each requested index, derive:
+
+    branch 0 receiving
+    branch 1 change
+
+Account-style output:
+
+  Solana, Stellar, Monero, and Cardano use coin-specific row generation
+  specified in Derivation.txt.
+
+Recovery rule:
+
+  If a known address is missing, increase range and check both branches before
+  concluding the path/passphrase is wrong.
+
+
+Verification Procedure
+----------------------
+
+Before using private key material:
+
+  1. Confirm mnemonic checksum is valid.
+  2. Confirm the BIP39 passphrase state: empty or exact non-empty string.
+  3. Compare root fingerprint if known.
+  4. Confirm coin.
+  5. Confirm derivation path.
+  6. Confirm script type.
+  7. Confirm receive address at expected index.
+  8. For UTXO coins, confirm change branch when relevant.
+  9. Confirm address encoding form.
+  10. Export only after verification.
+
+Minimum evidence:
+
+  At least one known historical address should match. For stronger confidence,
+  match multiple addresses across expected indexes/branches.
+
+
+Address Location Procedure
+--------------------------
+
+If original settings are unknown:
+
+  1. Start with empty BIP39 passphrase unless documentation says otherwise.
+  2. Try the wallet's known default path if known.
+  3. For Bitcoin:
+       m/0'
+       m/44'/0'/0'
+       m/49'/0'/0'
+       m/84'/0'/0'
+       m/86'/0'/0'
+  4. For Bitcoin Cash:
+       m/0'
+       m/44'/145'/0'
+  5. For Litecoin:
+       m/44'/2'/0'
+       m/49'/2'/0'
+       m/84'/2'/0'
+  6. For account coins, try the documented default first.
+  7. Increase range gradually.
+  8. Check receiving and change branches for UTXO coins.
+  9. If no match and a passphrase may have been used, test documented
+     passphrase candidates carefully.
+
+Do not brute-force personal passphrases on the recovery workstation unless that
+is an intentional incident-response activity. Every candidate derives a real
+wallet tree and may create confusion if exported.
+
+
+Bitcoin Cash Display Choice
+---------------------------
+
+v1.6.0 default Bitcoin Cash display/export uses CashAddr when the legacy toggle
+is off.
+
+Operational issue:
+
+  Some older systems recorded legacy Base58 Bitcoin Cash addresses. The same key
+  can correspond to CashAddr and legacy display forms.
+
+Recovery rule:
+
+  If a BCH address appears not to match, verify whether the historical record is
+  legacy Base58 or CashAddr before changing the seed/path.
+
+
+XRP Recovery Boundary
+---------------------
+
+XRP derives a classic r-address and private key material.
+
+Destination tags:
+
+  - not derived
+  - not stored in the seed
+  - not inferable from private key
+  - assigned by exchanges/custodians
+
+If recovering funds sent to an exchange, obtain the required destination tag
+from that exchange. The QR subsystem can include a user-entered tag in QR
+payloads, but derivation does not produce it.
+
+
+Stellar Memo Boundary
+---------------------
+
+Stellar account keys and addresses derive from the seed. Exchange memo fields
+do not. A Stellar address alone may not be sufficient for custodial deposits.
+
+Confirm memo requirements with the receiving service before moving funds.
+
+
+Ethereum and ERC-20 Boundary
+----------------------------
+
+Ethereum derivation yields the account address and private key. ERC-20 tokens
+share the same address/private key relationship as ETH on the same chain.
+
+The tool does not:
+
+  - identify token balances
+  - identify chain IDs
+  - identify L2 networks
+  - verify contract addresses
+  - estimate gas
+
+Verify the intended chain/network in the wallet used for sweeping.
+
+
+Monero Boundary
+---------------
+
+Monero output includes spend/view material as specified in Derivation.txt.
+
+The tool does not scan the Monero blockchain. It cannot determine balance or
+transaction history. Wallet restore height and chain scanning happen in Monero
+wallet software, not in Arculus Recovery.
+
+
+Cardano Boundary
+----------------
+
+Cardano output uses the v1.6.0 Icarus/CIP-1852 behavior specified in
+Derivation.txt.
+
+The tool derives address/key material. It does not query staking state, rewards,
+UTxOs, or wallet account discovery. Confirm address compatibility with the
+wallet you use for recovery.
+
+
+Export Selection
+----------------
+
+Derived JSON:
+
+  Most complete machine-readable export. Contains nested account fields and all
+  generated row fields.
+
+CSV:
+
+  Flattened rows for spreadsheet review. Not lossless.
+
+TXT:
+
+  Human-readable deterministic text. Not lossless.
+
+PDF:
+
+  Visual report with selected columns and extended key section. Not encrypted.
+
+.arc:
+
+  Seed backup. Protected .arc restores mnemonic only. It does not store BIP39
+  passphrase.
+
+QR PNG:
+
+  Address payload image. Not seed backup.
+
+Export only the artifact required for the recovery. Plaintext private-key
+exports are often more sensitive than a protected .arc file.
+
+
+Sweeping Procedure
+------------------
+
+Arculus Recovery does not sign or broadcast transactions. To move funds:
+
+  1. Derive and verify the target private key or account secret offline.
+  2. Transfer only the minimum private material needed to a trusted signing
+     wallet.
+  3. Sweep funds to a new wallet generated outside the compromised context.
+  4. Verify transaction details on the signing device/software.
+  5. Broadcast from an online machine that does not retain broader seed
+     material.
+
+Prefer sweeping to a new mnemonic rather than continuing to use a seed that was
+entered into a general-purpose environment.
+
+
+Cleanup Procedure
+-----------------
+
+After recovery:
+
+  1. Close QR modal if open.
+  2. Export or record only required artifacts.
+  3. Delete unneeded plaintext exports.
+  4. Click Clear All.
+  5. Confirm mnemonic, word grid, passphrase, output, and root fingerprint are
+     cleared.
+  6. Close browser or desktop wrapper.
+  7. Power off live OS or reboot before reconnecting network.
+
+Clear All is not memory erasure. Treat full power-off of a live environment as
+the stronger cleanup step.
+
+
+Common Failure Modes
+--------------------
+
+Valid mnemonic, no funds:
+
+  Possible causes:
+      wrong BIP39 passphrase
+      wrong path
+      wrong script type
+      wrong branch
+      wrong account index
+      wrong coin
+      address range too narrow
+
+.arc will not open:
+
+  Possible causes:
+      wrong ARC password
+      wrong keyfile
+      wrong combined-mode password
+      encrypted keyfile not decrypted
+      corrupted/tampered file
+      unsupported legacy file
+
+QR accepted but payment fails:
+
+  Possible causes:
+      missing XRP destination tag
+      missing Stellar memo
+      wrong network/chain
+      receiving wallet does not accept URI form
+      address copied without memo/tag metadata
+
+PDF/CSV missing fields:
+
+  Use JSON for complete machine-readable output. PDF/CSV/TXT are projections.
+
+
+Out-of-Scope Behavior
+---------------------
+
+The recovery tool does not:
+
+  - broadcast transactions
+  - sign transactions
+  - query balances
+  - discover used addresses
+  - estimate fees
+  - identify token balances
+  - validate XRP destination tags
+  - validate Stellar memos
+  - validate exchange deposit policies
+  - recover forgotten BIP39 passphrases
+  - recover forgotten .arc passwords
+  - recover missing keyfiles
+
+
+Final Recovery Rule
+-------------------
+
+Do not act on a private key until the derived address has been verified against
+known wallet history or a known fingerprint/path record. Correct-looking output
+is not enough; deterministic recovery requires all inputs to be correct at the
+same time.
+
+
+Procedure: Direct Mnemonic Recovery
+-----------------------------------
+
+Use this procedure when the mnemonic is available on paper or another offline
+record.
+
+  1. Prepare the offline environment according to OpSec.txt.
+  2. Open Arculus_Recovery.html locally.
+  3. Confirm v1.6.0.
+  4. Select 12 or 24 words.
+  5. Enter the mnemonic.
+  6. Enter BIP39 passphrase if used. Leave empty only if no passphrase was used
+     or if testing the empty-passphrase candidate.
+  7. Validate the mnemonic.
+  8. Compare root fingerprint if known.
+  9. Select coin.
+  10. Confirm derivation path.
+  11. Confirm script type.
+  12. Set a small address count or range.
+  13. Derive.
+  14. Compare known address.
+  15. Expand range or test alternate path only if no known address matches.
+  16. Export only what is required.
+  17. Clear all and close session.
+
+Do not export private keys before at least one known address matches.
+
+
+Procedure: Protected .arc Recovery
+----------------------------------
+
+Use this procedure when a protected .arc file is the mnemonic backup.
+
+  1. Prepare offline environment.
+  2. Place .arc file on local/removable media.
+  3. Open Arculus_Recovery.html locally.
+  4. Click Import Seed.
+  5. Select .arc file.
+  6. If credential hint selects a mode, verify it matches your backup notes.
+  7. Enter password, select keyfile, or provide both factors.
+  8. If keyfile is encrypted, enter encrypted-keyfile password.
+  9. Import.
+  10. If import succeeds, seed is hidden on screen.
+  11. Enter BIP39 wallet passphrase if the wallet used one.
+  12. Validate root fingerprint/address as usual.
+
+If import fails, do not keep trying random passwords in the same session without
+notes. Record the failure, verify mode and files, and restart cleanly if needed.
+
+
+Procedure: Backup Migration
+---------------------------
+
+Use this when converting an older or uncertain backup into current v1.6.0 form.
+
+  1. Import the old .arc or mnemonic offline.
+  2. Validate mnemonic checksum.
+  3. Enter BIP39 passphrase if used.
+  4. Confirm root fingerprint or known address.
+  5. Export a new protected .arc.
+  6. Choose password, keyfile, or combined mode intentionally.
+  7. Save all required factors.
+  8. Clear session.
+  9. Re-import the new .arc using the saved factors.
+  10. Confirm the same root fingerprint.
+  11. Only then retire the old backup.
+
+Never delete the only known-good backup before verifying the replacement.
+
+
+Procedure: Address Discovery
+----------------------------
+
+Use this when the mnemonic is known but the original wallet path is unknown.
+
+For each candidate:
+
+  1. Set BIP39 passphrase candidate.
+  2. Set coin.
+  3. Set path.
+  4. Set script type or Auto.
+  5. Derive a modest range, for example 0-20.
+  6. Check receiving branch.
+  7. Check change branch for UTXO coins.
+  8. Record candidate result without exporting private keys.
+
+Candidate order should prioritize documented wallet defaults over guesses.
+
+Stop when:
+
+  - a known historical address matches
+  - root fingerprint matches and path-specific address evidence matches
+  - all documented candidates are exhausted and further work becomes passphrase
+    recovery rather than path recovery
+
+
+Procedure: Single Private Key Recovery
+--------------------------------------
+
+Use this when the target is one known address.
+
+  1. Recover mnemonic/passphrase.
+  2. Set coin/path/script.
+  3. Use Range around the suspected index if known.
+  4. Derive.
+  5. Locate exact address match.
+  6. Export JSON or copy the single required private field manually from the
+     offline display.
+  7. Avoid full-account PDF/JSON export if one key is enough.
+  8. Sweep funds to a new wallet.
+  9. Delete temporary exports.
+
+Single private key recovery reduces blast radius compared with exporting an
+entire account key set.
+
+
+Procedure: Full Account Recovery
+--------------------------------
+
+Use this when the target wallet software needs an account-level import or when
+many addresses must be recovered.
+
+  1. Verify mnemonic/passphrase with root fingerprint.
+  2. Verify path/script with known address.
+  3. Export JSON if machine-readable account fields are needed.
+  4. Export PDF only for human review/printing.
+  5. Treat account xprv fields as Class B secrets.
+  6. Import/sweep in trusted wallet software.
+  7. Move funds to a newly backed-up wallet if the seed was exposed beyond the
+     intended offline environment.
+
+An account extended private key can derive many child private keys. Handle it
+with broader caution than a single WIF key.
+
+
+Decision Tree: No Known Address Match
+-------------------------------------
+
+If no known address matches:
+
+  1. Is mnemonic checksum valid?
+       no -> fix mnemonic
+       yes -> continue
+
+  2. Is BIP39 passphrase known?
+       no -> test empty and documented candidates
+       yes -> continue
+
+  3. Does root fingerprint match?
+       no -> mnemonic/passphrase mismatch
+       yes -> path/script/range issue likely
+
+  4. Is coin correct?
+       no -> switch coin
+       yes -> continue
+
+  5. Is path correct?
+       unknown -> test common paths
+       yes -> continue
+
+  6. Is script type correct?
+       unknown -> test P2PKH, P2WPKH-P2SH, P2WPKH, P2TR where supported
+       yes -> continue
+
+  7. Is range wide enough?
+       no -> expand range
+       yes -> continue
+
+  8. For UTXO, was change branch checked?
+       no -> check change
+       yes -> reassess source records
+
+
+Documentation to Preserve
+-------------------------
+
+For future recovery, preserve non-secret metadata:
+
+  - app version used for backup
+  - root fingerprint
+  - coin
+  - derivation path
+  - script type
+  - first receive address
+  - whether BIP39 passphrase was used
+  - .arc credential mode
+  - storage locations of .arc/keyfile/password records
+
+Do not put mnemonic words or private keys in the same metadata note unless that
+note is stored as a full secret.
+
+
+Recovery Artifact Sensitivity
+-----------------------------
+
+Protected .arc:
+
+  Contains encrypted mnemonic. Needs credential.
+
+Unprotected .arc:
+
+  Contains plaintext mnemonic. Treat as mnemonic.
+
+Raw keyfile:
+
+  Can unlock Keyfile-mode .arc. Treat as Class A when paired with .arc.
+
+Encrypted keyfile:
+
+  Needs password. Still sensitive.
+
+Derived JSON:
+
+  Most complete private-key export. Treat as highly sensitive.
+
+CSV/TXT:
+
+  Plaintext private-key material if exported after derivation. Treat as highly
+  sensitive.
+
+PDF:
+
+  Plaintext visual private-key material. Treat as highly sensitive.
+
+QR PNG:
+
+  Address payload only if used correctly. Privacy-sensitive but not a private
+  key artifact.
+
+
+Post-Recovery Seed Retirement
+-----------------------------
+
+Retire the original seed when:
+
+  - mnemonic was entered on a machine that may have been online or compromised
+  - private-key exports were copied to unsafe media
+  - derived JSON/PDF was exposed
+  - protected .arc and credential were exposed together
+  - raw keyfile and .arc were exposed together
+  - screen capture or camera exposure may have recorded seed/private keys
+
+Retirement procedure:
+
+  1. Generate a new wallet in a trusted environment.
+  2. Back up the new seed and passphrase if used.
+  3. Move funds from old wallet to new wallet.
+  4. Confirm receipt.
+  5. Stop using the old seed.
+
+
+Implementation Compatibility Checklist
+--------------------------------------
+
+A v1.6.0-compatible recovery implementation must:
+
+  - Support 12- and 24-word BIP39 English mnemonics.
+  - Normalize mnemonic whitespace before BIP39 seed derivation.
+  - Apply NFKD to mnemonic and BIP39 passphrase.
+  - Use PBKDF2-HMAC-SHA512 with 2048 iterations for BIP39 seed.
+  - Use current default paths listed in this document.
+  - Parse paths with "'", h, and H hardened suffixes.
+  - Map Auto script type by first purpose component.
+  - Derive UTXO receiving and change branches.
+  - Route Solana/Stellar/Monero/Cardano to their current v1.6.0 derivation
+    families.
+  - Import ARCULUS-ARC-V2 protected and plain bundles.
+  - Preserve the distinction between BIP39 passphrase and .arc credentials.

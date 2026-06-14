@@ -1,158 +1,1106 @@
-Arculus Recovery v1.6.0 User Guide
-===================================
+Arculus Recovery v1.6.0 - Byte-Level User and Operator Guide
+=============================================================
 
-Purpose
--------
+Source of Truth
+---------------
 
-Arculus Recovery is an offline BIP39/BIP32 recovery and key-derivation tool.
-It helps users validate a mnemonic, derive addresses and private keys, import
-or export encrypted .arc seed backups, and produce local recovery exports.
+This guide describes the standalone browser application implemented by the
+repository root file Arculus_Recovery.html with APP_VERSION equal to v1.6.0.
+The HTML file is the authoritative implementation for the UI, mnemonic
+normalization, key derivation, address construction, ARC seed-file encryption,
+QR generation, export formatting, and runtime clearing behavior.
 
-The standalone HTML file is the canonical graphical app. The PySide6 GUI and
-Tauri desktop package render the same HTML interface. The Python CLI exposes
-the derivation engine for scripted or text-only sessions.
+The application is designed to run fully offline in a browser. The v1.6.0 HTML
+embeds its cryptographic and serialization dependencies directly, including:
 
+  BIP39 English word list
+  PBKDF2-HMAC-SHA512
+  HMAC-SHA512
+  SHA-256
+  SHA-512
+  RIPEMD-160
+  Keccak-256
+  secp256k1 scalar and point arithmetic
+  Ed25519 arithmetic
+  Bech32
+  Bech32m
+  CashAddr
+  Bitcoin Base58Check
+  XRPL Base58Check
+  Monero base58 block encoding
+  QR encoding and PNG canvas rendering
+  jsPDF PDF export
 
-Editions
---------
-
-Standalone HTML:
-  Open Arculus_Recovery.html directly in a browser. It is self-contained and
-  does not require Python, npm, Tauri, vendor files, a CDN, or network access.
-
-Python GUI:
-  Run "python Arculus_Recovery.py --gui" after installing requirements.txt.
-  This opens the HTML interface in PySide6 WebEngine.
-
-Python CLI:
-  Run "python Arculus_Recovery.py" with --mnemonic and derivation flags.
-  CLI output supports JSON, CSV, and TXT.
-
-Tauri desktop package:
-  Runs the same HTML app in a native WebView. Packaged exports use a native
-  save bridge before falling back to browser-style download behavior.
-
-
-Before You Begin
-----------------
-
-Use the tool only on a trusted offline machine. Disconnect networking before
-entering or importing seed material. A network indicator is useful feedback, but
-physical disconnection is the authority.
-
-Have these inputs ready:
-
-  - 12-word or 24-word mnemonic, or an encrypted .arc file.
-  - BIP39 passphrase if the wallet used one.
-  - Target coin.
-  - Derivation path and script type, if known.
-  - A known address or root fingerprint for verification.
-
-A wrong passphrase, path, script type, or mnemonic can produce valid-looking
-but unrelated keys. Do not act on output until a known fingerprint or address
-matches.
+The network indicator reflects navigator.onLine only. It does not create a
+network request and does not prove that the browser, host operating system, or
+extensions are isolated. Recovery work should be performed in an environment
+where the operator controls the machine, browser profile, clipboard, screen
+capture, and downloaded files.
 
 
-Quick Recovery Workflow
------------------------
-
-1. Open the HTML app, Python GUI, or Tauri app on the offline machine.
-2. Enter the mnemonic, generate a test mnemonic, or import a .arc file.
-3. Click Validate Mnemonic and resolve any errors.
-4. Enter the BIP39 passphrase only if the wallet used one.
-5. Choose coin, script type, path, address count, and optional range.
-6. Click Derive Keys + Addresses.
-7. Verify the root fingerprint or a known address.
-8. Export only the material you need.
-9. Click Clear All, close the app, and power down the environment.
-
-
-Main Controls
--------------
-
-Mnemonic entry:
-  Use the word grid or paste a full mnemonic. The 12/24 selector controls active
-  word slots. Generated, imported, and successfully derived manually entered
-  seeds are masked and can be revealed only while Show Seed is held.
-
-Passphrase:
-  Optional BIP39 passphrase. This is not the .arc file password. It changes the
-  derived wallet tree and produces no error when wrong.
-
-Coin:
-  Select Bitcoin, Litecoin, Dogecoin, Ethereum / ERC-20, or XRP.
-
-Derivation path:
-  Account-level BIP32 path. Arculus-native Bitcoin recovery defaults to m/0'.
-  Standard wallet paths include m/44', m/49', m/84', and m/86' purpose paths.
-
-Script type:
-  Controls UTXO address encoding for Bitcoin, Litecoin, and Dogecoin. Auto
-  infers the type from standard purpose values. Ethereum and XRP ignore UTXO
-  script type.
-
-Address count and range:
-  Controls how many receiving and change addresses are derived. Use a range to
-  inspect a specific index window.
-
-Output tabs:
-  Table View is for review and copy actions. Raw JSON contains the complete
-  structured output. Extended Keys isolates root and account extended keys.
-
-Export:
-  Writes JSON, CSV, TXT, or PDF. These exports may contain private keys and are
-  not encrypted by the .arc format.
-
-Encrypted seed:
-  Encrypt/Export Seed writes an authenticated .arc file. Import Seed decrypts a
-  .arc file and loads the mnemonic into the hidden-seed workflow.
-
-QR Export:
-  Generates a black-on-white QR code for an address or supported payment URI.
-  XRP addresses use a destination-tag workflow.
-
-Settings:
-  Select Light, Dark, Dark+, or Terminal theme. Theme preference is local app
-  state only.
-
-
-Default Paths
--------------
-
-  Coin       Default path       Notes
-  ---------  -----------------  -------------------------------------------
-  Bitcoin    m/0'               Arculus-native default
-  Litecoin   m/84'/2'/0'        Native SegWit default
-  Dogecoin   m/44'/3'/0'        Legacy BIP44 default
-  Ethereum   m/44'/60'/0'       Also used by ERC-20 tokens
-  XRP        m/44'/144'/0'      Destination tags are not derived
-
-Common UTXO paths:
-
-  Purpose   Script type      Bitcoin        Litecoin       Dogecoin
-  -------   ---------------  -------------  -------------  -------------
-  BIP44     P2PKH            m/44'/0'/0'    m/44'/2'/0'    m/44'/3'/0'
-  BIP49     P2WPKH-P2SH      m/49'/0'/0'    m/49'/2'/0'    m/49'/3'/0'
-  BIP84     P2WPKH           m/84'/0'/0'    m/84'/2'/0'    m/84'/3'/0'
-  BIP86     P2TR             m/86'/0'/0'    m/86'/2'/0'    disabled
-
-
-Export Sensitivity
-------------------
-
-JSON, CSV, TXT, and PDF exports can contain the mnemonic, private keys, WIF
-keys, and extended private keys. Treat them as funds-controlling secrets.
-
-The .arc format encrypts only the mnemonic backup. It does not encrypt derived
-exports, PDF files, QR PNGs, or the BIP39 passphrase.
-
-
-End-of-Session Checklist
+Supported Recovery Scope
 ------------------------
 
-  [ ] The mnemonic checksum passed.
-  [ ] Root fingerprint or known address was verified.
-  [ ] Coin, path, script type, passphrase, count, and range were checked.
-  [ ] Exports were stored on encrypted media.
-  [ ] Clear All was clicked.
-  [ ] The offline environment was powered down.
+Arculus Recovery v1.6.0 derives keys and addresses. It does not scan balances,
+query account state, broadcast transactions, import funds, sign transactions,
+fetch token metadata, check address reuse, infer wallet gap limits, or contact
+wallet-provider APIs.
+
+The supported visible seed sizes are:
+
+  12 words
+  24 words
+
+Both sizes are BIP39 English mnemonics. A 12-word mnemonic encodes 128 entropy
+bits plus 4 checksum bits. A 24-word mnemonic encodes 256 entropy bits plus 8
+checksum bits. Other BIP39-valid word counts such as 15, 18, and 21 are not
+accepted by v1.6.0.
+
+All listed coins are mainnet only:
+
+  Bitcoin
+  Bitcoin Cash
+  Litecoin
+  Dogecoin
+  Ethereum / ERC-20
+  Solana
+  Stellar
+  Monero
+  Cardano
+  XRP
+
+
+Initial UI State
+----------------
+
+On load, the title row displays "Arculus Recovery" and v1.6.0. The default
+input state is:
+
+  mnemonic textarea: empty
+  seed length radio: 12 words
+  numbered word grid: 24 cells present; active cells follow seed length
+  passphrase input: empty, type=password
+  coin selector: Bitcoin
+  derivation path: m/0'
+  script selector: P2WPKH
+  address count: 5
+  range: empty
+  export format: PDF
+  root fingerprint display: Root Fingerprint:
+  status: Ready
+
+Changing the coin selector resets the derivation path to the coin default and
+also updates the script selector:
+
+  Bitcoin: P2WPKH
+  Bitcoin Cash: P2PKH
+  Litecoin: P2WPKH
+  Dogecoin: P2PKH
+  Ethereum / ERC-20: Auto
+  Solana: Auto
+  Stellar: Auto
+  Monero: Auto
+  Cardano: Auto
+  XRP: Auto
+
+The derivation-path info marker is displayed when the active path is exactly
+m/0'. That marker exists because the Arculus default path is a single hardened
+account level rather than the BIP44-style m/44'/coin_type'/account' path used
+by many other wallets.
+
+
+Mnemonic Input Model
+--------------------
+
+Seed input can be supplied through either:
+
+  a single textarea containing whitespace-separated words
+  the numbered word grid with one word per cell
+
+The active mnemonic used by validation, derivation, seed export, and seed copy
+is selected as follows:
+
+  If an imported, generated, or masked seed state exists, use that hidden
+  internal mnemonic.
+
+  Otherwise, use the visible mnemonic textarea value.
+
+The normalization algorithm is:
+
+  input_string = input or empty string
+  trimmed = input_string.trim()
+  tokens = trimmed.split(/\s+/).filter(Boolean)
+  joined = tokens.join(" ")
+  normalized = joined.normalize("NFKD")
+  words = normalized === "" ? [] : normalized.split(" ")
+
+Important byte-level properties:
+
+  The join separator is one ASCII space, byte 0x20 after UTF-8 encoding.
+  The mnemonic is normalized with Unicode NFKD before BIP39 seed derivation.
+  Word lookup is against the embedded lowercase BIP39 English list.
+  The visible text area placeholder is not part of the mnemonic.
+  The passphrase is never appended to the displayed mnemonic.
+
+Validation rejects:
+
+  word counts other than 12 or 24
+  words absent from the embedded BIP39 English list
+  valid words whose checksum bits do not match SHA-256(entropy)
+
+When the visible mnemonic is successfully derived for the first time, v1.6.0
+promotes it into the protected hidden seed state. The textarea and word cells
+are replaced by mask tokens, and later derivations use the hidden internal seed
+unless Clear All is pressed.
+
+
+Generated Seed Workflow
+-----------------------
+
+Generate Random Seed uses crypto.getRandomValues to sample entropy. The seed
+length radio controls the entropy length:
+
+  12 words: 16 random bytes, 128 entropy bits, 4 checksum bits
+  24 words: 32 random bytes, 256 entropy bits, 8 checksum bits
+
+Generation steps:
+
+  1. Sample entropy bytes with crypto.getRandomValues.
+  2. Compute SHA-256(entropy).
+  3. Take the leftmost ENT / 32 checksum bits.
+  4. Concatenate entropy bits || checksum bits.
+  5. Split into 11-bit unsigned indexes.
+  6. Map each index to BIP39_WORDS[index].
+  7. Store the mnemonic in hidden seed state.
+  8. Replace the visible textarea and word grid with mask tokens.
+
+The generated mnemonic is ready for validation, derivation, copy, QR-free
+export, and ARC export without revealing it on screen. Hold Show Seed to reveal
+the words temporarily. Release the button, move the pointer away, or end the
+touch event to re-mask the phrase.
+
+
+Passphrase Handling
+-------------------
+
+The Passphrase field is the optional BIP39 passphrase, sometimes called the
+25th word in wallet UI language. It is not a BIP39 word and is not validated
+against the BIP39 word list.
+
+The BIP39 seed calculation is:
+
+  password bytes = UTF8(NFKD(normalized_mnemonic))
+  salt bytes = UTF8(NFKD("mnemonic" + passphrase))
+  PBKDF2 algorithm = PBKDF2-HMAC-SHA512
+  PBKDF2 iterations = 2048
+  output length = 64 bytes
+
+An empty passphrase is a distinct wallet from any non-empty passphrase. A
+mistyped passphrase can produce valid-looking derived addresses that do not
+match the intended wallet. v1.6.0 shows a passphrase warning in validation
+output when the mnemonic is valid and the passphrase field is empty.
+
+The passphrase visibility button toggles the HTML input type between password
+and text. Toggling visibility does not change the stored value, derived seed,
+root fingerprint, or export bytes.
+
+
+Validate Mnemonic
+-----------------
+
+Validate Mnemonic runs analyzeMnemonic against the active mnemonic and the
+current passphrase. It writes a JSON diagnostic object to the raw output area.
+On success or structured failure the object contains:
+
+  validation
+  word_count
+  wordlist_validity
+  entropy_bits
+  checksum_bits
+  checksum_match
+  bip39_compliance
+  bip39_seed_512_bit
+  master_private_key
+  master_chain_code
+  root_fingerprint
+  keystore_type
+  seed_format_detection
+  passphrase_warning
+  message
+
+For a valid mnemonic, the BIP39 seed is 64 bytes and is rendered as lowercase
+hex. The secp256k1 master private key and master chain code are produced by:
+
+  HMAC-SHA512(key = ASCII("Bitcoin seed"), data = BIP39 seed)
+  master_private_key = output bytes 0..31
+  master_chain_code = output bytes 32..63
+
+The root fingerprint is:
+
+  HASH160(compressed_master_public_key)[0..3]
+
+The displayed root fingerprint is also refreshed when the passphrase changes.
+
+
+Derivation Path Rules
+---------------------
+
+The path parser accepts:
+
+  m/0'
+  0'
+  m/44h/60h/0h
+  m/84H/0H/0H
+  m/1852'/1815'/0'/0/0
+
+The path parser behavior is:
+
+  Split the path on "/".
+  If the first component is "m", skip it.
+  Empty components are ignored by the parser.
+  A hardened suffix is "'", "h", or "H".
+  The numeric component must match decimal digits only.
+  The pre-hardened value must satisfy 0 <= n < 2147483648.
+  Hardened values are encoded as n | 0x80000000.
+  normalizePath renders the path back with leading m and apostrophes.
+
+Auto script selection is based on the first path component after removing the
+hardened bit:
+
+  purpose 86: p2tr
+  purpose 84: p2wpkh
+  purpose 49: p2wpkh-p2sh
+  all other purposes: p2pkh
+
+Ethereum and XRP ignore the selected UTXO script type and use their own
+address families. Solana, Stellar, Monero, and Cardano use their own Ed25519
+family derivation and do not emit UTXO script addresses.
+
+
+Default Derivation Paths
+------------------------
+
+The v1.6.0 default account paths are:
+
+  bitcoin: m/0'
+  bitcoincash: m/0'
+  litecoin: m/84'/2'/0'
+  dogecoin: m/44'/3'/0'
+  ethereum: m/44'/60'/0'
+  solana: m/44'/501'/0'
+  stellar: m/44'/148'/0'
+  monero: m/44'/128'/0'
+  cardano: m/1852'/1815'/0'/0/0
+  xrp: m/44'/144'/0'
+
+For secp256k1 account-style outputs, displayed receiving rows append /0/i and
+displayed change rows append /1/i to the selected account path.
+
+For Solana and Stellar, displayed rows are hardened account rows. For Monero,
+the selected account path directly produces a spend/view account address. For
+Cardano, the selected path is the payment key path and the staking key path is
+m/1852'/1815'/0'/2/0.
+
+
+Address Count and Range
+-----------------------
+
+Without a range, the count field controls how many indexes are derived per
+branch. The raw count is:
+
+  countRaw = Math.max(1, Number(count.value || 5))
+
+With count 5, UTXO-style and secp256k1 account-style coins derive 5 receiving
+rows and 5 change rows. Single-branch Ed25519 account families derive the
+visible receiving/account rows defined by their coin-specific function.
+
+When the Range field is populated, it overrides count if and only if it matches:
+
+  ^(\d+)\s*-\s*(\d+)$
+
+Range behavior:
+
+  startIdx = Math.max(0, parsed_start)
+  endIdx = Math.max(startIdx, parsed_end)
+  count = endIdx - startIdx + 1
+
+When the range field is non-empty, the count input is blanked, disabled, and
+visually dimmed. Clearing the range restores the saved manual count or 5.
+
+
+Derive Keys + Addresses
+-----------------------
+
+Derive Keys + Addresses runs the full derivation pipeline and updates:
+
+  progress bar
+  lastDerivedOutput object
+  raw JSON output
+  table view
+  extended keys pane
+  root seed masking state
+  status line
+
+The top-level output shape is:
+
+  {
+    "coin": string,
+    "network": "mainnet",
+    "word_count": 12 or 24,
+    "accounts": [
+      account_object
+    ]
+  }
+
+For Bitcoin-family UTXO coins, Ethereum, and XRP, account_object contains:
+
+  derivation
+  account_script_type_used
+  root_xprv
+  root_xpub
+  optional root_yprv/root_ypub
+  optional root_zprv/root_zpub
+  optional root_trprv/root_trpub
+  account_xprv
+  account_xpub
+  optional account_yprv/account_ypub
+  optional account_zprv/account_zpub
+  optional account_trprv/account_trpub
+  receiving array
+  change array
+
+For each UTXO row:
+
+  path = derivation + "/" + branch + "/" + index
+  branch 0 = receiving
+  branch 1 = change
+  public_key_hex = compressed secp256k1 public key, 33 bytes
+  private_key_hex = secp256k1 scalar, 32 bytes
+  private_key_wif = Base58Check WIF when the coin defines WIF
+
+For Ethereum rows:
+
+  address = EIP-55 address
+  public_key_hex = compressed secp256k1 public key, 33 bytes
+  ethereum_public_key_hex = uncompressed x||y public key without 0x04, 64 bytes
+  private_key_hex = secp256k1 scalar, 32 bytes
+  erc20_address = same string as address
+
+For XRP rows:
+
+  address = XRPL classic r-address
+  xrp_classic_address = same string as address
+  public_key_hex = compressed secp256k1 public key, 33 bytes
+  private_key_hex = secp256k1 scalar, 32 bytes
+  destination tags are not derived
+
+For Taproot rows:
+
+  address = Bech32m v1 output key address
+  taproot_internal_public_key_hex = x-only internal key, 32 bytes
+  taproot_internal_private_key_hex = internal scalar, 32 bytes
+  taproot_internal_private_key_wif = WIF for internal scalar
+  taproot_tweak_hex = tagged TapTweak scalar bytes
+  taproot_output_public_key_hex = x-only output key, 32 bytes
+  taproot_output_private_key_hex = tweaked scalar, 32 bytes
+  taproot_output_private_key_wif = WIF for tweaked scalar
+  taproot_output_key_parity = output y-coordinate parity
+
+
+Coin-Specific Output Notes
+--------------------------
+
+Bitcoin:
+
+  P2PKH uses version byte 0x00 and Base58Check display.
+  P2WPKH-P2SH uses redeem script 0x00 0x14 HASH160(pubkey), P2SH version 0x05.
+  P2WPKH uses Bech32 HRP "bc", witness version 0.
+  P2TR uses Bech32m HRP "bc", witness version 1.
+  WIF uses version byte 0x80 and compressed-key suffix 0x01.
+
+Bitcoin Cash:
+
+  Default display is CashAddr with prefix "bitcoincash".
+  Advanced legacy mode displays Base58Check P2PKH using version byte 0x00.
+  P2WPKH, P2WPKH-P2SH, and P2TR are not supported for Bitcoin Cash in v1.6.0.
+
+Litecoin:
+
+  P2PKH uses address version 0x30.
+  P2SH uses address version 0x32.
+  P2WPKH uses Bech32 HRP "ltc".
+  WIF uses version byte 0xB0.
+  Litecoin P2WPKH extended display keys use zpub/zprv version bytes.
+
+Dogecoin:
+
+  P2PKH uses address version 0x1E.
+  P2SH uses address version 0x16 when relevant.
+  WIF uses version byte 0x9E.
+  P2TR is not supported and must fail before output.
+
+Ethereum / ERC-20:
+
+  The private key is a secp256k1 scalar.
+  The address is the last 20 bytes of Keccak-256(uncompressed_public_key_x_y).
+  Display casing follows EIP-55.
+  ERC-20 tokens use the same account address; token contract addresses are not derived.
+
+Solana:
+
+  Derivation uses SLIP-0010 Ed25519 hardened child derivation.
+  Address bytes are the 32-byte Ed25519 public key.
+  Display is Bitcoin Base58 over raw public-key bytes with no checksum.
+
+Stellar:
+
+  Derivation uses SLIP-0010 Ed25519 hardened child derivation.
+  Public account display uses Stellar StrKey with version byte 0x30.
+  Secret seed display uses Stellar StrKey with version byte 0x90.
+  StrKey checksum is CRC16-XModem stored little-endian before base32 encoding.
+
+Monero:
+
+  Derivation uses the v1.6.0 Monero Ed25519 path logic.
+  Output includes private spend key, private view key, public spend key, and public view key.
+  Standard mainnet address construction uses network byte 0x12 and a 4-byte Keccak checksum.
+  The tool does not scan subaddresses or account balances.
+
+Cardano:
+
+  Derivation uses CIP-1852/Icarus Ed25519-BIP32 logic.
+  The payment path comes from the Derivation Path field.
+  The staking path for the displayed base address is m/1852'/1815'/0'/2/0.
+  The address is a Shelley mainnet base address using Bech32 HRP "addr".
+
+
+Output Views
+------------
+
+After a successful derivation, the output tabs become available:
+
+  Table View
+  Raw JSON
+  Extended Keys
+  Expand
+
+Table View renders flattened address rows. Raw JSON is the complete
+lastDerivedOutput object with two-space indentation. Extended Keys displays
+root and account extended keys available for the active account and script
+family.
+
+The Expand control enlarges the output area for review. It does not modify the
+derived object or exported bytes.
+
+
+Export Derived Keys and Addresses
+---------------------------------
+
+The Export button exports lastDerivedOutput. If no derivation has completed,
+the status line reports that there is nothing to export.
+
+JSON export:
+
+  filename: Arculus_Derived_Keys_Addresses.json
+  MIME type: application/json;charset=utf-8
+  bytes: JSON.stringify(lastDerivedOutput, null, 2) || 0a
+
+CSV export:
+
+  filename: Arculus_Derived_Keys_Addresses.csv
+  MIME type: text/csv;charset=utf-8
+  row separator: LF, byte 0x0a
+  final byte: LF, byte 0x0a
+  quoting: fields containing comma, quote, CR, or LF are wrapped in quotes
+  quote escaping: " becomes ""
+
+TXT export:
+
+  filename: Arculus_Derived_Keys_Addresses.txt
+  MIME type: text/plain;charset=utf-8
+  row separator: LF, byte 0x0a
+  final byte: LF, byte 0x0a
+
+PDF export:
+
+  filename: Arculus_Key_Export_<CoinDisplayName>.pdf
+  library: embedded jsPDF
+  orientation: landscape
+  unit: points
+  page size: A4
+  title: Arculus Key Export
+  metadata line: coin, Arculus v1.6.0, UTC timestamp, optional root fingerprint
+
+PDF column selection:
+
+  branch
+  path
+  address
+  private_key_wif for Bitcoin-family UTXO coins
+  private_key_hex for Ethereum, Solana, Stellar, Cardano, XRP
+  private_spend_key_hex for Monero
+
+The PDF also renders an Extended Keys section when account extended keys are
+present in lastDerivedOutput.
+
+
+ARC Seed Export Overview
+------------------------
+
+Encrypt/Export Seed writes:
+
+  filename: Arculus_Encrypted_Seed.arc
+  MIME type: text/plain;charset=utf-8
+  armor line 1: ARCULUS-ARC-V2
+  armor line 2: base64(UTF8(JSON.stringify(bundle)))
+  final byte: LF
+
+The export dialog supports four protection choices:
+
+  Password
+  Keyfile
+  Keyfile + Password
+  Advanced: no key or password
+
+Seed export always validates that the active mnemonic is a valid 12-word or
+24-word BIP39 mnemonic before creating the .arc file.
+
+
+ARC V2 Password Mode
+--------------------
+
+Password mode uses the password text from the export dialog as the .arc
+encryption secret. The password is NFKD-normalized inside the ARC V2 KDF.
+
+New ARC V2 encrypted seed bundles use:
+
+  magic: ARCULUS-ARC
+  format: arculus-encrypted-seed-v2
+  version: 2
+  kdf.name: PBKDF2
+  kdf.hash: SHA-512
+  kdf.iterations: 1000000
+  kdf.salt_b64: 32 random bytes encoded as base64
+  cipher.name: HMAC-SHA512-CTR
+  cipher.nonce_b64: 24 random bytes encoded as base64
+  ciphertext_b64: encrypted plaintext JSON
+  mac_b64: 64-byte HMAC-SHA512 tag encoded as base64
+  credential_mode: password
+
+Plaintext JSON before encryption contains:
+
+  mnemonic
+  word_count
+  created_at
+
+The plaintext mnemonic is normalized to single-space BIP39 words before
+encryption. The BIP39 passphrase field is not stored in the .arc seed file.
+
+
+ARC V2 Keyfile Mode
+-------------------
+
+Keyfile mode generates or loads at least 32 bytes of key material. The normal
+generated keyfile contains 64 random bytes.
+
+Generated raw keyfile:
+
+  filename: Arculus_Recovery_Keyfile.key
+  MIME type: application/json;charset=utf-8
+  magic: ARCULUS-KEYFILE
+  format: arculus-recovery-keyfile-v1
+  version: 1
+  key_b64: 64 random bytes encoded as base64
+
+The .arc encryption secret is:
+
+  "arc-keyfile-v1:" || base64(keyfile_bytes)
+
+Accepted import forms for raw keyfiles:
+
+  JSON object with magic ARCULUS-KEYFILE and format arculus-recovery-keyfile-v1
+  JSON object with legacy magic KEYFILE and key field
+  plain base64 key material text
+
+A raw keyfile must decode to at least 32 bytes. Generated v1.6.0 keyfiles are
+64 bytes.
+
+
+ARC V2 Keyfile + Password Mode
+------------------------------
+
+Keyfile + Password mode uses both possession of keyfile bytes and knowledge of
+the password. For new exports, v1.6.0 generates 64 random keyfile bytes and
+writes them in encrypted keyfile form.
+
+Generated encrypted keyfile:
+
+  filename: Arculus_Recovery_Keyfile.enc.key
+  MIME type: application/json;charset=utf-8
+  magic: ARCULUS-KEYFILE-ENC
+  format: arculus-recovery-keyfile-enc-v1
+  version: 1
+  kdf.algo: PBKDF2-SHA512
+  kdf.iterations: 200000
+  kdf.salt_b64: 16 random bytes encoded as base64
+  cipher.name: HMAC-SHA512-CTR
+  cipher.nonce_b64: 16 random bytes encoded as base64
+  ciphertext_b64: encrypted raw keyfile bytes
+  mac_b64: HMAC-SHA512 tag
+
+Encrypted keyfile KDF:
+
+  password bytes = UTF8(NFKD(password))
+  salt = decoded kdf.salt_b64
+  PBKDF2-HMAC-SHA512 iterations = 200000
+  output length = 64 bytes
+  encKey = bytes 0..31
+  macKey = bytes 32..63
+
+The .arc encryption secret for combined mode is:
+
+  material = UTF8("arc-combined-v1\n" || NFKD(password) || "\n" || keyfile_secret)
+  digest = SHA-256(material)
+  secret = "arc-combined-v1:" || base64(digest)
+
+The password encrypts the .enc.key file and also participates in the combined
+.arc secret. Losing either the password or the matching keyfile prevents import.
+
+
+Unprotected ARC Export
+----------------------
+
+The Advanced option "Save .arc file without key or password" writes a plaintext
+seed bundle. It exists for controlled offline workflows and test data only.
+
+Plain seed bundle fields:
+
+  magic: ARCULUS-ARC
+  format: arculus-plain-seed-v1
+  version: 1
+  created_at: ISO-8601 timestamp
+  mnemonic: normalized mnemonic words
+  word_count: 12 or 24
+  encrypted: false
+
+Even unprotected seed bundles are armored with ARCULUS-ARC-V2 line 1 and base64
+JSON line 2. The protection difference is inside the decoded JSON bundle.
+
+
+Import Seed Workflow
+--------------------
+
+Import Seed accepts:
+
+  .arc files
+  JSON files containing supported ARC bundle JSON
+  application/json files selected by the browser file picker
+
+Import parsing:
+
+  If text begins with ARCULUS-ARC-V2, remove the first line, concatenate the
+  remaining lines, base64-decode them, UTF-8 decode the result, and parse JSON.
+
+  Otherwise, parse the selected file text directly as JSON.
+
+If the bundle is plaintext ARCULUS-ARC / arculus-plain-seed-v1, no credential
+dialog is needed. If the bundle is encrypted, the dialog asks for password,
+keyfile, or keyfile + password. If the bundle has a credential_mode hint, the
+matching mode is selected and locked.
+
+After decryption:
+
+  The mnemonic is normalized.
+  The word_count field must match the normalized word count.
+  The mnemonic must pass BIP39 word-list and checksum validation.
+  The seed is stored in hidden imported seed state.
+  Visible seed fields are replaced by mask tokens.
+  The output area reports imported_seed, source, word_count, and hidden_on_screen.
+
+The BIP39 passphrase is not stored in the .arc file. If the recovered wallet
+requires a BIP39 passphrase, enter it in the Passphrase field after import and
+before validation or derivation.
+
+
+Copy Seed and Clipboard Handling
+--------------------------------
+
+Copy Seed copies the active normalized mnemonic words to the system clipboard
+only after a browser confirmation prompt. The copied text is:
+
+  words.join(" ")
+
+The separator is ASCII space, byte 0x20. No trailing newline is added by the
+application.
+
+After a successful copy, the status line starts a 60-second countdown. Browser
+and operating-system clipboard APIs do not provide a universal reliable wipe
+mechanism. Treat the clipboard as exposed until the operating environment is
+cleared.
+
+
+Show Seed Behavior
+------------------
+
+Show Seed is a hold-to-reveal control. It reveals hidden generated, imported,
+or post-derive manually entered seed words only while the control is active.
+
+Reveal starts on:
+
+  mousedown
+  touchstart
+
+Reveal ends on:
+
+  mouseup
+  mouseleave
+  touchend
+
+When reveal ends, the visible fields are replaced with mask tokens again.
+
+
+Clear All and Idle Timeout
+--------------------------
+
+Clear All runs handleClearAll. It clears:
+
+  imported or generated hidden seed state
+  mnemonic textarea
+  numbered word grid values
+  word valid/invalid styling
+  passphrase value
+  raw output textarea
+  table and tab view state
+  root fingerprint display
+  lastDerivedOutput
+
+Clear All does not delete files already downloaded by the browser and does not
+wipe host clipboard history.
+
+The idle watcher listens for:
+
+  mousedown
+  keydown
+  touchstart
+  scroll
+
+Idle timing:
+
+  4 minutes after last watched event: show warning banner
+  5 minutes after last watched event: run Clear All
+  5 seconds after clearing: hide the idle-cleared banner
+
+The idle warning text is:
+
+  Idle timeout in 60 seconds. All fields will be cleared.
+
+The post-clear text is:
+
+  Session cleared due to inactivity.
+
+
+Settings
+--------
+
+Theme settings:
+
+  Light
+  Dark
+  Dark+
+  Terminal
+
+Theme selection is stored in localStorage under:
+
+  arculusTheme
+
+If localStorage is unavailable, the theme still applies to the current page but
+may not persist.
+
+Advanced settings:
+
+  Auto-Derive on Settings Change
+  Legacy Address Format (Bitcoin Cash)
+
+Auto-Derive only runs after at least one successful derivation has populated
+lastDerivedOutput. It is debounced by 600 ms. It is triggered by changes to:
+
+  coin
+  script type
+  derivation path
+  count
+  range
+
+Legacy Address Format applies only to Bitcoin Cash. When enabled, Bitcoin Cash
+P2PKH addresses are displayed with legacy Base58Check instead of CashAddr.
+
+
+QR Export
+---------
+
+QR Export opens a modal with an address input. It does not require a derived
+output object; any pasted address-like string can be encoded.
+
+For most addresses, Generate immediately renders a QR. XRP-like r-addresses
+open a Destination Tag / Memo prompt first. The operator may enter a numeric
+destination tag or skip.
+
+QR rendering:
+
+  normal QR canvas: 256 x 256 CSS/display pixels
+  XRP QR canvas: 320 x 320 CSS/display pixels
+  quiet zone: 4 modules
+  dark color: #000000
+  light color: #ffffff
+  saved image MIME type: image/png
+  filename prefix: qr_
+
+Filename sanitization for saved QR PNG:
+
+  safeName = address.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 40) || "address"
+  filename = "qr_" || safeName || ".png"
+
+QR Copy Address copies only the address input value, not the URI label and not
+the XRP destination tag.
+
+
+QR URI Construction
+-------------------
+
+If the address input already begins with a URI scheme matching /^[a-z]+:/i, the
+input is used unchanged.
+
+Otherwise v1.6.0 generates these QR payload strings:
+
+  Solana:
+    "solana:" || address
+
+  Stellar:
+    "web+stellar:pay?destination=" || encodeURIComponent(address)
+
+  Monero:
+    "monero:" || address
+
+  Cardano:
+    address
+
+  Bitcoin:
+    "bitcoin:" || address
+
+  Bitcoin Cash with bitcoincash: prefix:
+    address
+
+  Bitcoin Cash without prefix:
+    "bitcoincash:" || address
+
+  Litecoin:
+    "litecoin:" || address
+
+  Dogecoin:
+    "dogecoin:" || address
+
+  Ethereum:
+    "ethereum:" || address
+
+  XRP:
+    address || "?dt=" || destination_tag
+
+For XRP, an empty destination tag is encoded as:
+
+  ?dt=00000
+
+This behavior is scanner-focused and does not imply that every receiving
+service accepts an empty or zero destination tag. If a service requires a tag,
+use the tag supplied by that service.
+
+
+Python 1.6.0 Automation Surface
+-------------------------------
+
+The current Python package and launcher are upgraded to APP_VERSION 1.6.0 for
+scripted derivation. The canonical HTML file remains the interactive source of
+truth, but Python CLI output is expected to match the v1.6.0 derivation vectors
+for the supported command-line coin ids:
+
+  bitcoin
+  bitcoincash
+  litecoin
+  dogecoin
+  ethereum
+  solana
+  stellar
+  monero
+  cardano
+  xrp
+
+CLI default behavior:
+
+  command:
+    python Arculus_Recovery.py --mnemonic "<words>" --coin <coin> --output-format json
+
+  version string:
+    Arculus Recovery 1.6.0
+
+  default script type:
+    auto
+
+  output formats:
+    json
+    csv
+    txt
+
+  testnet:
+    configured only for coins whose Python network table defines testnet
+    parameters.
+
+Python CLI JSON/CSV/TXT exports contain private key material when derivation is
+successful. Treat command output redirected to files exactly like browser JSON,
+CSV, and TXT exports. Terminal scrollback, shell history, transcript logging,
+PowerShell history, and CI logs are all out-of-band copies of secret material.
+
+Python GUI behavior is determined by the packaged HTML asset under the Python
+package. For byte-level derivation conformance, compare Python output against
+docs/TestVectors.txt. If Python output ever differs from the canonical HTML and
+the vectors, the Python implementation is wrong until the difference is
+explicitly documented as an intentional compatibility boundary.
+
+
+Operational Procedure
+---------------------
+
+Recommended offline recovery procedure:
+
+  1. Open Arculus_Recovery.html from local storage on a trusted machine.
+  2. Confirm the title shows v1.6.0.
+  3. Disconnect the machine from networks when practical.
+  4. Paste, import, or generate the mnemonic.
+  5. Enter the BIP39 passphrase if the wallet used one.
+  6. Click Validate Mnemonic.
+  7. Confirm word count, checksum, seed status, and root fingerprint.
+  8. Select coin and derivation path.
+  9. Select script type or leave Auto where appropriate.
+  10. Set count or range.
+  11. Click Derive Keys + Addresses.
+  12. Compare the expected receiving address with a known address from the wallet when available.
+  13. Export only the minimum format needed for the recovery workflow.
+  14. Store any .arc, .key, .enc.key, JSON, CSV, TXT, PDF, and QR PNG files according to the sensitivity of private keys.
+  15. Press Clear All.
+  16. Clear clipboard history and browser downloads according to the host operating system.
+
+If imported funds are being recovered into a new wallet, prefer deriving enough
+addresses to locate funds and then sweep or transfer using a transaction signer
+that is outside the scope of this tool. Do not treat derived private-key exports
+as long-term storage unless they are protected by an offline storage process.
+
+
+File Sensitivity
+----------------
+
+Exported derived-key files contain private keys unless the operator manually
+removes them after export. Treat these as seed-equivalent:
+
+  Arculus_Derived_Keys_Addresses.json
+  Arculus_Derived_Keys_Addresses.csv
+  Arculus_Derived_Keys_Addresses.txt
+  Arculus_Key_Export_<CoinDisplayName>.pdf
+
+Encrypted seed bundle:
+
+  Arculus_Encrypted_Seed.arc
+
+Raw keyfile:
+
+  Arculus_Recovery_Keyfile.key
+
+Encrypted keyfile:
+
+  Arculus_Recovery_Keyfile.enc.key
+
+QR PNG files may contain deposit addresses or payment URIs. Address QR files do
+not contain private keys unless the operator manually pastes private material
+into the QR dialog.
+
+
+Failure Handling
+----------------
+
+Common failure states:
+
+  Unknown mnemonic word:
+    At least one token is absent from the embedded BIP39 English list.
+
+  Invalid checksum:
+    All words are valid BIP39 words, but the checksum bits do not match the
+    entropy-derived SHA-256 checksum.
+
+  Wrong passphrase:
+    Validation still succeeds, but derived root fingerprint and addresses differ
+    from the intended wallet.
+
+  Unsupported script type:
+    The selected coin does not define the requested script family.
+
+  Wrong .arc password or keyfile:
+    Import reports that the password may be incorrect or the file may be
+    corrupted. The error intentionally does not distinguish the cause.
+
+  Missing keyfile:
+    Keyfile mode cannot continue until a keyfile is generated or selected.
+
+  Encrypted keyfile wrong password:
+    Keyfile decryption fails before the .arc seed can be decrypted.
+
+  PDF library unavailable:
+    PDF export fails if the embedded jsPDF object is absent or damaged.
+
+
+Byte-Level Boundaries
+---------------------
+
+The following values are hard requirements in v1.6.0:
+
+  APP_VERSION: 1.6.0
+  ARC armor header: ARCULUS-ARC-V2
+  ARC encrypted format: arculus-encrypted-seed-v2
+  ARC plaintext format: arculus-plain-seed-v1
+  ARC encrypted version: 2
+  ARC plaintext version: 1
+  ARC V2 KDF: PBKDF2-HMAC-SHA512
+  ARC V2 KDF iterations for new exports: 1000000
+  ARC V2 import iteration floor: 600000
+  ARC V2 salt length: 32 bytes
+  ARC V2 nonce length: 24 bytes
+  ARC V2 MAC length: 64 bytes
+  ARC V2 cipher name: HMAC-SHA512-CTR
+  generated keyfile bytes: 64 bytes
+  encrypted keyfile KDF iterations: 200000
+  encrypted keyfile salt length: 16 bytes
+  encrypted keyfile nonce length: 16 bytes
+  BIP39 seed length: 64 bytes
+  BIP39 seed PBKDF2 iterations: 2048
+  supported word counts: 12 and 24
+  idle clear timeout: 5 minutes
+  idle warning lead time: 60 seconds
+  clipboard countdown: 60 seconds
+
+
+Non-Goals
+---------
+
+Arculus Recovery v1.6.0 does not:
+
+  create transactions
+  sign transactions
+  broadcast transactions
+  query balances
+  discover token contracts
+  derive exchange destination tags
+  store the BIP39 passphrase in .arc files
+  guarantee clipboard erasure
+  erase downloaded files
+  validate that a receiving address has ever held funds
+  validate that a third-party wallet uses the same derivation path
+  protect against a compromised browser, extension, operating system, or display capture path
+
+The tool is a deterministic offline recovery and export utility. Its outputs
+are exact key material and address data; operational security around those
+outputs remains the responsibility of the recovery environment.

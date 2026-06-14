@@ -1,125 +1,984 @@
-Arculus Recovery v1.6.0 QR Export Reference
-===========================================
+Arculus Recovery v1.6.0 - QR Payload and Encoder Specification
+==============================================================
 
 Scope
 -----
 
-The QR Export subsystem generates QR codes locally from addresses or supported
-payment URI strings. It is available in the HTML app and GUI surfaces that
-render the HTML app. It is not part of the Python CLI.
+This document specifies the QR Export subsystem implemented inside
+Arculus_Recovery.html v1.6.0. It covers the modal workflow, address
+normalization, URI payload construction, XRP destination-tag handling, QR byte
+encoding, version/capacity selection, Reed-Solomon generation, matrix
+construction, masking, rendering, PNG export, clipboard behavior, and security
+boundary.
+
+The QR subsystem is self-contained. It does not call a CDN, external QR library,
+wallet service, blockchain node, or network API.
 
 
-Design
-------
+Public Entry Points
+-------------------
 
-The QR encoder is embedded in the HTML application. It does not use an external
-library, CDN, server, or network request.
+The embedded QR module is:
 
-The intended payload is a receive address, optionally converted to a payment URI
-for wallet compatibility. Users can type arbitrary text, so they must not encode
-private keys, seed phrases, .arc contents, or other secrets.
+  const QRGen = (() => { ... return { generate, render }; })();
+
+Public methods:
+
+  QRGen.generate(text)
+      Converts a JavaScript string into a QR matrix.
+
+  QRGen.render(matrix, canvas, opts)
+      Draws a QR matrix onto an HTML canvas.
+
+UI functions:
+
+  openQrModal()
+  bindQrUI()
+  isXrpAddress(a)
+  toBip21Uri(address, memo, coinContext)
+  renderXrpQr(address, memo)
+  renderQrFromAddress(address, memo, coinContext)
+  resetQrOutput()
+
+File export:
+
+  Save PNG uses canvas.toBlob(..., "image/png") and saveBlob.
+
+
+QR Modal Workflow
+-----------------
+
+Open:
+
+  QR Export button calls openQrModal().
+
+openQrModal behavior:
+
+  - resetQrOutput()
+  - qrAddressInput.value = ""
+  - qrAddressInput.dataset.coin = ""
+  - qrMemoInput.value = ""
+  - show modal with showModal() if available
+  - otherwise set open attribute
+  - focus address input after 50 ms
+
+Close:
+
+  - Close button closes the dialog.
+  - Clicking the backdrop closes the dialog when event target is the dialog.
+
+Generate:
+
+  - Trim address input.
+  - If empty, do nothing.
+  - resetQrOutput().
+  - If address matches XRP classic syntax, show destination-tag prompt.
+  - Otherwise render immediately.
+
+XRP prompt:
+
+  - Confirm reads trimmed memo/tag and renders.
+  - Skip renders with empty memo/tag.
+  - Enter in memo field triggers Confirm.
+
+After rendering:
+
+  - canvas is shown
+  - label is shown
+  - Save PNG, Copy Address, and Edit controls are shown
+
+Edit:
+
+  - resetQrOutput()
+  - if XRP address, show memo prompt again
+  - otherwise focus address input
+
+
+Input Normalization
+-------------------
+
+Address input:
+
+  a = address.trim()
+
+Memo/tag input:
+
+  m = (memo || "").trim()
+
+Empty address:
+
+  Generate returns without rendering.
+
+No chain validation:
+
+  The QR subsystem does not validate balances, accounts, destination-tag
+  requirements, network, token contract, or exchange deposit policy.
+
+
+XRP Address Detection
+---------------------
+
+Function:
+
+  isXrpAddress(a)
+
+Regex:
+
+  /^r[1-9A-HJ-NP-Za-km-z]{24,}/
+
+Input:
+
+  a.trim()
+
+Consequences:
+
+  - Address must begin with "r".
+  - The following characters must be from the XRP Base58-like alphabet subset
+    in the regex.
+  - Minimum regex length is "r" plus at least 24 following characters.
+  - The regex is syntactic and does not validate checksum.
+
+When true, the UI uses the XRP-specific memo prompt and renderXrpQr path.
+
+
+URI Payload Construction
+------------------------
+
+Function:
+
+  toBip21Uri(address, memo, coinContext)
+
+Inputs:
+
+  address:
+      User-entered address string.
+
+  memo:
+      Optional memo/destination tag string.
+
+  coinContext:
+      Optional internal coin id.
+
+Processing:
+
+  a = address.trim()
+  m = (memo || "").trim()
+
+Rule order is normative. First match wins:
+
+  1. Existing scheme:
+
+       if /^[a-z]+:/i.test(a):
+           return a
+
+  2. Explicit Solana context:
+
+       if coinContext == "solana":
+           return "solana:" + a
+
+  3. Explicit Stellar context:
+
+       if coinContext == "stellar":
+           return "web+stellar:pay?destination=" + encodeURIComponent(a)
+
+  4. Explicit Monero context:
+
+       if coinContext == "monero":
+           return "monero:" + a
+
+  5. Explicit Cardano context:
+
+       if coinContext == "cardano":
+           return a
+
+  6. Bitcoin syntax:
+
+       if /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,}/.test(a):
+           return "bitcoin:" + a
+
+  7. Bitcoin Cash prefixed CashAddr:
+
+       if /^bitcoincash:[qp][a-z0-9]{20,}/i.test(a):
+           return a
+
+  8. Bitcoin Cash prefixless CashAddr:
+
+       if /^[qp][a-z0-9]{20,}/i.test(a):
+           return "bitcoincash:" + a
+
+  9. Litecoin syntax:
+
+       if /^(ltc1|[LM])[a-zA-HJ-NP-Z0-9]{25,}/.test(a):
+           return "litecoin:" + a
+
+  10. Dogecoin syntax:
+
+       if /^[DA9][a-zA-HJ-NP-Z0-9]{25,}/.test(a):
+           return "dogecoin:" + a
+
+  11. Ethereum syntax:
+
+       if /^0x[0-9a-fA-F]{40}$/.test(a):
+           return "ethereum:" + a
+
+  12. XRP syntax:
+
+       if isXrpAddress(a):
+           return a + "?dt=" + (m ? encodeURIComponent(m) : "00000")
+
+  13. Fallback:
+
+       return a
+
+Cardano note:
+
+  Cardano is returned raw only when coinContext is "cardano". Without explicit
+  context, a Cardano address falls through to raw payload.
+
+
+XRP Payload Rule
+----------------
+
+XRP uses renderXrpQr rather than the generic non-XRP render path.
+
+Payload:
+
+  uri = address.trim() + "?dt=" + tag_component
+
+tag_component:
+
+  if trimmed memo/tag is non-empty:
+      encodeURIComponent(m)
+  else:
+      "00000"
+
+XRP payload intentionally does not include an "xrp:" URI scheme in v1.6.0.
+
+Label shown under QR:
+
+  The full XRP payload including "?dt=...".
+
+Copy Address button:
+
+  Copies only qrAddressInput.value.trim(), not the label payload. For XRP this
+  means the destination-tag component is not copied by Copy Address.
+
+
+Text Encoding and QR Mode
+-------------------------
+
+QRGen.generate(text):
+
+  enc = new TextEncoder().encode(text)
+  byteLen = enc.length
+
+Mode:
+
+  Byte mode only.
+
+Mode indicator:
+
+  0100
+
+Character count length:
+
+  8 bits for versions 1 through 9
+  16 bits for version 10
+
+Bitstream before padding:
+
+  mode_4_bits ||
+  byte_length_count_indicator ||
+  UTF-8 payload bytes as 8-bit values
+
+Terminator:
+
+  Four zero bits are pushed by buildCodewords.
+
+Byte alignment:
+
+  Zero bits are appended until bit length is divisible by 8.
+
+Pad bytes:
+
+  0xEC, 0x11 alternating until data capacity is filled.
+
+
+Capacity Selection
+------------------
+
+Supported versions:
+
+  1 through 10
+
+Supported error-correction levels:
+
+  ecLevel 0 = M
+  ecLevel 1 = Q
+
+Important v1.6.0 behavior:
+
+  The implementation tests level M first, then level Q, for each version.
+
+Algorithm:
+
+  ver = 1
+  ecLevel = 0
+
+  for v in 1..10:
+      lenBitsV = v < 10 ? 8 : 16
+      totalBits = 4 + lenBitsV + byteLen * 8 + 4
+      reqBytes = ceil(totalBits / 8)
+
+      if CAP[v][0].db >= reqBytes:
+          ver = v
+          ecLevel = 0
+          break
+
+      if CAP[v][1].db >= reqBytes:
+          ver = v
+          ecLevel = 1
+          break
+
+Consequence:
+
+  The selected QR is the first version where M fits; if M does not fit but Q
+  does fit at that same version, Q is selected. The code does not continue
+  searching later versions for a different level after finding Q.
+
+Capacity table:
+
+  Version   M data bytes   Q data bytes
+  -------   ------------   ------------
+        1             16             13
+        2             28             22
+        3             44             32
+        4             64             48
+        5             86             64
+        6            108             84
+        7            124             93
+        8            154            122
+        9            182            154
+       10            216            180
+
+Overflow behavior:
+
+  The code initializes ver=1/ecLevel=0 before the loop. In normal UI use,
+  address payloads fit in versions 1-10. Very large payloads should be treated
+  as unsupported; downstream rendering is not intended as an arbitrary large
+  text QR generator.
+
+
+Reed-Solomon Parameters
+-----------------------
+
+Capacity entries include:
+
+  db:
+      data bytes
+
+  ec:
+      ECC bytes per block
+
+  b:
+      number of blocks
+
+Table:
+
+  Version   M ec/block blocks   Q ec/block blocks
+  -------   -----------------   -----------------
+        1          10      1          13      1
+        2          16      1          22      1
+        3          26      2          18      2
+        4          18      2          26      2
+        5          24      2          18      4
+        6          16      4          24      4
+        7          18      4          18      6
+        8          22      4          22      6
+        9          22      5          20      7
+       10          26      5          24      8
+
+
+GF(256) Arithmetic
+------------------
+
+The encoder builds EXP and LOG tables:
+
+  EXP: Uint8Array(512)
+  LOG: Uint8Array(256)
+
+Primitive polynomial:
+
+  0x11d
+
+Generator element:
+
+  2
+
+Table construction:
+
+  x = 1
+  for i in 0..254:
+      EXP[i] = x
+      LOG[x] = i
+      x = x << 1
+      if x > 255:
+          x ^= 0x11d
+
+  for i in 255..511:
+      EXP[i] = EXP[i - 255]
+
+Multiplication:
+
+  gfMul(a, b):
+      if a != 0 and b != 0:
+          return EXP[LOG[a] + LOG[b]]
+      else:
+          return 0
+
+
+Generator Polynomial and ECC
+----------------------------
+
+Generator polynomial:
+
+  gfPoly(ec):
+      p = [1]
+      for i in 0..ec-1:
+          q = [1, EXP[i]]
+          r = zero array length p.length + 1
+          for each p coefficient a:
+              for each q coefficient b:
+                  r[a+b] ^= gfMul(p[a], q[b])
+          p = Array.from(r)
+      return p
+
+ECC encode:
+
+  rsEncode(data, ec):
+      gen = gfPoly(ec)
+      out = data || zero(ec)
+
+      for i in 0..data.length-1:
+          c = out[i]
+          if c != 0:
+              for j in 0..gen.length-1:
+                  out[i+j] ^= gfMul(gen[j], c)
+
+      return out.slice(data.length)
+
+
+Block Interleaving
+------------------
+
+buildCodewords(bits, totalData, ecPerBlock, numBlocks):
+
+  1. Append terminator and padding bits.
+  2. Convert data bits into totalData bytes.
+  3. Split data into numBlocks blocks.
+  4. Some final blocks may be one byte longer:
+
+       blockSize = floor(totalData / numBlocks)
+       longBlocks = totalData % numBlocks
+
+       for block index b:
+           len = b < numBlocks - longBlocks ? blockSize : blockSize + 1
+
+  5. Generate ECC for each block.
+  6. Interleave data bytes by position across blocks.
+  7. Interleave ECC bytes by position across blocks.
+
+The returned codeword stream is placed into the QR matrix.
+
+
+Matrix Construction
+-------------------
+
+Matrix size:
+
+  size = version * 4 + 17
+
+Cell representation:
+
+  null:
+      unfilled module
+
+  1:
+      dark function module
+
+  0:
+      light function module
+
+  true/false:
+      data or ECC module before/after masking
+
+The distinction between numeric function modules and boolean data modules is
+important. applyMask only flips cells whose type is boolean.
+
+Function patterns:
+
+  - three finder patterns
+  - one-module light separator around finders
+  - timing patterns on row 6 and column 6
+  - alignment patterns for versions 2-10
+  - dark module at (size - 8, 8)
+  - format-information reservation cells
+
+Finder locations:
+
+  top-left
+  top-right
+  bottom-left
+
+Alignment coordinates:
+
+  v1  []
+  v2  [6,18]
+  v3  [6,22]
+  v4  [6,26]
+  v5  [6,30]
+  v6  [6,34]
+  v7  [6,22,38]
+  v8  [6,24,42]
+  v9  [6,26,46]
+  v10 [6,28,50]
+
+
+Data Placement
+--------------
+
+placeData(m, codewords):
+
+  - Start at the lower-right module.
+  - Move in two-column vertical stripes.
+  - Skip column 6.
+  - Alternate upward and downward direction per stripe.
+  - Fill only null cells.
+  - Write codeword bits most-significant-bit first.
+  - If codeword bits run out, write false for remaining data slots.
+
+
+Mask Functions
+--------------
+
+All eight masks are evaluated:
+
+  0: (r + c) % 2 == 0
+  1: r % 2 == 0
+  2: c % 3 == 0
+  3: (r + c) % 3 == 0
+  4: (floor(r/2) + floor(c/3)) % 2 == 0
+  5: (r*c) % 2 + (r*c) % 3 == 0
+  6: ((r*c) % 2 + (r*c) % 3) % 2 == 0
+  7: ((r+c) % 2 + (r*c) % 3) % 2 == 0
+
+applyMask:
+
+  out = copy of matrix
+  for each cell:
+      if typeof out[r][c] == "boolean":
+          out[r][c] = out[r][c] !== maskFunction(r,c)
+
+Function modules are not masked.
+
+
+Format Bits
+-----------
+
+Precomputed format tables:
+
+  FMT_M:
+    101010000010010
+    101000100100101
+    101111001111100
+    101101101001011
+    100010111111001
+    100000011001110
+    100111110010111
+    100101010100000
+
+  FMT_Q:
+    011010101011111
+    011000001101000
+    011111100110001
+    011101000000110
+    010010010110100
+    010000110000011
+    010111011011010
+    010101111101101
+
+writeFormat(m, ecLevel, mask):
+
+  - Chooses FMT_Q when ecLevel == 1, otherwise FMT_M.
+  - Writes bits to top-left format track.
+  - Writes bits to top-right and bottom-left copy tracks.
+
+
+Penalty Scoring
+---------------
+
+v1.6.0 penaltyScore implements two penalty families:
+
+  1. Runs of five or more equal modules in rows and columns:
+
+       if run >= 5:
+           score += run - 2
+
+  2. 2x2 blocks of equal modules:
+
+       score += 3
+
+It does not implement finder-like pattern penalty or dark-ratio penalty in the
+current HTML build. Any compatibility implementation that wants byte-identical
+mask choice must use the same two-family scorer.
+
+Mask choice:
+
+  bestScore = Infinity
+  for mask in 0..7:
+      candidate = applyMask(base, mask)
+      writeFormat(candidate, ecLevel, mask)
+      s = penaltyScore(candidate)
+      if s < bestScore:
+          bestScore = s
+          bestMask = mask
+
+The first mask with the lowest score wins because the update condition is
+strictly less-than.
 
 
 Rendering
 ---------
 
-Default rendering:
+Function:
 
-  foreground: black
-  background: white
-  quiet zone: 4 modules
-  normal canvas: 256 px
-  XRP canvas: 320 px
+  QRGen.render(matrix, canvas, opts = {})
 
-QR codes remain black-on-white regardless of the selected theme because many
-wallet scanners fail on low-contrast or colored QR codes.
+Defaults:
 
+  quiet = opts.quiet ?? 3
+  dim = opts.size ?? 256
+  dark = opts.dark ?? "#000000"
+  light = opts.light ?? "#ffffff"
 
-URI Detection
--------------
+v1.6.0 modal rendering:
 
-If the input already begins with a URI scheme, it is passed through unchanged.
-Otherwise, the app detects common address formats:
-
-  Bitcoin:
-    1..., 3..., bc1q..., bc1p...
-    Encoded as bitcoin:<address>
-
-  Litecoin:
-    L..., M..., ltc1q..., ltc1p...
-    Encoded as litecoin:<address>
-
-  Dogecoin:
-    D..., A..., 9...
-    Encoded as dogecoin:<address>
-
-  Ethereum / ERC-20:
-    0x followed by 40 hex characters
-    Encoded as ethereum:<address>
+  Non-XRP:
+      size: 256
+      quiet: 4
+      dark: "#000000"
+      light: "#ffffff"
 
   XRP:
-    r... classic address
-    Uses the XRP destination-tag workflow.
+      size: 320
+      quiet: 4
+      dark: "#000000"
+      light: "#ffffff"
 
-Unknown strings are encoded as entered.
+Actual canvas dimensions:
+
+  totalModules = matrix_size + quiet * 2
+  module_px = floor(dim / totalModules)
+  actual = module_px * totalModules
+  canvas.width = actual
+  canvas.height = actual
+
+Draw:
+
+  - Fill entire canvas with light color.
+  - For each truthy matrix cell, draw a dark rectangle at:
+
+      x = (column + quiet) * module_px
+      y = (row + quiet) * module_px
+      width = module_px
+      height = module_px
+
+All modal QR codes are black on white, independent of UI theme.
 
 
-XRP Destination Tags
---------------------
+PNG Export
+----------
 
-Many exchanges use one shared XRP deposit address plus a destination tag. If a
-tag is required and omitted, funds may arrive at the exchange without being
-credited to the user.
+Save button:
 
-When an XRP classic address is detected:
+  canvas.toBlob(resolve, "image/png")
 
-1. The app prompts for a destination tag.
-2. If a tag is provided, the QR payload includes the address and dt query.
-3. If no tag is needed, the app renders a tagless-compatible XRP payload.
-4. The displayed label shows what was encoded.
+Filename:
 
-The tool cannot know whether a given XRP address requires a tag. The exchange or
-custodian must provide that information.
+  safeName = address.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 40) || "address"
+  filename = "qr_" + safeName + ".png"
+
+Save route:
+
+  saveBlob(blob, filename)
+
+Browser:
+
+  Downloads the PNG through an object URL.
+
+Tauri:
+
+  Converts PNG bytes to base64 and passes them to save_export.
 
 
-Entry Points
+Copy Address
 ------------
 
-QR Export button:
-  Opens a blank QR modal for manual address entry.
+Copy Address button:
 
-Table View row button:
-  Opens the QR modal prefilled with the row address.
+  address = qrAddressInput.value.trim()
+  copyTextToClipboard(address)
 
+It does not copy:
 
-Actions
--------
+  - QR label text
+  - URI scheme generated by toBip21Uri
+  - XRP "?dt=" destination-tag component
 
-Save PNG:
-  Saves the rendered QR image. In Tauri builds, this uses the native export
-  bridge when available.
-
-Copy Address:
-  Copies the original address text, not necessarily the URI payload.
-
-Edit:
-  Returns to the address or XRP tag input without closing the modal.
+The button text changes to "Copied!" for 1500 ms.
 
 
-Capacity and Failure
---------------------
+Security Boundary
+-----------------
 
-The encoder supports the address and URI lengths produced by this tool. If an
-input exceeds the supported QR capacity, the modal shows an error and does not
-render a partial code.
+QR export is intended for public address payloads.
+
+It must not be used to encode:
+
+  - mnemonic words
+  - BIP39 passphrases
+  - .arc passwords
+  - keyfile bytes
+  - private keys
+  - extended private keys
+  - encrypted seed file contents
+
+Address QR codes can still be privacy-sensitive. Scanning a QR into an online
+wallet, exchange, camera app, or cloud-synced photo library can link the address
+to that service or device.
 
 
-Security Notes
---------------
+Operational Checks
+------------------
 
-Address QR codes are generally public information. QR codes that encode private
-keys, seed phrases, or other secrets are private-key artifacts and must be
-handled under the same controls as plaintext exports.
+Before using a QR code:
 
-Do not scan a QR code with a networked device while seed material or private
-keys are still displayed on the offline machine.
+  - Confirm the displayed label matches the intended address or URI.
+  - For XRP, confirm the destination tag with the receiving service.
+  - For Stellar, confirm memo requirements separately; v1.6.0 encodes only the
+    destination in the Stellar URI rule.
+  - For Ethereum, confirm the chain/network in the receiving wallet.
+  - For Bitcoin Cash, confirm whether the receiving wallet expects CashAddr.
+  - For Cardano, confirm the raw address form is accepted by the scanner.
+
+Do not assume a wallet scanner validates chain, exchange memo, or custodial
+requirements just because it accepts the QR code.
+
+
+Compatibility Checklist
+-----------------------
+
+A compatible v1.6.0 QR implementation should:
+
+  - Trim address and memo/tag inputs.
+  - Detect XRP with /^r[1-9A-HJ-NP-Za-km-z]{24,}/.
+  - Use the exact toBip21Uri rule order.
+  - Use raw Cardano payload when coinContext is "cardano".
+  - Use XRP payload address + "?dt=" + tag-or-00000.
+  - Encode QR data in byte mode using UTF-8.
+  - Support versions 1 through 10.
+  - Test M before Q for each version.
+  - Use the v1.6.0 CAP table.
+  - Use GF(256) polynomial 0x11d.
+  - Interleave data and ECC blocks as implemented.
+  - Mask only boolean data/ECC modules.
+  - Score masks with run and 2x2 penalties only.
+  - Render black-on-white with quiet zone 4 in the modal.
+  - Save PNG through canvas.toBlob.
+
+
+Capacity Worked Examples
+------------------------
+
+Example: Ethereum address
+
+  Address:
+      0x1111111111111111111111111111111111111111
+
+  URI:
+      ethereum:0x1111111111111111111111111111111111111111
+
+  Byte length:
+      9 bytes for "ethereum:"
+      42 bytes for address
+      total 51 bytes
+
+  Version selection:
+      v1 M req > 16, no
+      v2 M req > 28, no
+      v3 M req > 44, no
+      v4 M data bytes 64, yes
+
+  Result:
+      version 4, level M
+
+Example: prefixless Bitcoin Cash address
+
+  Input:
+      q...
+
+  URI:
+      bitcoincash:q...
+
+  The prefix is part of the encoded payload unless the input already begins
+  with "bitcoincash:".
+
+Example: XRP address without tag
+
+  Input:
+      r...
+
+  User skips destination-tag prompt.
+
+  Payload:
+      r...?dt=00000
+
+  Copy Address:
+      copies only r...
+
+Example: Stellar address
+
+  Explicit coin context:
+      stellar
+
+  URI:
+      web+stellar:pay?destination=<encoded-address>
+
+  Memo:
+      v1.6.0 does not include memo in the Stellar URI rule.
+
+
+Known Limitations
+-----------------
+
+The QR subsystem intentionally does not:
+
+  - implement numeric mode
+  - implement alphanumeric mode selection
+  - implement Kanji mode
+  - support versions above 10
+  - expose custom ECC level selection in the UI
+  - validate address checksums
+  - validate XRP destination tag range
+  - validate Stellar memo format
+  - validate Ethereum chain ID
+  - validate Cardano network ID
+  - decode QR images
+  - import QR payloads
+
+The generated QR code is a transport representation of the payload string. It
+does not prove the payload is a correct payment request for a receiving service.
+
+
+Scanner Compatibility Guidance
+------------------------------
+
+Most wallet scanners are strict about:
+
+  - quiet zone
+  - black-on-white contrast
+  - absence of blur
+  - correct URI scheme
+  - expected memo/tag syntax
+
+v1.6.0 uses black modules on a white background and a four-module quiet zone in
+the modal render paths. Do not crop the PNG to the QR edges; cropping can remove
+the quiet zone and break scanning.
+
+If a scanner rejects a code:
+
+  - compare the label under the QR with the intended payload
+  - try copying the address manually
+  - verify whether the scanner expects a bare address or URI scheme
+  - for Bitcoin Cash, verify CashAddr prefix expectations
+  - for XRP/Stellar custodial deposits, verify tag/memo requirements
+
+
+File Handling
+-------------
+
+QR PNG export writes address payload images, not private key files. They are
+less sensitive than derived private-key exports, but they can still reveal:
+
+  - wallet address ownership
+  - coin family
+  - exchange/custodian destination tag in XRP payload label if shared visually
+  - operational recovery activity
+
+Do not allow QR PNGs to be automatically uploaded to:
+
+  - cloud photo libraries
+  - chat applications
+  - issue trackers
+  - email drafts
+  - shared desktop folders
+
+
+Byte-Level Implementation Map
+-----------------------------
+
+QRGen.generate:
+
+  - TextEncoder input string.
+  - Select version and ECC level from CAP.
+  - Push byte-mode indicator.
+  - Push byte-length count.
+  - Push payload bytes.
+  - Pad to data capacity.
+  - Generate Reed-Solomon ECC.
+  - Build matrix.
+  - Place data.
+  - Apply all masks.
+  - Write format bits.
+  - Choose lowest two-family penalty score.
+  - Return final matrix.
+
+QRGen.render:
+
+  - Compute actual canvas size.
+  - Set canvas width and height.
+  - Fill background.
+  - Draw dark modules.
+
+renderQrFromAddress:
+
+  - Detect XRP and delegate to renderXrpQr.
+  - Otherwise build URI with toBip21Uri.
+  - Generate matrix.
+  - Render 256 px requested QR.
+  - Show label and save controls.
+
+renderXrpQr:
+
+  - Build raw r-address plus ?dt payload.
+  - Generate matrix.
+  - Render 320 px requested QR.
+  - Add xrp-mode class.
+  - Show label and save controls.
+
+
+Regression Checks
+-----------------
+
+After changing QR code:
+
+  - Verify a Bitcoin bc1 address encodes with bitcoin: prefix.
+  - Verify a prefixless Bitcoin Cash q address encodes with bitcoincash: prefix.
+  - Verify an already-prefixed bitcoincash: address is not double-prefixed.
+  - Verify Ethereum 0x address encodes with ethereum: prefix.
+  - Verify explicit Cardano context encodes raw address.
+  - Verify XRP without tag encodes ?dt=00000.
+  - Verify XRP with tag encodes the URL-encoded tag.
+  - Verify Copy Address copies the address input, not the generated URI.
+  - Verify PNG save filename sanitizes non-alphanumeric characters.
+  - Verify generated modules are nonblank on light and dark UI themes.

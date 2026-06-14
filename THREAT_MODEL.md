@@ -1,101 +1,137 @@
-# Threat Model
+# Threat Model - Arculus Recovery v1.6.0
 
 ## Overview
 
-Arculus Recovery is an offline local recovery tool for BIP39/BIP32 wallet inspection. It supports the standalone HTML app, PySide6 GUI, Python CLI, and Tauri desktop wrapper. Its central security promise is that the application itself does not transmit seed phrases, passphrases, private keys, or derived output over a network.
+Arculus Recovery is a local offline recovery tool for BIP39/BIP32 wallet
+inspection, encrypted seed backup, deterministic address derivation, and local
+export. The canonical v1.6.0 surface is `Arculus_Recovery.html`. Python and
+Tauri surfaces package or automate parts of that workflow.
 
-That promise holds only when the user runs a verified copy on a trusted machine.
+The central security objective is that the application does not transmit seed
+phrases, passphrases, keyfiles, private keys, or derived exports over a network.
+This objective depends on users running a verified copy on a trusted offline
+machine.
 
 ## Assets
 
 | Asset | Sensitivity | Notes |
 | --- | --- | --- |
-| BIP39 mnemonic | Critical | Controls the wallet tree, subject to passphrase use |
-| BIP39 passphrase | Critical | Produces a separate key tree; wrong value gives no error |
-| `.arc` password | Critical | Protects encrypted seed backups |
-| `.arc` file | High | Encrypted mnemonic backup, vulnerable to offline guessing if password is weak |
-| Master private key | Critical | Root HD private key |
-| Derived private keys / WIF | Critical | Controls individual addresses |
-| Extended private keys | Critical | Controls a subtree |
-| Derived exports | Critical when private fields are present | JSON, CSV, TXT, and PDF are plaintext |
-| Addresses | Public, linkable | Not secret, but can expose wallet activity |
-| Root fingerprint | Public verification value | Useful for confirming mnemonic/passphrase combination |
+| BIP39 mnemonic | Critical | Controls wallet tree, subject to BIP39 passphrase |
+| BIP39 passphrase | Critical | Creates a different wallet tree; wrong value can look valid |
+| `.arc` password | Critical | Protects encrypted seed backup in password mode |
+| Raw keyfile bytes | Critical | Protects `.arc` backup in keyfile mode |
+| Encrypted keyfile password | Critical | Required with encrypted keyfile in combined mode |
+| `.arc` file | High to critical | Contains encrypted or plaintext mnemonic depending on mode |
+| Master/account private keys | Critical | Controls root/account subtrees |
+| Derived row private keys | Critical | Controls individual addresses/accounts |
+| Extended private keys | Critical | Controls child keyspace below the extended node |
+| Stellar secret seed | Critical | Controls Stellar account |
+| Monero private spend/view keys | Critical | Spend/view authority for derived Monero address |
+| Cardano private keys | Critical | Controls derived payment/staking material |
+| Derived exports | Critical | JSON/CSV/TXT/PDF may contain private fields |
+| QR PNG | Low to medium | Address payload only, but can reveal address ownership |
+| Addresses/fingerprints | Public but linkable | Useful for verification and chain correlation |
 
 ## Trust Boundaries
 
 ```text
 User-controlled offline machine
   |
-  |-- Arculus Recovery app
-  |     |-- mnemonic validation
-  |     |-- seed generation
-  |     |-- BIP32 derivation
+  |-- Browser/WebView executing Arculus_Recovery.html
+  |     |-- BIP39 validation and generation
+  |     |-- BIP39 seed stretching
+  |     |-- secp256k1 / Ed25519 derivation
   |     |-- .arc encryption/decryption
-  |     |-- local export
+  |     |-- keyfile generation/decryption
+  |     |-- local exports and QR rendering
   |
   |-- OS CSPRNG
-  |-- local filesystem
-  |-- browser/WebView memory
+  |-- local filesystem/downloads
   |-- clipboard and display
+  |-- optional Tauri native save bridge
+  |-- optional Python wrapper/CLI
 
-No application network dependency during normal operation.
+No required application network dependency during normal recovery.
 ```
 
 ## Threat Actors
 
-| Actor | Capability | Mitigation |
+| Actor | Capability | Primary mitigation |
 | --- | --- | --- |
-| Malicious file supplier | Ships a backdoored copy | Verify hashes and trusted source |
-| Network attacker | Observes or alters traffic | Run the app locally and offline |
-| Browser extension | Reads page contents | Use a clean profile with extensions disabled |
-| Local malware | Captures memory, screen, or clipboard | Use a trusted live/offline OS |
-| Physical observer | Sees screen or keyboard | Use private physical controls |
-| Offline `.arc` attacker | Guesses file password | Use high-entropy password and current KDF |
+| Malicious file supplier | Ships modified HTML, wrapper, or installer | Verify hashes and source |
+| Network attacker | Alters downloads or observes traffic | Transfer verified files; run offline |
+| Browser extension | Reads DOM, clipboard, or page data | Use clean profile or extension-free browser |
+| Local malware | Captures memory, keys, files, screen, clipboard | Use trusted offline/live OS |
+| Physical observer | Watches screen or keyboard | Private workspace and screen discipline |
+| Offline `.arc` attacker | Brute-forces password | Strong password, keyfile, or combined mode |
+| Cloud sync/backup tool | Copies exported files | Disable sync; use encrypted removable media |
+| User error | Wrong path/passphrase/coin/range | Verify known addresses and root fingerprint |
 
 ## In-Scope Protections
 
-- Local-only mnemonic validation and derivation
-- CSPRNG-based mnemonic generation
-- Authenticated `.arc` encrypted seed storage
-- Detection of `.arc` tampering through MAC verification
-- Hidden-seed display workflow
-- Offline export generation
-- Deterministic derivation for repeatable verification
+- Local-only recovery workflow.
+- BIP39 checksum validation.
+- CSPRNG mnemonic generation.
+- Deterministic derivation for reproducible verification.
+- ARC V2 authentication before decryption.
+- Keyfile and combined `.arc` protection modes.
+- Hidden-seed UI for generated/imported/manual seeds.
+- Local export with explicit user action.
+- QR export limited to address payloads.
+- Idle timeout that clears visible UI state.
 
 ## Out-of-Scope Risks
 
-- An already-compromised operating system
-- Malicious browser, Python runtime, WebView, or firmware
-- Hardware keyloggers
-- Side-channel attacks against the host machine
-- Cloud backup or sync tools watching exported files
-- User disclosure of seeds, passphrases, private keys, or exports
-- On-chain discovery, balances, gap-limit scanning, or transaction signing
+- Compromised host OS, browser, WebView, Python runtime, or firmware.
+- Hardware keyloggers and malicious peripherals.
+- Side-channel attacks against CPU/browser/OS.
+- Memory forensics after use.
+- Browser extension compromise.
+- Clipboard manager persistence.
+- Screen recording and shoulder-surfing.
+- Blockchain balance discovery or wallet gap-limit scanning.
+- Transaction signing and broadcast safety.
+- Recovery from forgotten BIP39 passphrases, `.arc` passwords, or lost keyfiles.
 
 ## Key Scenarios
 
 | ID | Scenario | Impact | Mitigation |
 | --- | --- | --- | --- |
-| N-1 | User runs an altered HTML file | Critical | Verify release hashes |
-| N-2 | User opens the app online with malicious extensions enabled | Critical | Airgap and use a clean profile |
-| L-1 | Clipboard manager stores seed or private key | Critical | Avoid clipboard use for secrets |
-| L-2 | Export file with private keys is left on disk | Critical | Store only on encrypted media |
-| A-1 | Weak `.arc` password is guessed offline | Critical | Use random high-entropy password |
-| A-2 | `.arc` metadata is tampered with | Low likelihood, high impact | MAC-bound metadata detects changes |
-| P-1 | Wrong BIP39 passphrase is entered | Critical | Verify root fingerprint or known address |
-| P-2 | Wrong derivation path is selected | High | Test known addresses and standard paths |
+| S-1 | User runs altered `Arculus_Recovery.html` | Critical | Verify release hashes; compare known test vectors |
+| S-2 | User opens tool with malicious extension enabled | Critical | Use clean offline browser profile |
+| S-3 | Weak `.arc` password is guessed offline | Critical | Use high-entropy password or keyfile/combined mode |
+| S-4 | Keyfile is lost | Critical | Back up keyfile separately from `.arc` |
+| S-5 | Unprotected `.arc` is mistaken for encrypted backup | Critical | Treat `arculus-plain-seed-v1` as plaintext mnemonic |
+| S-6 | Wrong BIP39 passphrase is entered | High | Verify root fingerprint and multiple known addresses |
+| S-7 | Wrong derivation path/script is selected | High | Match original wallet path; test receive/change indexes |
+| S-8 | Derived JSON/PDF is left on disk | Critical | Store encrypted; delete or archive intentionally |
+| S-9 | Clipboard stores seed/private key | Critical | Avoid clipboard use; clear session; distrust clipboard managers |
+| S-10 | XRP destination tag omitted for custodian deposit | High | Obtain destination tag from custodian; tags are not derived |
+
+## ARC V2 Threat Notes
+
+ARC V2 protects confidentiality and integrity of the mnemonic payload against
+offline file attackers when a strong credential is used. The MAC transcript
+binds magic, format, version, created_at, KDF parameters, cipher name, salt,
+nonce, and ciphertext.
+
+The credential-mode hint is UI metadata and must not be treated as a security
+policy boundary by external tools. The BIP39 passphrase is intentionally not
+inside `.arc` files.
 
 ## Residual Risk
 
-Even under correct offline use, the mnemonic and derived private keys must exist in process memory while the tool works. A privileged local attacker can still read them. Plaintext derived exports remain sensitive indefinitely. A lost BIP39 passphrase or `.arc` password cannot be recovered by the tool.
+During use, seed words and private material exist in process memory. JavaScript
+strings cannot be reliably zeroized. Plaintext derived exports remain sensitive
+for as long as they exist. A privileged local attacker can still compromise
+secrets even if the app itself performs no network I/O.
 
 ## Recommended Controls
 
-- Prefer a live operating system with no persistent storage.
-- Keep the machine offline before, during, and after seed entry.
-- Verify hashes before use.
-- Disable browser extensions.
-- Record and verify the root fingerprint.
-- Store `.arc` files and private-key exports separately.
-- Keep `.arc` passwords and BIP39 passphrases backed up separately from the mnemonic.
-- Destroy or securely archive retired private-key exports after sweeping funds.
+- Use a verified offline machine.
+- Prefer a fresh live OS for high-value recovery.
+- Disable browser extensions and sync.
+- Verify output with `docs/TestVectors.txt` before operational use.
+- Verify real recovery with known addresses before exporting or moving funds.
+- Store `.arc`, keyfile, BIP39 passphrase, and `.arc` password separately.
+- Destroy temporary plaintext exports after use.

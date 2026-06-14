@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 Administrator
+Copyright (c) 2026 Arculus Recovery contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +19,20 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+Project Notice
+--------------
+
+Arculus Recovery is security-sensitive recovery software. The license above
+permits use, copying, modification, and redistribution, but it does not provide
+any warranty that derived addresses, encrypted backups, exports, or recovery
+procedures are suitable for any specific wallet, custody workflow, blockchain,
+or operational environment. Users are responsible for verifying outputs with
+known addresses, fingerprints, and independent backups before moving funds.
+
+Third-Party Components
+----------------------
+
+Vendored or embedded third-party components retain their upstream copyright
+notices and license terms. In particular, jsPDF is included for local PDF export
+support and retains its upstream license notice in the vendored/minified source.
