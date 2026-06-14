@@ -1,230 +1,1104 @@
-Arculus Recovery v1.6.0 Derivation Engine Internals
-===================================================
+Arculus Recovery v1.6.0 — Derivation Engine Internals
+=================================================================
 
 Scope
 -----
 
-This document summarizes the deterministic derivation pipeline implemented by
-Arculus Recovery. The same conceptual pipeline is used by the standalone HTML
-app, PySide6 GUI, Tauri wrapper, and Python CLI.
+This document is the authoritative byte-level specification of the deterministic
+key derivation engine as implemented in Arculus Recovery v1.6.0. It defines the
+complete computational pipeline from raw CSPRNG entropy through BIP39 mnemonic
+generation and validation, Unicode normalization, PBKDF2 seed stretching, BIP32
+hierarchical deterministic master node construction, recursive CKDpriv child key
+derivation, script-type resolution, per-coin address construction across ten
+supported asset families, Taproot key-material processing under BIP340/BIP341/
+BIP86, SLIP-0010 Ed25519 hardened derivation for non-secp256k1 coins, extended
+key serialization, and structured multi-format output.
+
+v1.6.0 expands the supported coin set from five (Bitcoin, Litecoin, Dogecoin,
+Ethereum, XRP) to ten by adding Bitcoin Cash, Solana, Stellar, Monero, and
+Cardano. Each new coin uses a distinct cryptographic derivation stack:
+Bitcoin Cash uses the same secp256k1 / BIP32 pipeline as Bitcoin but produces
+CashAddr-format addresses by default; Solana, Stellar, and Monero use SLIP-0010
+Ed25519 hardened derivation; and Cardano uses the Icarus CIP-1852 Ed25519-BIP32
+scheme with a distinct master key derivation based on PBKDF2-HMAC-SHA512.
+
+This is an offline reference. All constructions are defined entirely by their
+mathematical specification and byte-level behavior. No external service,
+network oracle, balance query, or chain-state lookup of any kind is required or
+performed at any stage.
 
 
-Pipeline
---------
+Architectural Invariants
+------------------------
 
-  mnemonic input or CSPRNG entropy
-      -> BIP39 word mapping and checksum validation
-      -> Unicode NFKD normalization
-      -> PBKDF2-HMAC-SHA512 BIP39 seed
-      -> BIP32 master node
-      -> account path derivation
-      -> receiving and change branches
-      -> per-index child keys
-      -> address encoder
-      -> structured output
+The engine is stateless and purely deterministic. Given identical inputs —
+mnemonic, BIP39 passphrase, coin identifier, derivation path, script type, and
+address count — it produces byte-for-byte identical output on every invocation,
+on every conformant platform, with zero dependency on external state.
 
-The engine performs no balance lookup, chain scan, fee estimate, transaction
-signing, token lookup, or network I/O.
+The following operations are explicitly outside the engine's domain and are
+never performed:
+
+  - Address discovery or balance queries against any blockchain
+  - UTXO set scanning or wallet gap-limit heuristics
+  - Ethereum account state or ERC-20 token enumeration
+  - XRP ledger queries, destination-tag resolution, or sequence number lookup
+  - Fee estimation, mempool inspection, or chain-tip awareness of any kind
+  - Network I/O of any form
+
+The derivation graph has two distinct top-level structures depending on coin
+family.
+
+secp256k1 / BIP32 path (Bitcoin, Bitcoin Cash, Litecoin, Dogecoin, Ethereum,
+XRP):
+
+  CSPRNG entropy (optional, for generation) OR word-grid / paste input
+       |
+       | BIP39 word index mapping + checksum verification
+       v
+  normalized mnemonic string
+       |
+       | Unicode NFKD normalization of mnemonic and passphrase
+       v
+  PBKDF2-HMAC-SHA512 (2048 iterations, 64-byte output)
+       |
+       | 512-bit seed
+       v
+  HMAC-SHA512 keyed on b"Bitcoin seed"
+       |
+       | split at byte boundary 32
+       v
+  master private scalar (IL[0:32]) || master chain code (IR[32:64])
+       |
+       | CKDpriv traversal over each hardened and non-hardened path component
+       v
+  account private node at configured path depth
+       |
+       +---> branch index 0 (receiving): CKDpriv(account, 0) -> CKDpriv(node, i)
+       +---> branch index 1 (change):    CKDpriv(account, 1) -> CKDpriv(node, i)
+       |
+       v
+  per-index child private scalar -> address encoder -> structured output record
+
+Ed25519 / SLIP-0010 path (Solana, Stellar, Monero):
+
+  normalized mnemonic string
+       |
+       | PBKDF2-HMAC-SHA512 seed derivation (same as secp256k1 path)
+       v
+  512-bit seed
+       |
+       | HMAC-SHA512 keyed on b"ed25519 seed"
+       v
+  master Ed25519 private key (IL[0:32]) || chain code (IR[32:64])
+       |
+       | CKDprivEd25519 traversal (hardened indices only)
+       v
+  per-account child node -> coin-specific address encoder
+
+Ed25519-BIP32 / Icarus path (Cardano):
+
+  raw BIP39 entropy bytes (extracted from mnemonic, not the PBKDF2 seed)
+       |
+       | PBKDF2-HMAC-SHA512(password=b"", salt=entropy, iterations=4096, dkLen=96)
+       v
+  Icarus root key (64-byte private key || 32-byte chain code)
+       |
+       | CIP-1852 child derivation (Ed25519-BIP32 hardened and normal)
+       v
+  payment key + staking key -> Shelley base address
+
+The HTML implementation executes all pipelines asynchronously via the Web Crypto
+API (SubtleCrypto.deriveBits, SubtleCrypto.sign) and pure-JavaScript big-integer
+arithmetic for secp256k1, with native JavaScript BigInt for Ed25519 field
+arithmetic.
 
 
-BIP39 Generation
-----------------
+Elliptic Curve Domain Parameters
+---------------------------------
 
-For 12 words:
+secp256k1 (used by Bitcoin, Bitcoin Cash, Litecoin, Dogecoin, Ethereum, XRP):
 
-  entropy bits: 128
-  checksum bits: 4
+  Field prime:
+    p  = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
 
-For 24 words:
+  Group order:
+    n  = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
-  entropy bits: 256
-  checksum bits: 8
+  Generator x-coordinate:
+    Gx = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798
 
-Entropy is generated by:
+  Generator y-coordinate:
+    Gy = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8
 
-  HTML:   crypto.getRandomValues
-  Python: os.urandom
+  Cofactor: h = 1
 
-The entropy is hashed with SHA256, checksum bits are appended, and the bitstream
-is split into 11-bit BIP39 word indices. Generated mnemonics are validated before
-being accepted.
+The valid secp256k1 private key domain is the open interval (0, n). Any scalar
+equal to zero or greater than or equal to n is rejected at every point where a
+private scalar is produced or consumed.
+
+Ed25519 (used by Solana, Stellar, Monero, Cardano):
+
+  Defined over the prime field of order:
+    q  = 2^255 - 19
+
+  The generator point G and curve parameters follow RFC 8032 / NIST conventions.
+  The engine implements ed25519PointAdd and ed25519PointMul natively in
+  JavaScript BigInt arithmetic. Public keys are 32-byte little-endian compressed
+  points in the Ed25519 encoding.
+
+The secp256k1 engine implements the following primitives natively:
+
+  - Affine-coordinate point addition with lambda computation
+  - Double-and-add scalar multiplication (left-to-right binary method)
+  - Compressed public key serialization: 0x02 prefix if y is even, 0x03 if odd,
+    followed by the 32-byte big-endian x-coordinate
+  - X-only (BIP340) public key extraction: the lower 32 bytes of a compressed
+    key after Y-parity normalization
+  - Field arithmetic modulo p and scalar arithmetic modulo n
+
+
+CSPRNG-Based Mnemonic Generation
+----------------------------------
+
+The generation algorithm for a target word count wc ∈ {12, 24}:
+
+  CS          = wc / 3                             -- checksum bits (integer division)
+  ENT         = wc * 11 - CS                       -- entropy bits: 128 for 12w, 256 for 24w
+  entropy     = CSPRNG(ENT / 8)                    -- ENT/8 raw random bytes
+
+  hash        = SHA256(entropy)                    -- 32-byte digest
+  checksum    = MSB(hash, CS)                      -- first CS bits of the digest
+
+  bit_string  = entropy_bits || checksum_bits      -- ENT + CS = wc * 11 total bits
+  words[i]    = BIP39_WORDS[ bit_string[i*11 : i*11+11] ]  for i in 0..wc-1
+
+  mnemonic    = words.join(' ')
+
+  -- Mandatory self-validation:
+  assert checkMnemonic(mnemonic).wordsOk && checkMnemonic(mnemonic).checksumOk
+
+The entropy source in the HTML implementation:
+  crypto.getRandomValues(new Uint8Array(ENT / 8))
+
+This is the browser CSPRNG. It cannot be substituted with a non-cryptographic
+PRNG by the browser. The self-validation step is non-optional. A generated
+mnemonic that fails its own BIP39 checksum is discarded and never surfaced to
+the user.
+
+After successful generation the mnemonic is routed through the hidden-seed
+workflow: it is stored in importedSeedState with kind='generated', the word grid
+is populated with obfuscated placeholders, and the mnemonic is not accessible
+without an explicit press-and-hold of Show Seed. The root fingerprint display
+updates immediately after generation using an asynchronous fingerprint refresh
+triggered by applyGeneratedSeed.
+
+
+Individual Word-Entry Grid
+---------------------------
+
+The numbered word-entry grid is built dynamically by buildWordInputs(). The grid
+always renders 24 individual input cells; the active word count is controlled
+by the 12/24-word radio selector (getSeedLen / setSeedLen).
+
+Grid behavioral specification:
+
+  Active cells:   indices 0..(getSeedLen()-1)
+  Inactive cells: indices getSeedLen()..23; disabled and cleared on selector change
+
+  Paste behavior: pasting a space-separated string into any cell triggers
+    handleWordInput, which reads the full pasted content, normalizes each token
+    via normalizeNFKD, and distributes words sequentially into active cells via
+    setMnemonicFromWordBoxes. Distributing more than 12 words auto-promotes the
+    selector to 24; distributing 12 or fewer sets the selector to 12.
+
+  Input normalization: each cell applies normalizeNFKD() on input and blur
+    events via handleWordInput, which also triggers styleWordInput() to apply
+    inline per-word validation feedback (valid / invalid CSS class).
+
+  Word extraction: setMnemonicFromWordBoxes() iterates indices
+    0..(getSeedLen()-1), normalizes each cell value via normalizeNFKD, and
+    writes the joined result to the hidden canonical mnemonic textarea.
+
+  Selector change behavior: switching from 24 to 12 clears and disables cells
+    12..23. Switching from 12 to 24 re-enables cells 12..23. If an
+    importedSeedState is active and not being revealed, selector changes have no
+    effect on the word grid display.
+
+  Sync with legacy textarea: the hidden mnemonic textarea (id="mnemonic") is
+    kept in sync with the word grid via handleMnemonicInput and handleWordInput
+    event handlers through the syncBusy guard to prevent re-entrancy.
+
+  Hidden-seed overlay: when importedSeedState is set and showingImportedSeed is
+    false, refreshWordEnabled() disables all word cells. The cells display
+    obfuscated placeholders set by setObfuscatedSeedInputs(). No word from the
+    hidden mnemonic is readable from the DOM.
 
 
 BIP39 Validation
 ----------------
 
-Validation checks:
+The engine embeds the canonical BIP39 English word list in full (2048 entries,
+indices 0x000..0x7FF). Word lookup is O(1) via a pre-constructed reverse index
+map. The engine accepts exclusively 12-word and 24-word inputs; all other word
+counts are rejected with an explicit error rather than silently mishandled.
 
-  - Word count is 12 or 24.
-  - Every word is in the BIP39 English word list.
-  - Entropy and checksum bit lengths are correct.
-  - SHA256 checksum bits match.
+Validation procedure in formal notation:
 
-A valid word with the wrong position can still produce a valid-looking mnemonic.
-Always verify against a root fingerprint or known address.
+  words   = normalizeMnemonicWords(raw_input)
+  wc      = |words|
+  require wc ∈ {12, 24}
+  require ∀ w ∈ words: w ∈ BIP39_WORD_INDEX
+
+  B       = concat( index_11bit(words[i]) for i in 0..wc-1 )
+  ENT     = floor(wc × 11 × 32 / 33)
+  CS      = wc × 11 − ENT
+
+  B_ent   = B[0 : ENT]
+  B_cs    = B[ENT : ENT + CS]
+
+  entropy         = bits_to_bytes(B_ent)           -- ENT/8 bytes
+  checksum_source = SHA256(entropy)
+  B_cs_expected   = msb(checksum_source, CS)        -- first CS bits of hash
+
+  valid iff B_cs == B_cs_expected
+
+Word count parameters:
+
+  wc    total_bits   ENT    CS
+  12    132           128     4
+  24    264           256     8
+
+A mnemonic whose words are all valid BIP39 entries but whose checksum fails is
+classified as BIP39-like with invalid checksum. This distinction is operationally
+critical during recovery: a single transposed or misremembered word produces a
+structurally valid-looking derivation from a completely incorrect seed. The
+checksum failure is a mandatory recovery signal.
 
 
-BIP39 Seed
-----------
+BIP39 Seed Derivation
+---------------------
 
-  mnemonic_str   = NFKD(" ".join(words))
-  passphrase_str = NFKD(user_passphrase)
+Both the mnemonic and the optional BIP39 passphrase undergo Unicode NFKD
+normalization before byte-encoding. The implementation uses normalizeNFKD()
+in the HTML version.
+
+  mnemonic_str     = " ".join(normalized_words)
+  passphrase_str   = NFKD(user_passphrase)   -- empty string if not supplied
+
+  password_bytes   = mnemonic_str.encode("utf-8")
+  salt_bytes       = ("mnemonic" + passphrase_str).encode("utf-8")
 
   seed = PBKDF2-HMAC-SHA512(
-      password=mnemonic_str.encode("utf-8"),
-      salt=("mnemonic" + passphrase_str).encode("utf-8"),
-      iterations=2048,
-      dklen=64
+      password   = password_bytes,
+      salt       = salt_bytes,
+      iterations = 2048,
+      dklen      = 64
   )
 
-The BIP39 passphrase is independent from the .arc encryption password.
+The output is a 512-bit (64-byte) deterministic seed used by all secp256k1
+coins, Solana, Stellar, and Monero. Cardano bypasses this seed entirely and
+derives its master key directly from the raw BIP39 entropy bytes via the Icarus
+scheme (see Cardano Derivation section below).
+
+The .arc encryption password is operationally and cryptographically independent
+of the BIP39 passphrase. They may coincidentally share the same string value by
+user choice, but the engine never conflates them.
 
 
-BIP32 Master Node
------------------
+BIP32 Master Node Construction (secp256k1)
+-------------------------------------------
 
-  I  = HMAC-SHA512(key=b"Bitcoin seed", msg=seed)
-  IL = I[0:32]
-  IR = I[32:64]
+The 64-byte seed is processed through a single HMAC-SHA512 invocation:
+
+  I   = HMAC-SHA512(key = b"Bitcoin seed", msg = seed)
+  IL  = I[0:32]       -- 256-bit candidate private scalar
+  IR  = I[32:64]      -- 256-bit master chain code
 
   master_private_key = parse256(IL)
   master_chain_code  = IR
 
-The master private scalar must be in the valid secp256k1 range.
+The private scalar is valid if and only if parse256(IL) ∈ (0, n). The engine
+raises a hard error on this edge case rather than silently yielding an invalid
+or zero key.
 
-Root fingerprint:
+The root fingerprint displayed in the UI toolbar is computed as:
 
-  HASH160(compressed_master_public_key)[0:4]
+  root_pubkey       = serP(master_private_key × G)   -- compressed, 33 bytes
+  root_fingerprint  = HASH160(root_pubkey)[0:4]
+  HASH160(x)        = RIPEMD160(SHA256(x))
 
-
-Path Syntax
------------
-
-Supported hardened markers:
-
-  m/84'/0'/0'
-  m/84h/0h/0h
-  m/84H/0H/0H
-
-Output paths use apostrophe notation.
-
-The configured path is treated as an account-level path. The engine derives:
-
-  receiving: <account path>/0/index
-  change:    <account path>/1/index
+The fingerprint is serialized as 4 bytes of lowercase hexadecimal. It is
+recomputed asynchronously after every mnemonic state change using a cancellation
+token (rootFingerprintRefreshToken) to discard stale results.
 
 
-Default Paths
--------------
+SLIP-0010 Ed25519 Master Node Construction
+-------------------------------------------
 
-  bitcoin    m/0'
-  litecoin   m/84'/2'/0'
-  dogecoin   m/44'/3'/0'
-  ethereum   m/44'/60'/0'
-  xrp        m/44'/144'/0'
+For Solana, Stellar, and Monero, the 64-byte BIP39 seed is processed through:
 
-SLIP44 coin types:
+  I   = HMAC-SHA512(key = b"ed25519 seed", msg = seed)
+  IL  = I[0:32]       -- Ed25519 private key seed
+  IR  = I[32:64]      -- chain code
 
-  bitcoin: 0
-  litecoin: 2
-  dogecoin: 3
-  ethereum: 60
-  xrp: 144
+  master_node = { k: IL, c: IR }
+
+The Ed25519 public key is derived from the private seed via the standard
+SHA-512 clamp-and-multiply operation (ed25519PublicKeyFromSeed), producing a
+32-byte compressed Ed25519 public key in little-endian encoding.
+
+
+CKDpriv: Private Child Key Derivation (secp256k1)
+--------------------------------------------------
+
+Child derivation follows BIP32 CKDpriv exactly. Let the parent node be defined
+by private scalar k_par, chain code c_par, and derived public key K_par.
+
+For a child at index i (0-indexed, 32-bit unsigned integer):
+
+  Hardened child (i ≥ 0x80000000):
+    data = 0x00 || ser256(k_par) || ser32(i)
+
+  Normal child (i < 0x80000000):
+    data = serP(K_par) || ser32(i)
+
+  I   = HMAC-SHA512(key = c_par, msg = data)
+  IL  = I[0:32]
+  IR  = I[32:64]
+
+  child_private_key   = (parse256(IL) + k_par) mod n
+  child_chain_code    = IR
+
+Hard invalidity conditions cause the engine to raise an explicit error:
+
+  parse256(IL) ≥ n
+  child_private_key == 0
+
+Hardened derivation folds the raw private scalar into the HMAC input, making
+child keys non-derivable from the parent public key alone. All account-level
+path components — purpose', coin_type', account' — use hardened indices.
+Branch indices (0, 1) and address indices (0..count-1) are non-hardened.
+
+
+CKDprivEd25519: Private Child Key Derivation (SLIP-0010)
+----------------------------------------------------------
+
+Ed25519 derivation under SLIP-0010 requires all path indices to be hardened.
+Any non-hardened index in an Ed25519 path is a hard error.
+
+For a hardened child at index i (i ≥ 0x80000000):
+
+  data = 0x00 || node.k || ser32(i)
+  I    = HMAC-SHA512(key = node.c, msg = data)
+
+  child_node = { k: I[0:32], c: I[32:64] }
+
+The child's private key is I[0:32] directly; there is no modular addition step
+as in BIP32 secp256k1. The chain code is I[32:64]. The SLIP-0010 constraint
+that all indices must be hardened is enforced at parse time and raises a hard
+error rather than silently producing output.
+
+
+Cardano Icarus Master Key Derivation (CIP-1852)
+------------------------------------------------
+
+Cardano bypasses the standard BIP39 PBKDF2 seed entirely. The master key is
+derived from the raw BIP39 entropy bytes extracted directly from the mnemonic:
+
+  entropy_bytes = mnemonicEntropyBytes(mnemonic)   -- 16 bytes for 12w, 32 for 24w
+
+  I = PBKDF2-HMAC-SHA512(
+      password   = b"",                 -- empty password
+      salt       = entropy_bytes,
+      iterations = 4096,
+      dkLen      = 96
+  )
+
+  root_private_key = I[0:64]            -- 64-byte Ed25519-BIP32 extended private key
+  root_chain_code  = I[64:96]           -- 32-byte chain code
+
+The 64-byte private key is then clamped per Ed25519-BIP32 (Icarus) convention
+before use. Cardano public keys are derived via ed25519PublicKeyFromScalarBytes
+applied to the first 32 bytes of the extended private key.
+
+Child derivation for Cardano uses the CIP-1852 path structure. For a payment
+address at index i, the engine derives two keys:
+
+  Payment key path: m/1852'/1815'/0'/0/i
+  Staking key path: m/1852'/1815'/0'/2/0
+
+The Shelley base address encodes both keys with a network tag byte:
+
+  address = cardanoShelleyBaseAddress(paymentPub, stakingPub)
+
+This produces a Bech32-encoded address with hrp "addr" for mainnet. The staking
+key path is fixed at index 0 and shared across all payment indices; each
+receiving address is uniquely determined by its payment key index alone.
+
+
+Derivation Path Parser
+-----------------------
+
+The path parser accepts all three conventional notations for hardened components:
+
+  Apostrophe:   m/84'/0'/0'
+  Lowercase h:  m/84h/0h/0h
+  Uppercase H:  m/84H/0H/0H
+
+Hardening applies the BIP32 hardening offset HARDENED = 0x80000000.
+Purpose field 84' is stored internally as index 0x80000054 (decimal 2147483732).
+
+The canonical output form uses apostrophe notation exclusively. The parser
+rejects non-numeric path components, indices exceeding the 32-bit unsigned
+maximum, and malformed separator sequences as hard errors.
+
+
+Account and Branch Model
+-------------------------
+
+For secp256k1 coins the configured derivation path is treated as an account-
+level node. The engine derives the account node and then generates two standard
+BIP44-style branches:
+
+  Receiving branch:   <account_path>/0/<index>
+  Change branch:      <account_path>/1/<index>
+
+For Ed25519 coins (Solana, Stellar, Monero) there is no branching. Each derived
+account path is treated as a standalone address. The output schema uses a single
+'account' branch rather than receiving/change branches.
+
+For Cardano the payment path encodes the branch and index inline:
+m/1852'/1815'/account'/0/index (receiving). No change branch is generated.
+
+Example for Bitcoin m/84'/0'/0' with count = 3:
+
+  Account:            m/84'/0'/0'
+  Receiving index 0:  m/84'/0'/0'/0/0
+  Receiving index 1:  m/84'/0'/0'/0/1
+  Receiving index 2:  m/84'/0'/0'/0/2
+  Change index 0:     m/84'/0'/0'/1/0
+  Change index 1:     m/84'/0'/0'/1/1
+  Change index 2:     m/84'/0'/0'/1/2
+
+
+SLIP44 Coin Type Registry and Default Paths
+--------------------------------------------
+
+SLIP44 coin type assignments used by this engine:
+
+  bitcoin       coin_type = 0
+  bitcoincash   coin_type = 145  (not encoded in current default path; uses m/0')
+  litecoin      coin_type = 2
+  dogecoin      coin_type = 3
+  ethereum      coin_type = 60
+  solana        coin_type = 501
+  stellar       coin_type = 148
+  monero        coin_type = 128
+  cardano       coin_type = 1815  (CIP-1852 purpose 1852' used instead of 44')
+  xrp           coin_type = 144
+
+Default account paths surfaced in the UI:
+
+  bitcoin       m/0'
+  bitcoincash   m/0'
+  litecoin      m/84'/2'/0'
+  dogecoin      m/44'/3'/0'
+  ethereum      m/44'/60'/0'
+  solana        m/44'/501'/0'
+  stellar       m/44'/148'/0'
+  monero        m/44'/128'/0'
+  cardano       m/1852'/1815'/0'/0/0
+  xrp           m/44'/144'/0'
+
+Standard BIP purpose path matrix for UTXO coins:
+
+  BIP44 (P2PKH legacy)         m/44'/coin_type'/0'
+  BIP49 (P2WPKH-P2SH)          m/49'/coin_type'/0'
+  BIP84 (P2WPKH native SegWit)  m/84'/coin_type'/0'
+  BIP86 (P2TR Taproot)         m/86'/coin_type'/0'
 
 
 Script Type Resolution
-----------------------
+-----------------------
 
-Explicit script types:
+Script type is either explicitly specified or inferred from the path via Auto
+mode. This resolution applies to secp256k1 UTXO coins only.
+
+Explicit values accepted:
 
   p2pkh
   p2wpkh-p2sh
   p2wpkh
   p2tr
 
-Auto mode maps purpose:
+Auto mode reads the purpose field (first path component) and maps it:
 
-  44' -> p2pkh
-  49' -> p2wpkh-p2sh
-  84' -> p2wpkh
-  86' -> p2tr
+  purpose 44'  ->  p2pkh
+  purpose 49'  ->  p2wpkh-p2sh
+  purpose 84'  ->  p2wpkh
+  purpose 86'  ->  p2tr
 
-Ethereum and XRP use account-style outputs and ignore UTXO script type.
+Ethereum, XRP, Solana, Stellar, Monero, and Cardano bypass the UTXO script-type
+resolution system entirely. Auto is the correct and safe selection for all
+account-family and Ed25519 coins.
 
+Bitcoin Cash uses the p2pkh script type by default (the UI auto-selects P2PKH
+when the coin is changed to Bitcoin Cash). SegWit and Taproot are not supported
+for Bitcoin Cash.
 
-Address Families
-----------------
-
-P2PKH:
-  Base58Check(version || HASH160(compressed_pubkey))
-
-P2WPKH-P2SH:
-  Base58Check(p2sh_version || HASH160(OP_0 PUSH20 HASH160(pubkey)))
-
-P2WPKH:
-  Bech32 HRP with witness version 0 and 20-byte pubkey hash.
-
-P2TR:
-  BIP340/BIP341/BIP86 x-only internal key, TapTweak, and Bech32m witness
-  version 1. Dogecoin Taproot is disabled.
-
-Ethereum:
-  Keccak-256 of the uncompressed secp256k1 public key, last 20 bytes, EIP-55
-  checksum casing. ERC-20 tokens use the same address.
-
-XRP:
-  HASH160(compressed_pubkey), XRPL classic-address Base58 alphabet, r-prefix.
-  Destination tags are not derived.
+Dogecoin defaults to p2pkh. Taproot is explicitly disabled and raises a hard
+error if requested for Dogecoin.
 
 
-Extended Keys
--------------
+Network Version Byte Constants
+--------------------------------
 
-Extended private and public keys use BIP32 78-byte serialization followed by
-Base58Check. Script-specific variants such as ypub/zpub/trpub are emitted when
-applicable. Ethereum and XRP use standard xprv/xpub version bytes.
+All values are hexadecimal.
+
+Bitcoin mainnet:
+
+  Script type    xprv version    xpub version    WIF prefix
+  p2pkh          0488ADE4        0488B21E         80
+  p2wpkh-p2sh    049D7878        049D7CB2         80
+  p2wpkh         04B2430C        04B24746         80
+  p2tr           0488ADE4        0488B21E         80
+  P2PKH version byte: 00
+  P2SH version byte:  05
+  Bech32 HRP:         bc
+
+Bitcoin testnet (--testnet flag):
+
+  Script type    xprv version    xpub version    WIF prefix
+  p2pkh          04358394        043587CF         EF
+  p2wpkh-p2sh    044A4E28        044A5262         EF
+  p2wpkh         045F18BC        045F1CF6         EF
+  p2tr           04358394        043587CF         EF
+  P2PKH version byte: 6F
+  P2SH version byte:  C4
+  Bech32 HRP:         tb
+
+Bitcoin Cash mainnet:
+
+  Script type    xprv version    xpub version    WIF prefix
+  p2pkh          0488ADE4        0488B21E         80
+  P2PKH version byte: 00
+  P2SH version byte:  05
+  CashAddr prefix:    bitcoincash
+  SegWit / Taproot:   not supported (null in engine config)
+
+Litecoin mainnet:
+
+  Script type    xprv version    xpub version    WIF prefix
+  p2pkh          019D9CFE        019DA462         B0
+  p2wpkh-p2sh    01B26792        01B26EF6         B0
+  p2wpkh         04B2430C        04B24746         B0
+  p2tr           019D9CFE        019DA462         B0
+  P2PKH version byte: 30
+  P2SH version byte:  32
+  Bech32 HRP:         ltc
+
+Dogecoin mainnet:
+
+  Script type    xprv version    xpub version    WIF prefix
+  p2pkh          02FAC398        02FACAFD         9E
+  p2wpkh-p2sh    02FAC398        02FACAFD         9E  (recovery inspection only)
+  p2wpkh         02FAC398        02FACAFD         9E  (recovery inspection only)
+  p2tr           UNSUPPORTED (explicitly disabled in the engine)
+  P2PKH version byte: 1E
+  P2SH version byte:  16
+
+Ethereum mainnet:
+
+  SLIP44 coin_type:    60
+  Canonical path:      m/44'/60'/0'
+  Address family:      ethereum
+  Address format:      EIP-55 checksummed 0x<40 hex chars>
+  xprv/xpub versions:  0488ADE4 / 0488B21E
+  WIF:                 undefined; private key exported as raw 32-byte hex
+
+Solana mainnet:
+
+  SLIP44 coin_type:    501
+  Canonical path:      m/44'/501'/0'
+  Address family:      solana
+  Address format:      Base58-encoded 32-byte Ed25519 public key
+  Derivation:          SLIP-0010 Ed25519 hardened only
+  Extended keys:       not applicable (no BIP32 version bytes for Solana)
+
+Stellar mainnet:
+
+  SLIP44 coin_type:    148
+  Canonical path:      m/44'/148'/0'
+  Address family:      stellar
+  Address format:      Stellar StrKey public address (G...)
+  Secret seed format:  Stellar StrKey secret seed (S...)
+  Derivation:          SLIP-0010 Ed25519 hardened only
+
+Monero mainnet:
+
+  SLIP44 coin_type:    128
+  Canonical path:      m/44'/128'/0'
+  Address family:      monero
+  Address format:      Monero Base58 standard mainnet address (4...)
+  Derivation:          SLIP-0010 Ed25519 hardened, with Ed25519 scalar reduction
+  Key material:        private spend key, private view key, public spend key,
+                       public view key
+
+Cardano mainnet:
+
+  CIP-1852 purpose:    1852'
+  coin_type:           1815'
+  Canonical path:      m/1852'/1815'/0'/0/0
+  Address family:      cardano
+  Address format:      Bech32 Shelley base address (addr1...)
+  Derivation:          Icarus Ed25519-BIP32, PBKDF2 from raw entropy
+  Key material:        payment key pair + staking key pair -> Shelley base address
+
+XRP Ledger mainnet:
+
+  SLIP44 coin_type:    144
+  Canonical path:      m/44'/144'/0'
+  Address family:      xrp
+  Address format:      XRPL classic r-address (Base58Check with XRPL alphabet)
+  xprv/xpub versions:  0488ADE4 / 0488B21E
+  XRPL base58 alphabet:
+    rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz
 
 
-CLI Reference
--------------
+Address Construction — Per Coin / Script Type
+----------------------------------------------
 
-  python Arculus_Recovery.py \
-    --mnemonic "word1 word2 ... word12" \
-    --passphrase "optional passphrase" \
-    --derivation "m/84'/0'/0'" \
-    --script-type p2wpkh \
-    --coin bitcoin \
-    --count 5 \
-    --output-format txt
+All secp256k1 UTXO address construction uses the 33-byte compressed public key:
 
-Flags:
+  child_pub = serP(child_private × G)   -- parity byte (0x02/0x03) || x-coordinate
 
-  --mnemonic        BIP39 mnemonic
-  --passphrase      Optional BIP39 passphrase
-  --derivation      Account-level BIP32 path
-  --all-common      Common purpose paths for the selected coin
-  --script-type     auto | p2pkh | p2wpkh-p2sh | p2wpkh | p2tr
-  --count           Address count per branch
-  --coin            bitcoin | litecoin | dogecoin | ethereum | xrp
-  --testnet         Supported testnet mode
-  --output-format   json | csv | txt
-  --gui             Launch GUI
-  --version         Print Python core version
+Let pkh = HASH160(child_pub) = RIPEMD160(SHA256(child_pub))  -- 20 bytes
+
+P2PKH (Bitcoin, Bitcoin Cash legacy, Litecoin, Dogecoin):
+
+  payload = p2pkh_version_byte || pkh
+  address = Base58Check(payload)
+
+  For Bitcoin Cash, if the legacyAddrToggle is NOT checked, the default address
+  is CashAddr format instead:
+
+    address = cashaddrEncode("bitcoincash", 0, pkh)
+
+  The CashAddr format produces addresses of the form "bitcoincash:q...". The
+  "bitcoincash:" prefix is stripped in the display table but preserved internally.
+  Enabling the legacy toggle reverts to the Base58Check P2PKH address (starting
+  with '1'), identical in construction to Bitcoin P2PKH.
+
+P2WPKH-P2SH (Wrapped SegWit):
+
+  redeem_script = 0x00 || 0x14 || pkh    -- OP_0 PUSH20 <pkh>; 22 bytes total
+  script_hash   = HASH160(redeem_script)  -- 20 bytes
+  payload       = p2sh_version_byte || script_hash
+  address       = Base58Check(payload)
+
+P2WPKH (Native SegWit, Bech32, BIP173):
+
+  witness_program  = convertbits(pkh, 8, 5)
+  address          = bech32Encode(hrp, [0] || witness_program)
+
+P2TR (Taproot, Bech32m, BIP341/BIP350): see Taproot Key Material section.
+
+Ethereum (EIP-55 checksummed account address):
+
+  uncompressed = x(P) || y(P)           -- 64 bytes, no prefix byte
+  account_id   = Keccak256(uncompressed)[12:32]   -- rightmost 20 bytes
+  address_hex  = lowercase_hex(account_id)
+
+  checksum     = Keccak256(ascii(address_hex))
+  For each hex character at position i: uppercase if bit (4*i) of checksum == 1
+
+  address = "0x" || EIP55_cased(address_hex)
+
+  NOTE: The implementation uses Keccak-256 (pre-NIST), not FIPS 202 SHA3-256.
+
+XRP (XRPL classic address):
+
+  account_id   = RIPEMD160(SHA256(child_pub))    -- 33-byte compressed pubkey
+  payload      = 0x00 || account_id
+  checksum     = SHA256(SHA256(payload))[0:4]
+  address      = Base58Encode(payload || checksum, XRPL_ALPHABET)
+
+Solana:
+
+  public_key   = ed25519PublicKeyFromSeed(child_node.k)   -- 32-byte Ed25519 pubkey
+  address      = base58encode(public_key)                  -- Bitcoin Base58 alphabet
+
+Stellar:
+
+  public_key        = ed25519PublicKeyFromSeed(child_node.k)
+  address           = stellarPublicAddress(public_key)     -- StrKey G... format
+  stellar_secret_seed = stellarSecretSeed(child_node.k)   -- StrKey S... format
+
+  Stellar StrKey encoding: version byte || payload, CRC-16 checksum, Base32.
+  Version byte for public key: 6 << 3 = 0x30 (encodes as leading 'G').
+  Version byte for secret seed: 18 << 3 = 0x90 (encodes as leading 'S').
+
+Monero:
+
+  private_spend_key = reduceEd25519Scalar(child_node.k)
+  private_view_key  = reduceEd25519Scalar(Keccak256(private_spend_key))
+  public_spend_key  = ed25519PublicKeyFromScalarBytes(private_spend_key)
+  public_view_key   = ed25519PublicKeyFromScalarBytes(private_view_key)
+
+  body    = 0x12 || public_spend_key || public_view_key    -- 65 bytes
+  checksum = Keccak256(body)[0:4]
+  address = moneroBase58Encode(body || checksum)
+
+  Monero uses a custom Base58 alphabet and block-based encoding (8 bytes -> 11
+  chars, remainder proportionally). The standard mainnet prefix byte is 0x12
+  (decimal 18). reduceEd25519Scalar reduces the 32-byte input modulo the Ed25519
+  group order using the standard scalar reduction algorithm.
+
+Cardano (Shelley base address):
+
+  payment_pub  = cardanoPublicKeyFromPrivate(payment_node.k)   -- 32-byte Ed25519 pub
+  staking_pub  = cardanoPublicKeyFromPrivate(staking_node.k)
+
+  header       = 0x00 | (network_tag & 0x0F)  -- 0x01 for mainnet
+  address      = Bech32("addr", header || Blake2b224(payment_pub) || Blake2b224(staking_pub))
+
+  cardanoShelleyBaseAddress implements this construction inline.
 
 
-Failure Modes
--------------
+Taproot Key Material (BIP340 / BIP341 / BIP86)
+------------------------------------------------
 
-Hard errors include:
+Let d = child private scalar, P = d × G.
 
-  - Unsupported word count.
-  - Unknown BIP39 word.
-  - Checksum mismatch.
-  - Invalid path component.
-  - Unsupported coin/script combination.
-  - Unsupported testnet configuration.
-  - Invalid secp256k1 scalar.
-  - Taproot output invalidity edge cases.
+Step 1 — Y-parity normalization:
 
-Wrong but valid inputs, such as a wrong passphrase or wrong path, do not produce
-errors. They produce a different wallet tree.
+  if y(P) is odd:
+      internal_private = n - d        -- scalar negation
+      internal_public  = -P           -- point negation
+  else:
+      internal_private = d
+      internal_public  = P
+
+  internal_x = x(internal_public)    -- 32-byte x-only key
+
+Step 2 — TapTweak tagged hash:
+
+  tagged_hash(tag, msg) = SHA256(SHA256(tag_bytes) || SHA256(tag_bytes) || msg)
+
+  t = int(tagged_hash("TapTweak", internal_x)) mod n
+
+Step 3 — Output key derivation:
+
+  output_public  = internal_public + t × G
+  output_private = (internal_private + t) mod n
+
+Step 4 — X-only output key extraction:
+
+  output_x      = x(output_public)
+  output_parity = y(output_public) mod 2    -- 0 = even, 1 = odd
+
+Step 5 — Bech32m address:
+
+  address = bech32m_encode(hrp, [1] || convertbits(output_x, 8, 5))
+
+Exported Taproot fields per derived address (note prefixed field names):
+
+  taproot_internal_public_key_hex     x-only internal key, 32 bytes hex
+  taproot_internal_private_key_hex    internal private scalar, 32 bytes hex
+  taproot_internal_private_key_wif    WIF of internal private scalar
+  taproot_tweak_hex                   t as 32 bytes hex
+  taproot_output_public_key_hex       x-only output key, 32 bytes hex
+  taproot_output_private_key_hex      output private scalar, 32 bytes hex
+  taproot_output_private_key_wif      WIF of output private scalar
+  taproot_output_key_parity           integer 0 or 1
+
+
+Extended Key Serialization
+---------------------------
+
+Extended keys are serialized as 78-byte structures and then Base58Check-encoded.
+This applies to secp256k1 coins only; Ed25519 coins do not produce xprv/xpub.
+
+Extended private key:
+
+  Offset   Length   Field
+  0        4        version bytes (script-type and network dependent)
+  4        1        depth
+  5        4        parent fingerprint (0x00000000 at master)
+  9        4        child number (0x00000000 at master)
+  13       32       chain code
+  45       1        0x00 (private key marker)
+  46       32       private scalar (ser256(k))
+  Total:   78 bytes before Base58Check checksum
+
+Extended public key:
+
+  Offset   Length   Field
+  0        4        version bytes
+  4        1        depth
+  5        4        parent fingerprint
+  9        4        child number
+  13       32       chain code
+  45       33       compressed public key (serP(K))
+  Total:   78 bytes before Base58Check checksum
+
+Ethereum and XRP use the standard xprv/xpub version bytes (0488ADE4 / 0488B21E).
+WIF is undefined for Ethereum, XRP, Solana, Stellar, Monero, and Cardano; their
+private key exports carry raw hexadecimal fields.
+
+
+Output Record Schema
+---------------------
+
+Top-level derivation result:
+
+  {
+    "coin":       <string>,
+    "network":    <string>,
+    "word_count": <integer>,
+    "accounts":   [ <account>, ... ]
+  }
+
+secp256k1 account object (Bitcoin, Bitcoin Cash, Litecoin, Dogecoin, Ethereum,
+XRP):
+
+  {
+    "derivation":                   <path string>,
+    "account_script_type_used":     <string>,
+    "account_extended_private_key": <xprv/yprv/zprv string>,
+    "account_extended_public_key":  <xpub/ypub/zpub string>,
+    "root_extended_private_key":    <xprv string>,
+    "root_extended_public_key":     <xpub string>,
+    "receiving":                    [ <address_record>, ... ],
+    "change":                       [ <address_record>, ... ]
+  }
+
+Ed25519 account object (Solana, Stellar, Monero):
+
+  {
+    "derivation":               <path string>,
+    "account_script_type_used": <"solana" | "stellar" | "monero">,
+    "root_private_key_hex":     <32-byte hex>,
+    "root_chain_code_hex":      <32-byte hex>,
+    "root_public_key_hex":      <32-byte hex>,   (not present for Monero)
+    "account_private_key_hex":  <32-byte hex>,
+    "account_chain_code_hex":   <32-byte hex>,
+    "account_public_key_hex":   <32-byte hex>,   (not present for Monero)
+    -- Monero only:
+    "account_private_spend_key_hex": <32-byte hex>,
+    "account_private_view_key_hex":  <32-byte hex>,
+    "account_public_spend_key_hex":  <32-byte hex>,
+    "account_public_view_key_hex":   <32-byte hex>,
+    "root_private_spend_key_hex":    <32-byte hex>,
+    "root_private_view_key_hex":     <32-byte hex>,
+    "root_public_spend_key_hex":     <32-byte hex>,
+    "root_public_view_key_hex":      <32-byte hex>,
+    "receiving":                [ <address_record>, ... ],
+    "change":                   []
+  }
+
+Cardano account object:
+
+  {
+    "derivation":               <path string>,
+    "account_script_type_used": "cardano_shelley_base",
+    "root_private_key_hex":     <64-byte hex>,
+    "root_chain_code_hex":      <32-byte hex>,
+    "root_public_key_hex":      <32-byte hex>,
+    "account_private_key_hex":  <64-byte hex>,
+    "account_chain_code_hex":   <32-byte hex>,
+    "account_public_key_hex":   <32-byte hex>,
+    "receiving":                [ <address_record>, ... ],
+    "change":                   []
+  }
+
+Address record (secp256k1 non-Taproot):
+
+  {
+    "path":             <full BIP32 path string>,
+    "address":          <encoded address>,
+    "public_key_hex":   <33-byte compressed hex>,
+    "private_key_hex":  <32-byte hex>,
+    "private_key_wif":  <WIF string>
+  }
+
+Address record (P2TR Taproot, augmented):
+
+  As above, plus:
+    "taproot_internal_public_key_hex":  <32-byte x-only hex>,
+    "taproot_internal_private_key_hex": <32-byte hex>,
+    "taproot_internal_private_key_wif": <WIF string>,
+    "taproot_tweak_hex":                <32-byte hex>,
+    "taproot_output_public_key_hex":    <32-byte x-only hex>,
+    "taproot_output_private_key_hex":   <32-byte hex>,
+    "taproot_output_private_key_wif":   <WIF string>,
+    "taproot_output_key_parity":        <integer 0 or 1>
+
+Address record (Ethereum):
+
+  {
+    "path":                    <path string>,
+    "address":                 <EIP-55 checksummed 0x... string>,
+    "ethereum_public_key_hex": <64-byte uncompressed hex, no 04 prefix>,
+    "private_key_hex":         <32-byte hex>,
+    "erc20_address":           <same as address>
+  }
+
+Address record (XRP):
+
+  {
+    "path":                <path string>,
+    "xrp_classic_address": <r... classic address>,
+    "public_key_hex":      <33-byte compressed hex>,
+    "private_key_hex":     <32-byte hex>
+  }
+
+Address record (Solana):
+
+  {
+    "branch":          "account",
+    "path":            <path string>,
+    "address":         <Base58-encoded Ed25519 public key>,
+    "public_key_hex":  <32-byte hex>,
+    "private_key_hex": <32-byte hex>,
+    "solana_note":     <advisory string>
+  }
+
+Address record (Stellar):
+
+  {
+    "branch":              "account",
+    "path":                <path string>,
+    "address":             <G... StrKey public address>,
+    "public_key_hex":      <32-byte hex>,
+    "private_key_hex":     <32-byte hex>,
+    "stellar_secret_seed": <S... StrKey secret seed>
+  }
+
+Address record (Monero):
+
+  {
+    "branch":               "account",
+    "path":                 <path string>,
+    "address":              <Monero Base58 standard address>,
+    "public_spend_key_hex": <32-byte hex>,
+    "public_view_key_hex":  <32-byte hex>,
+    "private_spend_key_hex":<32-byte hex>,
+    "private_view_key_hex": <32-byte hex>
+  }
+
+Address record (Cardano):
+
+  {
+    "branch":               "receiving",
+    "path":                 <payment path string>,
+    "staking_path":         <staking path string>,
+    "address":              <addr1... Shelley base address>,
+    "public_key_hex":       <32-byte payment pub hex>,
+    "stake_public_key_hex": <32-byte staking pub hex>,
+    "private_key_hex":      <64-byte payment priv hex>,
+    "stake_private_key_hex":<64-byte staking priv hex>
+  }
+
+
+Failure Modes and Hard Errors
+-------------------------------
+
+The engine raises explicit errors and produces no partial output on:
+
+  Input validation:
+    - Mnemonic word count not in {12, 24}
+    - Any word not present in the BIP39 English word list
+    - BIP39 checksum mismatch
+
+  Configuration:
+    - Unrecognized coin identifier
+    - Testnet flag set for a coin without defined testnet network constants
+      (only Bitcoin supports testnet; all others reject the flag)
+    - Script type unsupported for the selected coin and network combination
+      (Taproot for Dogecoin; SegWit/Taproot for Bitcoin Cash)
+    - Invalid path component: non-numeric, out of 32-bit unsigned range,
+      malformed separator
+    - Non-hardened index in an Ed25519 (SLIP-0010) derivation path
+
+  Derivation edge cases:
+    - Master key invalid: parse256(IL) ≥ n or IL == 0
+    - Child key invalid: parse256(IL) ≥ n or child_key == 0
+    - Taproot TapTweak scalar t ≥ n
+    - Taproot output public key is the point at infinity
+    - Taproot output private scalar == 0
+
+  Generation:
+    - Generated mnemonic fails its own BIP39 checksum self-validation
+
+
+Practical Recovery Reference
+------------------------------
+
+Systematic recovery procedure when attempting to locate a wallet's addresses:
+
+  1. Validate the mnemonic and confirm the BIP39 checksum passes.
+  2. Determine definitively whether a BIP39 passphrase was used. An incorrect
+     or absent passphrase silently produces a completely different key tree.
+  3. Identify the coin and network.
+  4. For secp256k1 UTXO coins, try each purpose-level path in order:
+       m/44'/coin_type'  -- most common for legacy wallets
+       m/84'/coin_type'  -- most common for native SegWit Bitcoin / Litecoin
+       m/49'/coin_type'  -- wrapped SegWit
+       m/86'/coin_type'  -- Taproot
+  5. For Bitcoin Cash try m/0' (Arculus default) and m/44'/145'/0' (BIP44).
+  6. For Solana try m/44'/501'/0' (Phantom/most wallets); some wallets use
+     m/44'/501'/0'/0' with the fourth component hardened.
+  7. For Stellar and Monero the canonical path m/44'/coin_type'/0' covers
+     the vast majority of wallet software.
+  8. For Cardano use the CIP-1852 path m/1852'/1815'/0'/0/0 (Daedalus/Yoroi).
+  9. Inspect the receiving branch before the change branch for UTXO coins.
+ 10. Increase address count if the target address lies beyond the default window.
+ 11. Treat every output record containing private key material as operationally
+     sensitive regardless of current on-chain balance.
+
+
+Implementation Reference
+-------------------------
+
+Core function map in derivation pipeline order:
+
+  HTML function                         Role
+  ------------------------------------  ------------------------------------------
+  generateRandomMnemonic(wordCount)     CSPRNG mnemonic generation
+  checkMnemonic(mnemonic, passphrase)   BIP39 word list + checksum validation
+  normalizeMnemonicWords(text)          NFKD normalization + word tokenization
+  normalizeNFKD(s)                      Unicode NFKD normalization primitive
+  mnemonicEntropyBytes(mnemonic)        Extract raw entropy bytes from mnemonic
+  masterFromSeed(seed)                  BIP32 secp256k1 master node (HMAC "Bitcoin seed")
+  masterFromSeedEd25519(seed)           SLIP-0010 Ed25519 master node (HMAC "ed25519 seed")
+  cardanoIcarusMasterFromEntropy(ent)   Cardano Icarus master from entropy bytes
+  parsePath(path)                       BIP32 path string -> index array
+  normalizePath(path)                   Canonical apostrophe-notation path output
+  ckdPriv(node, index)                  BIP32 secp256k1 CKDpriv
+  ckdPrivEd25519(node, index)           SLIP-0010 Ed25519 CKDpriv (hardened only)
+  taprootKeyData(privKey)               BIP340/341/86 Taproot key material derivation
+  pubToAddress(pub, scriptType, net)    Script-type-dispatched address encoder
+  cashaddrEncode(prefix, type, hash)    Bitcoin Cash CashAddr encoding
+  stellarPublicAddress(publicKey)       Stellar StrKey G... address
+  stellarSecretSeed(privateSeed)        Stellar StrKey S... secret seed
+  moneroAddressFromSpendKey(spendKey)   Monero address + view key derivation
+  cardanoShelleyBaseAddress(pay, stk)   Cardano Shelley base address construction
+  xprv(node, version)                   Extended private key Base58Check serialization
+  xpub(node, version)                   Extended public key Base58Check serialization
+  toWif(k, net)                         WIF private key encoding
+  deriveSolanaOutput(...)               Full Solana derivation pipeline
+  deriveStellarOutput(...)              Full Stellar derivation pipeline
+  deriveMoneroOutput(...)               Full Monero derivation pipeline
+  deriveCardanoOutput(...)              Full Cardano derivation pipeline
+  deriveOutput()                        Top-level derivation dispatcher (all coins)
+  applyGeneratedSeed(mnemonic)          Route generated mnemonic to hidden-seed state
+  buildWordInputs()                     Construct 24-cell word entry grid
+  refreshWordEnabled()                  Sync active/disabled state of word cells
+  setObfuscatedSeedInputs(words)        Populate obfuscated placeholder display
+  handleWordInput()                     Word cell input/blur event handler
+  handleMnemonicInput()                 Textarea input sync handler
+  setMnemonicFromWordBoxes()            Extract canonical mnemonic from word grid
+  styleWordInput(inp)                   Per-cell BIP39 word validation styling
+  scheduleRootFingerprintRefresh()      Async root fingerprint recomputation trigger
