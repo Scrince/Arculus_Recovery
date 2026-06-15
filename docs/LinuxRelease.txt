@@ -1,0 +1,165 @@
+Arculus Recovery v1.6.0 - Linux Release Notes
+==============================================
+
+Scope
+-----
+
+This document records Linux-specific release, installation, verification, and
+operational notes for the v1.6.0 Tauri desktop build.
+
+The canonical application remains Arculus_Recovery.html v1.6.0. The Linux
+Tauri build packages that same offline application inside a native WebKitGTK
+desktop wrapper with the Tauri save_export bridge.
+
+
+Release Artifacts
+-----------------
+
+The v1.6.0 Linux release set currently contains amd64 artifacts only:
+
+  releases/tauri/linux/arculus-recovery
+  releases/tauri/linux/Arculus Recovery_1.6.0_amd64.deb
+  releases/tauri/linux/Arculus Recovery-1.6.0-1.x86_64.rpm
+
+The binary artifact is an x86-64 Linux ELF executable. The Debian package is
+for amd64 systems. The RPM package is for x86_64 systems.
+
+No Linux arm64/aarch64 package was produced for this release.
+
+No AppImage artifact is part of the v1.6.0 Linux release set. The AppImage
+bundling attempt compiled the application successfully, but Tauri's
+linuxdeploy AppImage packaging step failed inside the Docker amd64 build
+environment. Treat the raw ELF, .deb, and .rpm files as the published Linux
+artifacts for v1.6.0.
+
+
+Verified Artifact Metadata
+--------------------------
+
+The Linux binary was verified as:
+
+  ELF 64-bit LSB pie executable, x86-64, dynamically linked
+
+The Debian package metadata was verified as:
+
+  Package: arculus-recovery
+  Version: 1.6.0
+  Architecture: amd64
+  Depends: libwebkit2gtk-4.1-0, libgtk-3-0
+  Description: Offline BIP39/BIP32 recovery and key-derivation tool
+
+The RPM package metadata was verified as:
+
+  Name: arculus-recovery
+  Version: 1.6.0
+  Release: 1
+  Architecture: x86_64
+  Signature: none
+  Summary: Offline BIP39/BIP32 recovery and key-derivation tool
+
+The RPM package is not signed. Verify the SHA-256 digest from
+docs/SHA256Sums.txt before installation.
+
+
+SHA-256 Verification
+--------------------
+
+The Linux artifact hashes are recorded in docs/SHA256Sums.txt:
+
+  0d1f05b6658e33417de4692b40aa7c5bb44a9f80a92b6ec7ec5010dfebe9d273  releases/tauri/linux/Arculus Recovery-1.6.0-1.x86_64.rpm
+  992e2e436fff0af98f84598499f43c3b7fe194e7109de8e94747a72b3ac24a8d  releases/tauri/linux/Arculus Recovery_1.6.0_amd64.deb
+  9d178ffde81e6c7d83fae7f8ff6ec5a2ea83e97727bebc84fc93a4716d471c41  releases/tauri/linux/arculus-recovery
+
+Verify from the repository root with:
+
+  shasum -a 256 releases/tauri/linux/*
+
+or on systems using GNU coreutils:
+
+  sha256sum releases/tauri/linux/*
+
+Compare the output byte-for-byte against docs/SHA256Sums.txt before entering
+seed material.
+
+
+Debian or Ubuntu Installation
+-----------------------------
+
+Install the .deb package with:
+
+  sudo apt install ./releases/tauri/linux/Arculus\ Recovery_1.6.0_amd64.deb
+
+or:
+
+  sudo dpkg -i ./releases/tauri/linux/Arculus\ Recovery_1.6.0_amd64.deb
+  sudo apt -f install
+
+The package declares these runtime dependencies:
+
+  libwebkit2gtk-4.1-0
+  libgtk-3-0
+
+If the host distribution does not provide WebKitGTK 4.1 packages, use a
+distribution release that does or run the standalone HTML application directly
+in an offline browser.
+
+
+RPM Installation
+----------------
+
+Install the RPM package on Fedora-like systems with:
+
+  sudo dnf install ./releases/tauri/linux/Arculus\ Recovery-1.6.0-1.x86_64.rpm
+
+On systems using rpm directly:
+
+  sudo rpm -i ./releases/tauri/linux/Arculus\ Recovery-1.6.0-1.x86_64.rpm
+
+The RPM is unsigned, so hash verification is mandatory before installation.
+
+
+Standalone Binary Use
+---------------------
+
+The raw Linux binary can be run directly on compatible amd64 Linux systems with
+the required WebKitGTK and GTK runtime libraries installed:
+
+  chmod +x releases/tauri/linux/arculus-recovery
+  ./releases/tauri/linux/arculus-recovery
+
+The standalone binary is useful for controlled testing, but package
+installation is preferred for normal desktop launcher integration and runtime
+dependency handling.
+
+
+Operational Notes
+-----------------
+
+Linux desktop packaging does not change the recovery security model:
+
+  - The application still handles mnemonic words and private key material.
+  - The Tauri wrapper still passes exports through native save_export.
+  - Exported JSON, CSV, TXT, PDF, .arc, keyfile, and QR files are ordinary
+    filesystem writes.
+  - Browser and WebView memory are not hardened secret vaults.
+  - The host clipboard, display server, crash reporting, shell history, and
+    filesystem remain part of the security boundary.
+
+For high-value recovery, use an offline Linux environment, disable networking
+and sync services, avoid remote desktop sessions, verify hashes before launch,
+export only the required artifacts, and clear the session before shutdown.
+
+
+Build Reference
+---------------
+
+The v1.6.0 Linux amd64 release was built in a Linux amd64 Docker environment
+from the prepared Tauri assets without editing HTML files.
+
+The package build command was:
+
+  cargo tauri build --bundles deb,rpm --ci
+
+The AppImage command reached the linuxdeploy bundling step, then failed inside
+linuxdeploy. Do not document an AppImage as available unless a future release
+successfully produces and verifies one.

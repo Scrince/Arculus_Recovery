@@ -200,6 +200,21 @@ Build:
 npm run tauri -- build
 ```
 
+macOS release builds can also be produced per architecture:
+
+```bash
+cargo tauri build --target x86_64-apple-darwin --bundles app,dmg --ci
+cargo tauri build --target aarch64-apple-darwin --bundles app,dmg --ci
+cargo tauri build --target universal-apple-darwin --bundles app,dmg --ci
+```
+
+Linux amd64 release packages can be produced on a Linux build host, or from a
+Linux amd64 Docker builder, with:
+
+```bash
+cargo tauri build --bundles deb,rpm --ci
+```
+
 The Tauri wrapper uses the Rust `save_export` command and the `window.arculusTauriSaveExport` bridge for PDF, JSON, CSV, TXT, `.arc`, keyfile, and QR PNG saves.
 
 ## Hash Verification
@@ -220,7 +235,7 @@ find Arculus_Recovery.html Arculus_Recovery_LTS.html Arculus_Recovery.py src ven
   -type f ! -name '._*' ! -path '*/screenshots/*' -print0 | sort -z | xargs -0 shasum -a 256
 ```
 
-Publish hashes for release artifacts with the exact build they came from. This repository currently contains v1.6.0 Windows installer artifacts and older v1.5.0 macOS DMGs.
+Publish hashes for release artifacts with the exact build they came from. This repository currently contains v1.6.0 Windows installer artifacts, v1.6.0 macOS Intel, Apple Silicon, and universal `.app`/DMG artifacts, and v1.6.0 Linux amd64 binary, `.deb`, and `.rpm` artifacts.
 
 ## Repository Map
 

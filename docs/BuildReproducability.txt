@@ -1,0 +1,382 @@
+Arculus Recovery v1.6.0 - Build Reproducibility Specification
+=============================================================
+
+Scope
+-----
+
+This document defines the build inputs, host environments, commands, outputs,
+and verification rules needed to reproduce the v1.6.0 release artifacts.
+
+The filename preserves the project-local spelling:
+
+  BuildReproducability.txt
+
+The canonical source of truth for application behavior remains:
+
+  Arculus_Recovery.html
+
+The release hash manifest for official v1.6.0 release surfaces is:
+
+  docs/SHA256Sums.txt
+
+This document does not replace SHA-256 verification. It records the build
+procedure and the expected artifact boundary so rebuilders can determine
+whether their outputs are byte-equivalent to the published v1.6.0 files.
+
+
+Release Surfaces
+----------------
+
+The v1.6.0 release set covered by docs/SHA256Sums.txt is:
+
+  Arculus_Recovery.html
+  Arculus_Recovery.py
+  releases/tauri/linux/arculus-recovery
+  releases/tauri/linux/Arculus Recovery_1.6.0_amd64.deb
+  releases/tauri/linux/Arculus Recovery-1.6.0-1.x86_64.rpm
+  releases/tauri/macos/Arculus Recovery_1.6.0_aarch64.dmg
+  releases/tauri/macos/Arculus Recovery_1.6.0_universal.dmg
+  releases/tauri/macos/Arculus Recovery_1.6.0_x64.dmg
+
+Older v1.5.0 artifacts may exist under releases/tauri/macos. They are not part
+of the v1.6.0 reproducibility target.
+
+
+Source Version Requirements
+---------------------------
+
+The repository files must agree on v1.6.0:
+
+  package.json version: 1.6.0
+  src-tauri/Cargo.toml package.version: 1.6.0
+  src-tauri/tauri.conf.json version: 1.6.0
+  Arculus_Recovery.html APP_VERSION: v1.6.0
+  Python package/app version: 1.6.0
+
+Do not mix files from different releases. The HTML, Python launcher, packaged
+assets, Tauri wrapper, docs, and release artifacts are one build set.
+
+
+Canonical Hashes
+----------------
+
+The v1.6.0 release hashes are:
+
+  560656d2e884c5eb9d8d2fb5221acf79ec737b5618587cd4ae03e4de28990219  Arculus_Recovery.html
+  a976e8903e13ab4b8d119178a7e66a41492e96d9c47df141afc081ee0601ae00  Arculus_Recovery.py
+  0d1f05b6658e33417de4692b40aa7c5bb44a9f80a92b6ec7ec5010dfebe9d273  releases/tauri/linux/Arculus Recovery-1.6.0-1.x86_64.rpm
+  992e2e436fff0af98f84598499f43c3b7fe194e7109de8e94747a72b3ac24a8d  releases/tauri/linux/Arculus Recovery_1.6.0_amd64.deb
+  9d178ffde81e6c7d83fae7f8ff6ec5a2ea83e97727bebc84fc93a4716d471c41  releases/tauri/linux/arculus-recovery
+  d0329d6f92a42b787b8528fe78aab23afbfcca7c95d94769b08c37dc5a22c24e  releases/tauri/macos/Arculus Recovery_1.6.0_aarch64.dmg
+  948f42808397b13d34450e579869cdd20d23b94d2bb71ee6056c256dbddb6f2b  releases/tauri/macos/Arculus Recovery_1.6.0_universal.dmg
+  14b577387ceca7db62c9551f890dcfb87e900d97ddb8fdc9ab6e9ef7ba11eed6  releases/tauri/macos/Arculus Recovery_1.6.0_x64.dmg
+
+Verify them from the repository root with:
+
+  shasum -a 256 -c docs/SHA256Sums.txt
+
+
+Recorded macOS Build Host
+-------------------------
+
+The v1.6.0 macOS artifacts were produced on:
+
+  operating system: macOS 15.7.7
+  build version: 24G720
+  host architecture: arm64
+  rustc: 1.96.0 (ac68faa20 2026-05-25)
+  cargo: 1.96.0 (30a34c682 2026-05-25)
+  tauri-cli: 2.11.2
+
+The build used local Rust/Tauri target directories outside the repository
+working tree where practical. This avoids copying macOS AppleDouble metadata
+files named ._* into release artifacts or checksum inputs.
+
+
+Recorded Linux Build Host
+-------------------------
+
+The v1.6.0 Linux artifacts were produced inside Docker on a macOS arm64 host.
+
+Host Docker version:
+
+  Docker version 29.5.3, build d1c06ef
+
+Linux build platform:
+
+  linux/amd64
+
+Base distribution:
+
+  Ubuntu 22.04
+
+Builder dependency class:
+
+  ca-certificates
+  curl
+  build-essential
+  pkg-config
+  libssl-dev
+  libgtk-3-dev
+  libwebkit2gtk-4.1-dev
+  libayatana-appindicator3-dev
+  librsvg2-dev
+  patchelf
+  file
+  wget
+  rpm
+
+The Linux AppImage retry also installed:
+
+  libfuse2
+  desktop-file-utils
+  appstream
+
+The AppImage build was not published because linuxdeploy failed during the
+AppImage bundling step. The Linux v1.6.0 release artifacts are the raw ELF,
+the Debian package, and the RPM package only.
+
+
+Asset Preparation Boundary
+--------------------------
+
+The Tauri wrapper reads from:
+
+  tauri-dist/index.html
+  tauri-dist/favicon.png
+  tauri-dist/settings-icon.png
+
+The canonical asset-preparation command is:
+
+  python scripts/prepare_tauri_assets.py
+
+On Windows hosts the equivalent command is:
+
+  powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/prepare-tauri-assets.ps1
+
+These preparation scripts copy the packaged HTML asset into tauri-dist and
+rewrite local asset paths for the Tauri bundle. They are build-preparation
+steps, not source-of-truth edits to Arculus_Recovery.html.
+
+When reproducing the exact v1.6.0 artifacts in this repository, do not edit any
+HTML files manually. If tauri-dist is already prepared and known-good, the
+release build can use that existing prepared directory.
+
+
+macOS Build Commands
+--------------------
+
+The intended macOS target triples are:
+
+  x86_64-apple-darwin
+  aarch64-apple-darwin
+  universal-apple-darwin
+
+Build commands:
+
+  cargo tauri build --target x86_64-apple-darwin --bundles app,dmg --ci
+  cargo tauri build --target aarch64-apple-darwin --bundles app,dmg --ci
+  cargo tauri build --target universal-apple-darwin --bundles app,dmg --ci
+
+Expected v1.6.0 DMG outputs:
+
+  Arculus Recovery_1.6.0_x64.dmg
+  Arculus Recovery_1.6.0_aarch64.dmg
+  Arculus Recovery_1.6.0_universal.dmg
+
+The v1.6.0 macOS .app bundles were ad-hoc signed. The DMGs were generated from
+the signed app bundles. They were not Apple-notarized.
+
+Ad-hoc signing command pattern:
+
+  codesign --force --deep --sign - "<app bundle path>"
+
+Architecture verification command pattern:
+
+  lipo -info "<app bundle path>/Contents/MacOS/arculus-recovery"
+
+Signature verification command pattern:
+
+  codesign --verify --deep --strict --verbose=2 "<app bundle path>"
+
+
+Linux Build Commands
+--------------------
+
+The Linux build was performed in a Docker linux/amd64 container. The source
+tree was copied into /tmp/src without .git metadata, target directories,
+node_modules, release outputs, or macOS AppleDouble files.
+
+Source-copy exclusion pattern:
+
+  --exclude=.git
+  --exclude="._*"
+  --exclude="*/._*"
+  --exclude=src-tauri/target
+  --exclude=target
+  --exclude=node_modules
+  --exclude=releases
+
+Package build command:
+
+  CARGO_TARGET_DIR=/target cargo tauri build --bundles deb,rpm --ci
+
+Expected v1.6.0 Linux outputs:
+
+  /target/release/arculus-recovery
+  /target/release/bundle/deb/Arculus Recovery_1.6.0_amd64.deb
+  /target/release/bundle/rpm/Arculus Recovery-1.6.0-1.x86_64.rpm
+
+Release-copy command pattern:
+
+  cp /target/release/arculus-recovery releases/tauri/linux/
+  cp "/target/release/bundle/deb/Arculus Recovery_1.6.0_amd64.deb" releases/tauri/linux/
+  cp "/target/release/bundle/rpm/Arculus Recovery-1.6.0-1.x86_64.rpm" releases/tauri/linux/
+
+The intermediate compiler dependency file arculus-recovery.d is not a release
+artifact and must not be copied into the release set.
+
+
+Linux Artifact Verification
+---------------------------
+
+Verify the raw Linux binary type:
+
+  file releases/tauri/linux/arculus-recovery
+
+Expected class:
+
+  ELF 64-bit LSB pie executable, x86-64, dynamically linked
+
+Verify Debian package metadata:
+
+  dpkg-deb --info "releases/tauri/linux/Arculus Recovery_1.6.0_amd64.deb"
+
+Required fields:
+
+  Package: arculus-recovery
+  Version: 1.6.0
+  Architecture: amd64
+  Depends: libwebkit2gtk-4.1-0, libgtk-3-0
+
+Verify RPM package metadata:
+
+  rpm -qip "releases/tauri/linux/Arculus Recovery-1.6.0-1.x86_64.rpm"
+
+Required fields:
+
+  Name: arculus-recovery
+  Version: 1.6.0
+  Release: 1
+  Architecture: x86_64
+  Signature: (none)
+
+The RPM is unsigned in v1.6.0. Hash verification is mandatory.
+
+
+Byte-for-Byte Constraints
+-------------------------
+
+Byte-for-byte reproducibility depends on these inputs remaining unchanged:
+
+  - Arculus_Recovery.html bytes
+  - Arculus_Recovery.py bytes
+  - tauri-dist prepared asset bytes
+  - src-tauri Rust source bytes
+  - src-tauri/Cargo.lock dependency resolution
+  - package.json and Tauri metadata
+  - Rust compiler version
+  - Tauri CLI and bundler version
+  - target triple
+  - host packaging tools
+  - code-signing mode
+  - DMG generation tool behavior
+  - Linux distribution package tooling
+
+Build outputs may fail to match byte-for-byte if any of these change:
+
+  - Rust or Cargo version
+  - Tauri CLI version
+  - crate dependency versions
+  - system linkers or SDKs
+  - macOS hdiutil behavior
+  - Linux dpkg/rpm packaging behavior
+  - file mtimes captured by package formats
+  - file ownership or permission metadata
+  - AppleDouble ._* metadata files
+  - ad-hoc signature timestamp or code directory details
+
+When byte-for-byte equality is not achieved, compare:
+
+  1. Source file hashes.
+  2. Prepared tauri-dist file hashes.
+  3. Binary architecture and embedded version.
+  4. Package metadata.
+  5. Runtime behavior against docs/TestVectors.txt.
+
+Behavioral equivalence is not the same as release equivalence. A rebuilt file
+is a v1.6.0 release artifact only if its SHA-256 matches docs/SHA256Sums.txt
+or a new signed release manifest explicitly records the new hash.
+
+
+Sidecar Exclusion Rule
+----------------------
+
+Files named ._* are macOS AppleDouble metadata files. They are not source
+files, build inputs, test vectors, docs, or release artifacts.
+
+Reproducible build scripts must exclude them from:
+
+  - source archives
+  - Docker copy steps
+  - checksum manifests
+  - release directories
+  - documentation inventory
+
+Verification command:
+
+  find . -name '._*' -print
+
+Expected release result:
+
+  no output
+
+
+Post-Build Verification Checklist
+---------------------------------
+
+After building v1.6.0, verify:
+
+  1. No HTML source file was manually edited during packaging.
+  2. Arculus_Recovery.html hash matches docs/SHA256Sums.txt.
+  3. Arculus_Recovery.py hash matches docs/SHA256Sums.txt.
+  4. Linux raw binary hash matches docs/SHA256Sums.txt.
+  5. Linux .deb hash matches docs/SHA256Sums.txt.
+  6. Linux .rpm hash matches docs/SHA256Sums.txt.
+  7. macOS x64 DMG hash matches docs/SHA256Sums.txt.
+  8. macOS aarch64 DMG hash matches docs/SHA256Sums.txt.
+  9. macOS universal DMG hash matches docs/SHA256Sums.txt.
+  10. Linux file command reports x86-64 ELF for arculus-recovery.
+  11. Debian metadata reports version 1.6.0 and architecture amd64.
+  12. RPM metadata reports version 1.6.0 and architecture x86_64.
+  13. macOS binaries report the expected architecture for each build.
+  14. macOS app bundles verify with codesign after ad-hoc signing.
+  15. docs/TestVectors.txt conformance checks pass against the rebuilt app.
+  16. No ._* sidecar files are present in release outputs.
+
+
+Non-Goals for v1.6.0
+--------------------
+
+The v1.6.0 reproducibility target does not include:
+
+  - Linux AppImage output
+  - Linux arm64/aarch64 output
+  - Apple notarization
+  - signed RPM packages
+  - detached cryptographic signatures
+  - automatic online update manifests
+  - balance scanning or transaction signing tests
+
+Future releases may add those targets, but they must define their own artifact
+hashes and verification rules.

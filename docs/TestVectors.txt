@@ -885,6 +885,465 @@ ARC V2 importer rejection rules:
   HMAC must verify before plaintext is decrypted or trusted
 
 
+Common secp256k1 Path Matrix, TV1, Receiving Row 0
+--------------------------------------------------
+
+This matrix fixes the first receiving row for the common account paths that
+v1.6.0 can derive for secp256k1-based coins. Each row uses TV1, empty
+passphrase, mainnet, script selector Auto, count 1, and range empty.
+
+Bitcoin m/44'/0'/0':
+
+  account_script_type_used: p2pkh
+  row_path: m/44'/0'/0'/0/0
+  address: 1LqBGSKuX5yYUonjxT5qGfpUsXKYYWeabA
+  public_key_hex: 03aaeb52dd7494c361049de67cc680e83ebcbbbdbeb13637d92cd845f70308af5e
+  private_key_hex: e284129cc0922579a535bbf4d1a3b25773090d28c909bc0fed73b5e0222cc372
+
+Bitcoin m/49'/0'/0':
+
+  account_script_type_used: p2wpkh-p2sh
+  row_path: m/49'/0'/0'/0/0
+  address: 37VucYSaXLCAsxYyAPfbSi9eh4iEcbShgf
+  public_key_hex: 039b3b694b8fc5b5e07fb069c783cac754f5d38c3e08bed1960e31fdb1dda35c24
+  private_key_hex: 508c73a06f6b6c817238ba61be232f5080ea4616c54f94771156934666d38ee3
+
+Bitcoin m/84'/0'/0':
+
+  account_script_type_used: p2wpkh
+  row_path: m/84'/0'/0'/0/0
+  address: bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu
+  public_key_hex: 0330d54fd0dd420a6e5f8d3624f5f3482cae350f79d5f0753bf5beef9c2d91af3c
+  private_key_hex: 4604b4b710fe91f584fff084e1a9159fe4f8408fff380596a604948474ce4fa3
+
+Bitcoin m/86'/0'/0':
+
+  account_script_type_used: p2tr
+  row_path: m/86'/0'/0'/0/0
+  address: bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr
+  public_key_hex: 03cc8a4bc64d897bddc5fbc2f670f7a8ba0b386779106cf1223c6fc5d7cd6fc115
+  private_key_hex: 41f41d69260df4cf277826a9b65a3717e4eeddbeedf637f212ca096576479361
+
+Bitcoin Cash m/44'/0'/0':
+
+  account_script_type_used: p2pkh
+  row_path: m/44'/0'/0'/0/0
+  address: bitcoincash:qrvcdmgpk73zyfd8pmdl9wnuld36zh9n4gms8s0u59
+  public_key_hex: 03aaeb52dd7494c361049de67cc680e83ebcbbbdbeb13637d92cd845f70308af5e
+  private_key_hex: e284129cc0922579a535bbf4d1a3b25773090d28c909bc0fed73b5e0222cc372
+
+Litecoin m/44'/2'/0':
+
+  account_script_type_used: p2pkh
+  row_path: m/44'/2'/0'/0/0
+  address: LUWPbpM43E2p7ZSh8cyTBEkvpHmr3cB8Ez
+  public_key_hex: 030fe9d8d0e15d432d1ae9b3c52f4cb6e37e3c7a41af0139783da09eab85a182dc
+  private_key_hex: 4baa38b7623a40da63836cd9ee8c51d0b6273e766c88adde156fd5fec6e19008
+
+Litecoin m/49'/2'/0':
+
+  account_script_type_used: p2wpkh-p2sh
+  row_path: m/49'/2'/0'/0/0
+  address: M7wtsL7wSHDBJVMWWhtQfTMSYYkyooAAXM
+  public_key_hex: 03f7a0a5d44504ea8a2494c7e32c895ba4968d3dab66a4d790380be8b0539f36bc
+  private_key_hex: b02c7ab9f8827bc028780d5dfd6bab2a1f35d2b89f9b246829802ba5b83ba1c2
+
+Litecoin m/84'/2'/0':
+
+  account_script_type_used: p2wpkh
+  row_path: m/84'/2'/0'/0/0
+  address: ltc1qjmxnz78nmc8nq77wuxh25n2es7rzm5c2rkk4wh
+  public_key_hex: 02e49c9b9b5d0f127235dc26a0c252814c52fb333d651a946773f59d72c2da9904
+  private_key_hex: 4ab54480cbbaa53d5d3ba43a3e85d221df085490e88346ad11579e17000db7bb
+
+Litecoin m/86'/2'/0':
+
+  account_script_type_used: p2tr
+  row_path: m/86'/2'/0'/0/0
+  address: ltc1puht8rk95c53q3u9w3pf9h3jfcutcrl9lxc7rqsdthjrse4k6sn7q9tuqm9
+  public_key_hex: 037af20364ca7c95e5f11fc4fc11df425271c85f829a1edd7f987973ea46726b73
+  private_key_hex: 7f7a21d0f032c83217e11cec6d6417b1c45c42fa0fbd88c8e06f183f001db0b6
+
+Dogecoin m/44'/3'/0':
+
+  account_script_type_used: p2pkh
+  row_path: m/44'/3'/0'/0/0
+  address: DBus3bamQjgJULBJtYXpEzDWQRwF5iwxgC
+  public_key_hex: 02cc6b0dc33aabcf3a23643e5e2919a80c50fb3dd2129ce409bbc5f0d4643d05e0
+  private_key_hex: 21f5e16d57b9b70a1625020b59a85fa9342de9c103af3dd9f7b94393a4ac2f46
+
+Dogecoin m/49'/3'/0':
+
+  account_script_type_used: p2wpkh-p2sh
+  row_path: m/49'/3'/0'/0/0
+  address: 9xzLEaWbi3eVzRzv6YdGcXbXQMHydntSq7
+  public_key_hex: 03f3b10f13fa36775245758f05d1cf650095091c0ef5f2a60c5903c9bee9be91bd
+  private_key_hex: 3473b63348122b1ab2036d80c8b3d2c3a31e971affba9647bf5033051e26cc36
+
+Dogecoin m/84'/3'/0':
+
+  account_script_type_used: p2wpkh
+  row_path: m/84'/3'/0'/0/0
+  address: doge1q78ehfacf2d0s7nylpxd5a5wl0lf26nm635g6wa
+  public_key_hex: 0208412125242e1fc6922b15f4790d562426475a901b8f9e33b44cd25e3e423d4a
+  private_key_hex: 29b9404df265785f088b4315207595990c828064181a012bfe281e0564f1ee7c
+
+Dogecoin m/86'/3'/0':
+
+  expected result: reject
+  reason: p2tr is not supported for this coin/network
+
+Ethereum m/44'/60'/0':
+
+  account_script_type_used: ethereum
+  row_path: m/44'/60'/0'/0/0
+  address: 0x9858EfFD232B4033E47d90003D41EC34EcaEda94
+  public_key_hex: 0237b0bb7a8288d38ed49a524b5dc98cff3eb5ca824c9f9dc0dfdb3d9cd600f299
+  private_key_hex: 1ab42cc412b618bdea3a599e3c9bae199ebf030895b039e9db1e30dafb12b727
+
+XRP m/44'/144'/0':
+
+  account_script_type_used: xrp
+  row_path: m/44'/144'/0'/0/0
+  address: rHsMGQEkVNJmpGWs8XUBoTBiAAbwxZN5v3
+  public_key_hex: 031d68bc1a142e6766b2bdfb006ccfe135ef2e0e2e94abb5cf5c9ab6104776fbae
+  private_key_hex: 90802a50aa84efb6cdb225f17c27616ea94048c179142fecf03f4712a07ea7a4
+
+
+Export Format Digest Matrix, TV1, count 2
+-----------------------------------------
+
+This matrix fixes byte lengths and SHA-256 digests for Python CLI export
+formats. Each row is generated from TV1, empty passphrase, mainnet, default
+coin derivation, script selector Auto, count 2, and no explicit range. The
+byte stream is exactly format_derived_output(data, format).encode("utf-8").
+JSON uses two-space indentation and a trailing newline. CSV uses csv.DictWriter
+header order as emitted by flatten_derived_rows and writerows. TXT uses the
+human-readable label format emitted by derived_to_text and ends with a newline.
+
+  coin          format  byte_length  sha256
+  bitcoin       json    2324         a1b55503fe016130c1a19e02bca9eda0199764c80085903c7e9da28074d2ddc8
+  bitcoin       csv     3040         dbe0e9937c1461bbbb6c73a7394cda3977d51feefa1127ba8ba0d4b6cd8f33f4
+  bitcoin       txt     1905         786bb5180ac791de6e07d746b9579fe91c1e125b38289bdd2e93af0a3089d677
+  bitcoincash   json    2408         2f498287d421d904a3c1b2aebb65ecace583b4b7a80862246c91b7a73966a260
+  bitcoincash   csv     3136         b91b46ab353b90ee3a6ca9b2b9727c2391905a7d44c2c81c9623f8fd8cb1db99
+  bitcoincash   txt     1989         0f6212a755095b387580471c941faf9e4786e42b84b7650f7680c1a9ba6d870c
+  litecoin      json    2939         a38194d9d1e862b7ce85428aee41788f5f9f46196e6d5f8183ec383014fd0bd0
+  litecoin      csv     4978         68ecb69800e802ee44d781f6835e0e15c04ba6451896abcf057cbe454bef0e5f
+  litecoin      txt     2476         3b0f0367aaf2b978761b153ddfb4741d08a5995a86aac569a71c900bbb2561b3
+  dogecoin      json    2360         1a6383909d39b8268329d3b160566cc4bd0c09a7fbd10553457de61dbf7d3e44
+  dogecoin      csv     3100         c81543884a81784a2c43aed8165004202e7bc32195990079c5ea7fccb88dbff1
+  dogecoin      txt     1941         4e5b1393779b7c668dd5b0e7a296bd32a44d0f07755b084078e5fbc1cb1b6f7e
+  ethereum      json    3364         2ce532f5b7ff25f18eac16d66fdabba971f51cdb958df9d1675c91188454bcbf
+  ethereum      csv     3889         3793620425b00f4cb4ea0d7066e78c63d9e9a9931354d6e98d14f741bf90fd88
+  ethereum      txt     2825         ba43bb4f6b4fdbaaca5f3d482cf9b86944e42135448dcd270bd0271b289b5556
+  solana        json    1459         9b02b3f9677bf9127c4c6e7e5599a8ecde13576023c9e8b2e8406f43cc1c7c4e
+  solana        csv     1504         ad8a39ab1de5f432c763acb2f447a99f1ef3357272d23091c4811ceed43cae12
+  solana        txt     1244         38133e01791c339ede4beec31f34c941667773ed37ec43e024660455c2fbdf99
+  stellar       json    1668         893c3b3ee2a0ad6ff18bc3caa994512a89ef56c7cfe33c00c0808de521be446e
+  stellar       csv     1663         7d6dcfa96eb90d20897148297fd775207058c9c6c756c9f7f1a73ae74bcbd4b1
+  stellar       txt     1423         7096602add8c832dfc09f888148651ccb257901f935e3ee884a737a43f055fc9
+  monero        json    2044         e9d0d57cb1ef2f9e19a2943408ff7af4f7d95c9045790843edbde662efb92152
+  monero        csv     1673         b67ffcf7992a97967402ad50c3a7bf8d2463f589d732cbb62d916a8c5088c0ba
+  monero        txt     1799         e0c02a629efd2c9eb707c2c41b4dad70377829d3373b74a01882ed17d77fc0d7
+  cardano       json    2491         588fb0ec0879917265d7fc23ae03ffd2cbbe807af55b0273849bc613449f0e30
+  cardano       csv     2521         1a21194294a458372269ce916ce477f6460f0f89c00ca91126e33586f9e638de
+  cardano       txt     2186         8752ae06ed29fe9ee63400eb8a53cfb355962ffca6bf52a789d2a4a66f0abe91
+  xrp           json    2935         ea6118e1a9f96bcd4f1acc6dd17f6f0d3bf9b9c13523fb8dab9e5dcae6d6da9c
+  xrp           csv     3565         ba0d3e1320d0d306160e298cd99e36362257af983d7acc67b29722ee24f20442
+  xrp           txt     2456         b6e42e68e68a30de4ac35a4e512cca913c33fff4a222d3297cfb111a4bcf2952
+
+
+Expanded Solana Rows, TV1, count 4
+----------------------------------
+
+Inputs are TV1, empty passphrase, Solana mainnet, m/44'/501'/0', Auto script,
+count 4.
+
+Row 0:
+
+  path: m/44'/501'/0'
+  address: GjJyeC1r2RgkuoCWMyPYkCWSGSGLcz266EaAkLA27AhL
+  public_key_hex: e9b6062841bb977ad21de71ec961900633c26f21384e015b014a637a61499547
+  private_key_hex: ec252c5d95bcf80a4b22df119cedd4ae1aed07364578e8d43bdfa0435625dbd1
+
+Row 1:
+
+  path: m/44'/501'/0'/1'
+  address: GKreMsHvt8A79VApjboYDq3J4ZCXSJRYYQk9BscMbi1H
+  public_key_hex: e3b3e4299dc3a9380b9ac55acd5c18e87666bbfdf010c3e79928d784670919c4
+  private_key_hex: 22b1890a6c748d580a6fe6fb99334d76bd2496126be46ecf9e6fc412b53368e1
+
+Row 2:
+
+  path: m/44'/501'/0'/2'
+  address: 9RYreF1nBs8Gvq94ACMBtVSVAVUBKSB9p6xdJBFyGApo
+  public_key_hex: 7d2774540df0f8f323bf44bec922e58a1cdded6632de3d312541dd89b5562ab0
+  private_key_hex: 6e1af78e682d7eff0224491db31e4cc932e3dc767b5cc07bab9a90f6ff61dd9b
+
+Row 3:
+
+  path: m/44'/501'/0'/3'
+  address: EbRros2uDEJC6pnyrkj6woipb4PSejP7Q4sWuPyFopZN
+  public_key_hex: c9f9c91281f7da549be25291b13decc35445c25eea0d60710863c3e99de83681
+  private_key_hex: 75c314d9bfca136f5185ecc990d2f087d5e2283207db7398c80bb7d46924445c
+
+
+Expanded Stellar Rows, TV1, count 4
+-----------------------------------
+
+Inputs are TV1, empty passphrase, Stellar mainnet, m/44'/148'/0', Auto script,
+count 4.
+
+Row 0:
+
+  path: m/44'/148'/0'
+  address: GB3JDWCQJCWMJ3IILWIGDTQJJC5567PGVEVXSCVPEQOTDN64VJBDQBYX
+  public_key_hex: 7691d85048acc4ed085d9061ce0948bbdf7de6a92b790aaf241d31b7dcaa4238
+  private_key_hex: 695db2365365e06159f13cc752a5d3b0c7376c45012b2f695e3a4da2434948bc
+  stellar_secret_seed: SBUV3MRWKNS6AYKZ6E6MOUVF2OYMON3MIUASWL3JLY5E3ISDJFELYBRZ
+
+Row 1:
+
+  path: m/44'/148'/1'
+  address: GDVSYYTUAJ3ACHTPQNSTQBDQ4LDHQCMNY4FCEQH5TJUMSSLWQSTG42MV
+  public_key_hex: eb2c62740276011e6f8365380470e2c678098dc70a2240fd9a68c9497684a66e
+  private_key_hex: 8e315456301464326e8d7cae8f18aec38e58db8838cf304132567a0ad4d305e1
+  stellar_secret_seed: SCHDCVCWGAKGIMTORV6K5DYYV3BY4WG3RA4M6MCBGJLHUCWU2MC6DL66
+
+Row 2:
+
+  path: m/44'/148'/2'
+  address: GBFPWBTN4AXHPWPTQVQBP4KRZ2YVYYOGRMV2PEYL2OBPPJDP7LECEVHR
+  public_key_hex: 4afb066de02e77d9f3856017f151ceb15c61c68b2ba7930bd382f7a46ffac822
+  private_key_hex: 1ebacd74bc86b2c466108ab78f2c9889563f79bcd9fe1029155595337c59a0f2
+  stellar_secret_seed: SAPLVTLUXSDLFRDGCCFLPDZMTCEVMP3ZXTM74EBJCVKZKM34LGQPF7K3
+
+Row 3:
+
+  path: m/44'/148'/3'
+  address: GCCCOWAKYVFY5M6SYHOW33TSNC7Z5IBRUEU2XQVVT34CIZU7CXZ4OQ4O
+  public_key_hex: 8427580ac54b8eb3d2c1dd6dee7268bf9ea031a129abc2b59ef824669f15f3c7
+  private_key_hex: e18bb9fa202997f30e243a1a2510dc4727f6f5e64a8f0bb8dc043ee3db5d9f79
+  stellar_secret_seed: SDQYXOP2EAUZP4YOEQ5BUJIQ3RDSP5XV4ZFI6C5Y3QCD5Y63LWPXT7PW
+
+
+Expanded Cardano Rows, TV1, count 3
+-----------------------------------
+
+Inputs are TV1, empty passphrase, Cardano mainnet,
+m/1852'/1815'/0'/0/0, staking path m/1852'/1815'/0'/2/0, Auto script,
+count 3.
+
+Row 0:
+
+  path: m/1852'/1815'/0'/0/0
+  staking_path: m/1852'/1815'/0'/2/0
+  address: addr1qy8ac7qqy0vtulyl7wntmsxc6wex80gvcyjy33qffrhm7sh927ysx5sftuw0dlft05dz3c7revpf7jx0xnlcjz3g69mq4afdhv
+  public_key_hex: 7ea09a34aebb13c9841c71397b1cabfec5ddf950405293dee496cac2f437480a
+  stake_public_key_hex: 012f5dc3115b8a07981e6e50f5a671e2c6fbb26c3ffde1cd1dcaf40a7fe8f160
+  private_key_hex: 105d2ef2192150655a926bca9cccf5e2f6e496efa9580508192e1f4a790e6f53de06529129511d1cacb0664bcf04853fdc0055a47cc6d2c6d205127020760652
+  stake_private_key_hex: 2047891e88934a422e3ff6eea4caaaecda795724cd2bfacf91569896750e6f534a704748705e28a7bd69d009638add767f79c63eb9c839c8ffe0eff0b6e16772
+
+Row 1:
+
+  path: m/1852'/1815'/0'/0/1
+  staking_path: m/1852'/1815'/0'/2/0
+  address: addr1qyz85693g4fr8c55mfyxhae8j2u04pydxrgqr73vmwpx3a8927ysx5sftuw0dlft05dz3c7revpf7jx0xnlcjz3g69mqu2c0f9
+  public_key_hex: 86e24e36b7f0d1ad2afa266179207eb04f02642898bb58a2b6f80e491b658060
+  stake_public_key_hex: 012f5dc3115b8a07981e6e50f5a671e2c6fbb26c3ffde1cd1dcaf40a7fe8f160
+  private_key_hex: 30b8a1fd8fed35febc91a0ded3e49c41ce883625bca29f877765e34c7c0e6f53520bd4fb56a4546f0c82f99747b9e09c65971c64c75a1386f016ccf840af283a
+  stake_private_key_hex: 2047891e88934a422e3ff6eea4caaaecda795724cd2bfacf91569896750e6f534a704748705e28a7bd69d009638add767f79c63eb9c839c8ffe0eff0b6e16772
+
+Row 2:
+
+  path: m/1852'/1815'/0'/0/2
+  staking_path: m/1852'/1815'/0'/2/0
+  address: addr1qxfysvkldcs0u35d8esynksfqapfdahfknur6dzx7sgqsvh927ysx5sftuw0dlft05dz3c7revpf7jx0xnlcjz3g69mqhmhg9q
+  public_key_hex: 5e8b424dc521d6a0b8223ec1b7598de4a64c28561ac04de3add316679d1e672c
+  stake_public_key_hex: 012f5dc3115b8a07981e6e50f5a671e2c6fbb26c3ffde1cd1dcaf40a7fe8f160
+  private_key_hex: 68874b7c010174a4df9d2dfa09c92d1089f1882c19caa3900a439dac780e6f53ad413c48153e07ca4991262c64c9420f7211e49e71c817d3e115f9bee2e36716
+  stake_private_key_hex: 2047891e88934a422e3ff6eea4caaaecda795724cd2bfacf91569896750e6f534a704748705e28a7bd69d009638add767f79c63eb9c839c8ffe0eff0b6e16772
+
+
+Additional Monero Deterministic Vectors
+---------------------------------------
+
+Alternate account path, TV1, empty passphrase:
+
+  derivation: m/44'/128'/1'
+  account_private_key_hex: 6c0a5b7fc21b7e744c1ea1c5ea37c2777d033beaedb23513ba5aaedc08a45742
+  account_chain_code_hex: 1d0e31119601c81334643ebbe3cb55ac6121ca40b7a3b2b98658deb785c4bfa7
+  account_private_spend_key_hex: b8ba830b598f3414f3aac239705046247d033beaedb23513ba5aaedc08a45702
+  account_private_view_key_hex: f2613790022490c2ff04c7ca08829991eda631acb2c515c4b6d40c6caf741607
+  account_public_spend_key_hex: 36507367314bb97234a10f1fab20308c757a55fda8f42e968103882782f208ad
+  account_public_view_key_hex: d7b4d7f1b37b79ac1bd747e4511a6f21f8c0b9f7765fc112b04200f1ace101cf
+  receiving[0].address: 43gVG8hoX8UL6wMn3Eai9dQVdP6BfQXiuSB5TqNBfHvPW5VUmx9WXV2Vnfta9b2S4v6gZwbsGF3MJ48JWh3pgnXSQQ3NhiL
+
+Passphrase-sensitive path, TV1, BIP39 passphrase "TREZOR":
+
+  derivation: m/44'/128'/0'
+  root_private_key_hex: 5c74be5597f0750c4afeb185c0f08df35dffc55cb858fae6bf64a45427bccb86
+  root_chain_code_hex: d18ce4a4baf4ebeab76944e2029c2a63a3c65a56c51f6d51ce949b1bf9f7da6b
+  root_private_spend_key_hex: f4d40f6ec4d7e24b9717f56dcb21964c5dffc55cb858fae6bf64a45427bccb06
+  root_private_view_key_hex: 7df73082ae34b33859326c4066ee6e0b68aece20c2a8f5ad8e228d9b09f25f09
+  account_private_key_hex: 4fe8191bb6b1442bbb8d415e2e92b924c4ccd5513bd2ee222c17e3262c5c1856
+  account_chain_code_hex: 402b9d42f9bcfaae325cd92c3a52b348c22926e3e9565e2accf1184538de7e68
+  account_private_spend_key_hex: aec44c4a32c2e8728b7d6b2fd5b05ebcc3ccd5513bd2ee222c17e3262c5c1806
+  account_private_view_key_hex: f78186af31a862828ef78eb8419bb5fa9a536ed4da820b2977733da859e28a02
+  account_public_spend_key_hex: 50cdf692ba50a43c6ef27a1358b84cf710ffa04be6177e26cecea19a38646f05
+  account_public_view_key_hex: 63f32e372c220ec9ae1a2665a85d7f46824f4a23eeab2a5b82ab29656305527b
+  receiving[0].address: 44giFrE94GbB7HDSTmk9rTiKrWRPANSgD7VV7QxD6tWA1uJ3jpEKcf7ajYsRxqpK6WCo2VviZeiSMGJmQy9UdcxZEvTTRbE
+
+
+TV1 Passphrase "TREZOR" First-Row Matrix
+----------------------------------------
+
+This matrix verifies that non-empty BIP39 passphrases change every supported
+coin family deterministically. Inputs are TV1, passphrase "TREZOR", mainnet,
+default derivation for each coin, Auto script, count 1.
+
+Bitcoin:
+
+  account_script_type_used: p2pkh
+  path: m/0'/0/0
+  address: 1KSQwLw4ZdFVnopsAjEs3yG2zVtjuNTExM
+  public_key_hex: 03cf0e698f3fb44d8316bd7aade649585d26633e4d2eb87e4585752552207c1a2d
+  private_key_hex: 5c2d5dfb7f3d86d16a19b1c5364224a266e3bfb2809f91a30c7462db3a3f5099
+
+Bitcoin Cash:
+
+  account_script_type_used: p2pkh
+  path: m/0'/0/0
+  address: bitcoincash:qr9ypfgvv300fwp4vqtqqa43hyxcvw7n8y0s4ypylx
+  public_key_hex: 03cf0e698f3fb44d8316bd7aade649585d26633e4d2eb87e4585752552207c1a2d
+  private_key_hex: 5c2d5dfb7f3d86d16a19b1c5364224a266e3bfb2809f91a30c7462db3a3f5099
+
+Litecoin:
+
+  account_script_type_used: p2wpkh
+  path: m/84'/2'/0'/0/0
+  address: ltc1qmnmdtk82gfvv4khc3w9lrugre34cj65kamf9tz
+  public_key_hex: 03c5c065cbca75c74991ecf2d4b03a730ae7f87e83ba8cffc5ac7d1c356fe39276
+  private_key_hex: bcfe1b0501e08cc121a9d44ab76f70de210d89a394c9014ba933404888178308
+
+Dogecoin:
+
+  account_script_type_used: p2pkh
+  path: m/44'/3'/0'/0/0
+  address: DMn7J63QSZUR9XNxsUJtvsttZVzV9Am4qM
+  public_key_hex: 029c8654f657a5a926900a33b75afc53af2cc6829fb2cc8c5c265b1878771937db
+  private_key_hex: 3fe5539c1326ef28b41e940799065e1bb38eb426302a74aee7ae8c98c4f0fd17
+
+Ethereum:
+
+  account_script_type_used: ethereum
+  path: m/44'/60'/0'/0/0
+  address: 0x9c32F71D4DB8Fb9e1A58B0a80dF79935e7256FA6
+  public_key_hex: 03986dee3b8afe24cb8ccb2ac23dac3f8c43d22850d14b809b26d6b8aa5a1f4778
+  private_key_hex: 62f1d86b246c81bdd8f6c166d56896a4a5e1eddbcaebe06480e5c0bc74c28224
+
+Solana:
+
+  account_script_type_used: solana
+  path: m/44'/501'/0'
+  address: 9md2ZNCYw622wTzgHn71kh9T6mFSoB4USnA4QdvY8oM4
+  public_key_hex: 824bc9660d39a7c64bcd02cdcc4fcce746051db378254d8e6185a8826c3bf2ab
+  private_key_hex: d3072f7e41ab7d8605246f465706270d39269da22f922c169bc00ec4bc597daa
+
+Stellar:
+
+  account_script_type_used: stellar
+  path: m/44'/148'/0'
+  address: GBXISQLLM6OGWWZU7SCNF2GOJSQLHJU3I76P23J6IDSJGKEEGM2AJYG5
+  public_key_hex: 6e89416b679c6b5b34fc84d2e8ce4ca0b3a69b47fcfd6d3e40e4932884333404
+  private_key_hex: 4cf62724451fcff35352d944522c931ed74b30c5c126911ae246de3e6d148f2c
+  stellar_secret_seed: SBGPMJZEIUP4742TKLMUIURMSMPNOSZQYXASNEI24JDN4PTNCSHSZXCK
+
+Monero:
+
+  account_script_type_used: monero
+  path: m/44'/128'/0'
+  address: 44giFrE94GbB7HDSTmk9rTiKrWRPANSgD7VV7QxD6tWA1uJ3jpEKcf7ajYsRxqpK6WCo2VviZeiSMGJmQy9UdcxZEvTTRbE
+  private_spend_key_hex: aec44c4a32c2e8728b7d6b2fd5b05ebcc3ccd5513bd2ee222c17e3262c5c1806
+  private_view_key_hex: f78186af31a862828ef78eb8419bb5fa9a536ed4da820b2977733da859e28a02
+
+Cardano:
+
+  account_script_type_used: cardano
+  path: m/1852'/1815'/0'/0/0
+  staking_path: m/1852'/1815'/0'/2/0
+  address: addr1qy8ac7qqy0vtulyl7wntmsxc6wex80gvcyjy33qffrhm7sh927ysx5sftuw0dlft05dz3c7revpf7jx0xnlcjz3g69mq4afdhv
+  public_key_hex: 7ea09a34aebb13c9841c71397b1cabfec5ddf950405293dee496cac2f437480a
+  stake_public_key_hex: 012f5dc3115b8a07981e6e50f5a671e2c6fbb26c3ffde1cd1dcaf40a7fe8f160
+  private_key_hex: 105d2ef2192150655a926bca9cccf5e2f6e496efa9580508192e1f4a790e6f53de06529129511d1cacb0664bcf04853fdc0055a47cc6d2c6d205127020760652
+  stake_private_key_hex: 2047891e88934a422e3ff6eea4caaaecda795724cd2bfacf91569896750e6f534a704748705e28a7bd69d009638add767f79c63eb9c839c8ffe0eff0b6e16772
+
+XRP:
+
+  account_script_type_used: xrp
+  path: m/44'/144'/0'/0/0
+  address: rfBUajJsZotvNwZz5yUk7GNqcWehxc2YAs
+  public_key_hex: 02be56cc0b66d75d45eec7683b5090ed127315bc33ac4a7091acff472b33a08cbe
+  private_key_hex: c269a68e88e67c566a24789fb4de96b03eb27424dbe02390dd225a82f4655db0
+
+
+ARC V2 Fixed 24-Word Encryption Vector
+--------------------------------------
+
+This vector verifies ARC V2 behavior for a 24-word mnemonic and an alternate
+salt/nonce ordering. It uses the same password and created_at value as the TV1
+ARC V2 vector.
+
+Inputs:
+
+  mnemonic:
+    abandon abandon abandon abandon abandon abandon abandon abandon abandon
+    abandon abandon abandon abandon abandon abandon abandon abandon abandon
+    abandon abandon abandon abandon abandon art
+  password: correct horse battery staple
+  created_at: 2026-06-14T00:00:00.000Z
+  salt bytes: 1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100
+  nonce bytes: 17161514131211100f0e0d0c0b0a09080706050403020100
+  iterations: 1000000
+
+Plaintext JSON hex:
+
+  7b22637265617465645f6174223a22323032362d30362d31345430303a30303a
+  30302e3030305a222c226d6e656d6f6e6963223a226162616e646f6e206162
+  616e646f6e206162616e646f6e206162616e646f6e206162616e646f6e206162
+  616e646f6e206162616e646f6e206162616e646f6e206162616e646f6e206162
+  616e646f6e206162616e646f6e206162616e646f6e206162616e646f6e206162
+  616e646f6e206162616e646f6e206162616e646f6e206162616e646f6e206162
+  616e646f6e206162616e646f6e206162616e646f6e206162616e646f6e206162
+  616e646f6e206162616e646f6e20617274222c22776f72645f636f756e74223a
+  32347d
+
+Plaintext byte length:
+
+  258
+
+ciphertext_b64:
+
+  HuspzKt0g9ztAgnrq82GXND37EIY91WnyyKU/KyHKc30y4TJe2VOvp0Fkni/mgIpbTbB8JCUDeeYwS+yuuW4Cn5yDFa8xuUyKzhjt27+89Ir0B9s/X1PWcVAZ4vPeBZIi565jSOq1onufqJeWPoP3gsQUh3DOllFajHNmAe1ivfIEiQwYumhj9uK4dfT82leiUmpxmuFd3mQwJE5pkIOCjhBbwiQtcXuOHgZMtfOMN5LDczZuQGiacAHCkdvTisHPLB9574257NAmLwuMpKJ4BrLV8S+NMs7laoC5gtyYtBs6HcePY9dkUzd4CUCo5yXhfMOWvSiyhQT/EcnyLLIaSRU
+
+mac_b64:
+
+  RMemT5YzoGcexZZ51vsGc1fJbKv3E0Wkpnq+BMFOWVaCeJibE5ITP4fKT9cK6MI4I7+/vfCTWmr8wSGVnZgd8A==
+
+Serialized armored file byte length:
+
+  1056
+
+Serialized armored file SHA-256:
+
+  ce58c271f72c82decdfd97f3dc09480f2ffa66046b476dec831bb3fa94664711
+
+Armored line 2:
+
+  eyJjaXBoZXIiOnsibmFtZSI6IkhNQUMtU0hBNTEyLUNUUiIsIm5vbmNlX2I2NCI6IkZ4WVZGQk1TRVJBUERnME1Dd29KQ0FjR0JRUURBZ0VBIn0sImNpcGhlcnRleHRfYjY0IjoiSHVzcHpLdDBnOXp0QWducnE4MkdYTkQzN0VJWTkxV255eUtVL0t5SEtjMzB5NFRKZTJWT3ZwMEZrbmkvbWdJcGJUYkI4SkNVRGVlWXdTK3l1dVc0Q241eURGYTh4dVV5S3poanQyNys4OUlyMEI5cy9YMVBXY1ZBWjR2UGVCWklpNTY1alNPcTFvbnVmcUplV1BvUDNnc1FVaDNET2xsRmFqSE5tQWUxaXZmSUVpUXdZdW1oajl1SzRkZlQ4MmxlaVVtcHhtdUZkM21Rd0pFNXBrSU9DamhCYndpUXRjWHVPSGdaTXRmT01ONUxEY3padVFHaWFjQUhDa2R2VGlzSFBMQjk1NzQyNTdOQW1Md3VNcEtKNEJyTFY4UytOTXM3bGFvQzVndHlZdEJzNkhjZVBZOWRrVXpkNENVQ281eVhoZk1PV3ZTaXloUVQvRWNueUxMSWFTUlUiLCJjcmVhdGVkX2F0IjoiMjAyNi0wNi0xNFQwMDowMDowMC4wMDBaIiwiZm9ybWF0IjoiYXJjdWx1cy1lbmNyeXB0ZWQtc2VlZC12MiIsImtkZiI6eyJoYXNoIjoiU0hBLTUxMiIsIml0ZXJhdGlvbnMiOjEwMDAwMDAsIm5hbWUiOiJQQktERjIiLCJzYWx0X2I2NCI6Ikh4NGRIQnNhR1JnWEZoVVVFeElSRUE4T0RRd0xDZ2tJQndZRkJBTUNBUUE9In0sIm1hY19iNjQiOiJSTWVtVDVZem9HY2V4Wlo1MXZzR2MxZkpiS3YzRTBXa3BucStCTUZPV1ZhQ2VKaWJFNUlUUDRmS1Q5Y0s2TUk0STcrL3ZmQ1RXbXI4d1NHVm5aZ2Q4QT09IiwibWFnaWMiOiJBUkNVTFVTLUFSQyIsInZlcnNpb24iOjJ9
+
+
 Negative Test Vectors
 ---------------------
 
@@ -1027,7 +1486,14 @@ A test harness for v1.6.0 should verify all of the following conditions:
   12. Monero emits spend/view key pairs and a standard mainnet address.
   13. Cardano emits the Shelley base address from payment and staking keys.
   14. ARC V2 fixed encryption emits the exact ciphertext, MAC, and armor lines.
-  15. Every negative test rejects without returning partial key material.
+  15. Common secp256k1 path matrix rows match exact path, script type, address, public key, and private key bytes.
+  16. JSON, CSV, and TXT export byte lengths and SHA-256 digests match for every supported coin.
+  17. Expanded Solana and Stellar rows 0..3 match exact hardened paths, addresses, public keys, private keys, and Stellar secret seeds.
+  18. Expanded Cardano rows 0..2 match exact payment paths, staking path, Shelley base addresses, and payment/stake key bytes.
+  19. Additional Monero vectors match exact alternate-account and passphrase-sensitive spend/view key material.
+  20. TV1 passphrase "TREZOR" first-row vectors match for every supported coin family.
+  21. ARC V2 fixed 24-word encryption emits the exact ciphertext, MAC, armor hash, and armor line 2.
+  22. Every negative test rejects without returning partial key material.
 
 No address-only comparison is sufficient. Private key bytes, public key bytes,
 chain codes, paths, script types, and encoded display forms are all normative.

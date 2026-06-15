@@ -25,6 +25,9 @@ format.
 - Rewrote the root documentation and `docs/` technical references around the
   current byte-level behavior.
 - Rebuilt `docs/Arculus_Recovery_Manual.pdf` from the updated text sources.
+- Built v1.6.0 macOS Tauri release artifacts for Intel, Apple Silicon, and
+  universal macOS distribution.
+- Built v1.6.0 Linux Tauri release artifacts for amd64 distribution.
 
 ### Added
 
@@ -55,6 +58,9 @@ format.
 - Terminal theme.
 - Cross-platform Tauri asset preparation scripts for Windows, macOS, and Linux
   build hosts.
+- macOS Tauri `.app` bundles and DMGs for `x86_64-apple-darwin`,
+  `aarch64-apple-darwin`, and `universal-apple-darwin`.
+- Linux Tauri amd64 release binary plus Debian `.deb` and RPM `.rpm` packages.
 
 ### Changed
 
@@ -71,6 +77,8 @@ format.
 - Tauri export failures are surfaced as explicit UI errors.
 - Release documentation now treats checked-in `releases/` files as local build
   artifacts that require per-release hash verification.
+- v1.6.0 macOS release `.app` bundles are ad-hoc signed and DMGs are generated
+  from the signed app bundles.
 
 ### Fixed
 

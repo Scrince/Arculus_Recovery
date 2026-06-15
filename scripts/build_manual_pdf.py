@@ -30,6 +30,8 @@ OUT = DOCS / "Arculus_Recovery_Manual.pdf"
 DOC_ORDER = [
     "Recovery.txt",
     "OpSec.txt",
+    "LinuxRelease.txt",
+    "BuildReproducability.txt",
     "Passphrase.txt",
     "FileFormat.txt",
     "Encryption.txt",
