@@ -11,7 +11,13 @@ format.
 
 ## [Unreleased]
 
-- No unreleased changes documented.
+### Changed
+
+- Relocated inline jsPDF third-party attribution and license comments from
+  `Arculus_Beta.html` into `docs/ThirdPartyNotices.txt` without changing
+  executable HTML behavior.
+- Cleaned garbled non-license comments in `Arculus_Beta.html` while leaving
+  functional code unchanged.
 
 ## [1.6.0] - 2026-06-14
 

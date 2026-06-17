@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "arculus-recovery-tauri",
   "version": "1.6.0",
   "private": true,
@@ -8,9 +8,11 @@
     "prepare:tauri": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/prepare-tauri-assets.ps1",
     "prepare:tauri:py": "python scripts/prepare_tauri_assets.py",
     "build:tauri": "npm run prepare:tauri && tauri build",
-    "build:tauri:mac": "npm run prepare:tauri:py && tauri build --bundles app,dmg"
+    "build:tauri:mac": "npm run prepare:tauri:py && tauri build --bundles app,dmg",
+    "test:smoke": "playwright test tests/arculus-beta.smoke.spec.js"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@tauri-apps/cli": "^2.0.0"
   }
 }

@@ -58,13 +58,13 @@ The RPM package metadata was verified as:
   Summary: Offline BIP39/BIP32 recovery and key-derivation tool
 
 The RPM package is not signed. Verify the SHA-256 digest from
-docs/SHA256Sums.txt before installation.
+docs/SHA256SUMS before installation.
 
 
 SHA-256 Verification
 --------------------
 
-The Linux artifact hashes are recorded in docs/SHA256Sums.txt:
+The Linux artifact hashes are recorded in docs/SHA256SUMS:
 
   0d1f05b6658e33417de4692b40aa7c5bb44a9f80a92b6ec7ec5010dfebe9d273  releases/tauri/linux/Arculus Recovery-1.6.0-1.x86_64.rpm
   992e2e436fff0af98f84598499f43c3b7fe194e7109de8e94747a72b3ac24a8d  releases/tauri/linux/Arculus Recovery_1.6.0_amd64.deb
@@ -78,7 +78,7 @@ or on systems using GNU coreutils:
 
   sha256sum releases/tauri/linux/*
 
-Compare the output byte-for-byte against docs/SHA256Sums.txt before entering
+Compare the output byte-for-byte against docs/SHA256SUMS before entering
 seed material.
 
 

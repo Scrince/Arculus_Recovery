@@ -17,7 +17,7 @@ The canonical source of truth for application behavior remains:
 
 The release hash manifest for official v1.6.0 release surfaces is:
 
-  docs/SHA256Sums.txt
+  docs/SHA256SUMS
 
 This document does not replace SHA-256 verification. It records the build
 procedure and the expected artifact boundary so rebuilders can determine
@@ -27,7 +27,7 @@ whether their outputs are byte-equivalent to the published v1.6.0 files.
 Release Surfaces
 ----------------
 
-The v1.6.0 release set covered by docs/SHA256Sums.txt is:
+The v1.6.0 release set covered by docs/SHA256SUMS is:
 
   Arculus_Recovery.html
   Arculus_Recovery.py
@@ -73,7 +73,7 @@ The v1.6.0 release hashes are:
 
 Verify them from the repository root with:
 
-  shasum -a 256 -c docs/SHA256Sums.txt
+  shasum -a 256 -c docs/SHA256SUMS
 
 
 Recorded macOS Build Host
@@ -315,7 +315,7 @@ When byte-for-byte equality is not achieved, compare:
   5. Runtime behavior against docs/TestVectors.txt.
 
 Behavioral equivalence is not the same as release equivalence. A rebuilt file
-is a v1.6.0 release artifact only if its SHA-256 matches docs/SHA256Sums.txt
+is a v1.6.0 release artifact only if its SHA-256 matches docs/SHA256SUMS
 or a new signed release manifest explicitly records the new hash.
 
 
@@ -348,14 +348,14 @@ Post-Build Verification Checklist
 After building v1.6.0, verify:
 
   1. No HTML source file was manually edited during packaging.
-  2. Arculus_Recovery.html hash matches docs/SHA256Sums.txt.
-  3. Arculus_Recovery.py hash matches docs/SHA256Sums.txt.
-  4. Linux raw binary hash matches docs/SHA256Sums.txt.
-  5. Linux .deb hash matches docs/SHA256Sums.txt.
-  6. Linux .rpm hash matches docs/SHA256Sums.txt.
-  7. macOS x64 DMG hash matches docs/SHA256Sums.txt.
-  8. macOS aarch64 DMG hash matches docs/SHA256Sums.txt.
-  9. macOS universal DMG hash matches docs/SHA256Sums.txt.
+  2. Arculus_Recovery.html hash matches docs/SHA256SUMS.
+  3. Arculus_Recovery.py hash matches docs/SHA256SUMS.
+  4. Linux raw binary hash matches docs/SHA256SUMS.
+  5. Linux .deb hash matches docs/SHA256SUMS.
+  6. Linux .rpm hash matches docs/SHA256SUMS.
+  7. macOS x64 DMG hash matches docs/SHA256SUMS.
+  8. macOS aarch64 DMG hash matches docs/SHA256SUMS.
+  9. macOS universal DMG hash matches docs/SHA256SUMS.
   10. Linux file command reports x86-64 ELF for arculus-recovery.
   11. Debian metadata reports version 1.6.0 and architecture amd64.
   12. RPM metadata reports version 1.6.0 and architecture x86_64.
