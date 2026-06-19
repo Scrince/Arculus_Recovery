@@ -1,16 +1,46 @@
-Arculus Recovery v1.6.0 - Byte-Level User and Operator Guide
-=============================================================
+Arculus Recovery v1.6.4 - Byte-Level User and Operator Guide
+============================================================
+
+Release Boundary
+----------------
+
+This guide describes Arculus_Beta.html v1.6.4, the source being prepared for
+production promotion. The coin selector contains Bitcoin, Bitcoin Cash,
+Litecoin, Dogecoin, Ethereum /
+ERC-20, Tron / TRC-20, BNB Chain, Avalanche C-Chain, Polygon, Cosmos / ATOM,
+Solana, Stellar, Cardano, and XRP. The Advanced Testnet toggle selects a
+testnet profile for each currency. Polkadot and Monero are not production
+v1.6.4 browser options.
+
+Version 1.6.4 adds live case-insensitive partial filtering of derived rows.
+The search covers addresses, private keys, and other displayed row fields,
+reports visible and total row counts, remains available in expanded output,
+and is never written into exported data.
+
+The archived browser builds are:
+
+  lts/Arculus_Recovery_v1.6.0_LTS.html
+  lts/Arculus Recovery_v1.5.0_LTS.html
+
+Monero guidance retained later is archived v1.6.0 LTS/Python compatibility
+material. Version 1.6.4 writes protected internal ARC V3 bundles using AES-256-GCM
+and writes AES-256-GCM encrypted-keyfile version 2 files. It continues to read
+legacy ARC V2, older ARC formats, and encrypted-keyfile version 1. The
+outer .arc armor header remains ARCULUS-ARC-V2, so operators should use the
+decoded bundle version rather than the armor line to identify the cipher
+format. See Encryption.txt and the repository README beta notes for
+the exact KDF, padding, authentication, and compatibility rules.
 
 Source of Truth
 ---------------
 
 This guide describes the standalone browser application implemented by the
-repository root file Arculus_Recovery.html with APP_VERSION equal to v1.6.0.
+repository root file Arculus_Beta.html with APP_VERSION equal to v1.6.4.
 The HTML file is the authoritative implementation for the UI, mnemonic
 normalization, key derivation, address construction, ARC seed-file encryption,
 QR generation, export formatting, and runtime clearing behavior.
 
-The application is designed to run fully offline in a browser. The v1.6.0 HTML
+The application is designed to run fully offline in a browser. The v1.6.4 HTML
 embeds its cryptographic and serialization dependencies directly, including:
 
   BIP39 English word list
@@ -27,7 +57,7 @@ embeds its cryptographic and serialization dependencies directly, including:
   CashAddr
   Bitcoin Base58Check
   XRPL Base58Check
-  Monero base58 block encoding
+  archived v1.6.0 LTS Monero base58 block encoding
   QR encoding and PNG canvas rendering
   jsPDF PDF export
 
@@ -41,7 +71,7 @@ capture, and downloaded files.
 Supported Recovery Scope
 ------------------------
 
-Arculus Recovery v1.6.0 derives keys and addresses. It does not scan balances,
+Arculus Recovery v1.6.4 derives keys and addresses. It does not scan balances,
 query account state, broadcast transactions, import funds, sign transactions,
 fetch token metadata, check address reuse, infer wallet gap limits, or contact
 wallet-provider APIs.
@@ -54,18 +84,22 @@ The supported visible seed sizes are:
 Both sizes are BIP39 English mnemonics. A 12-word mnemonic encodes 128 entropy
 bits plus 4 checksum bits. A 24-word mnemonic encodes 256 entropy bits plus 8
 checksum bits. Other BIP39-valid word counts such as 15, 18, and 21 are not
-accepted by v1.6.0.
+accepted by v1.6.4.
 
-All listed coins are mainnet only:
+The production selector and Advanced Testnet toggle expose:
 
   Bitcoin
   Bitcoin Cash
   Litecoin
   Dogecoin
   Ethereum / ERC-20
+  Tron / TRC-20
+  BNB Chain
+  Avalanche C-Chain
+  Polygon
+  Cosmos / ATOM
   Solana
   Stellar
-  Monero
   Cardano
   XRP
 
@@ -73,7 +107,7 @@ All listed coins are mainnet only:
 Initial UI State
 ----------------
 
-On load, the title row displays "Arculus Recovery" and v1.6.0. The default
+On load, the title row displays "Arculus" and v1.6.4. The default
 input state is:
 
   mnemonic textarea: empty
@@ -97,9 +131,13 @@ also updates the script selector:
   Litecoin: P2WPKH
   Dogecoin: P2PKH
   Ethereum / ERC-20: Auto
+  Tron / TRC-20: Auto
+  BNB Chain: Auto
+  Avalanche C-Chain: Auto
+  Polygon: Auto
+  Cosmos / ATOM: Auto
   Solana: Auto
   Stellar: Auto
-  Monero: Auto
   Cardano: Auto
   XRP: Auto
 
@@ -148,7 +186,7 @@ Validation rejects:
   words absent from the embedded BIP39 English list
   valid words whose checksum bits do not match SHA-256(entropy)
 
-When the visible mnemonic is successfully derived for the first time, v1.6.0
+When the visible mnemonic is successfully derived for the first time, v1.6.4
 promotes it into the protected hidden seed state. The textarea and word cells
 are replaced by mask tokens, and later derivations use the hidden internal seed
 unless Clear All is pressed.
@@ -197,7 +235,7 @@ The BIP39 seed calculation is:
 
 An empty passphrase is a distinct wallet from any non-empty passphrase. A
 mistyped passphrase can produce valid-looking derived addresses that do not
-match the intended wallet. v1.6.0 shows a passphrase warning in validation
+match the intended wallet. v1.6.4 shows a passphrase warning in validation
 output when the mnemonic is valid and the passphrase field is empty.
 
 The passphrase visibility button toggles the HTML input type between password
@@ -272,33 +310,37 @@ hardened bit:
   purpose 49: p2wpkh-p2sh
   all other purposes: p2pkh
 
-Ethereum and XRP ignore the selected UTXO script type and use their own
-address families. Solana, Stellar, Monero, and Cardano use their own Ed25519
-family derivation and do not emit UTXO script addresses.
+Ethereum, Tron, BNB Chain, Avalanche C-Chain, Polygon, Cosmos, and XRP ignore
+the selected UTXO script type and use their own account address families.
+Solana, Stellar, and Cardano use Ed25519-family derivation and do not emit UTXO
+script addresses.
 
 
 Default Derivation Paths
 ------------------------
 
-The v1.6.0 default account paths are:
+The v1.6.4 default account paths are:
 
   bitcoin: m/0'
   bitcoincash: m/0'
   litecoin: m/84'/2'/0'
   dogecoin: m/44'/3'/0'
   ethereum: m/44'/60'/0'
+  tron: m/44'/195'/0'
+  bnbchain: m/44'/60'/0'
+  avalanche: m/44'/60'/0'
+  polygon: m/44'/60'/0'
+  cosmos: m/44'/118'/0'
   solana: m/44'/501'/0'
   stellar: m/44'/148'/0'
-  monero: m/44'/128'/0'
   cardano: m/1852'/1815'/0'/0/0
   xrp: m/44'/144'/0'
 
 For secp256k1 account-style outputs, displayed receiving rows append /0/i and
 displayed change rows append /1/i to the selected account path.
 
-For Solana and Stellar, displayed rows are hardened account rows. For Monero,
-the selected account path directly produces a spend/view account address. For
-Cardano, the selected path is the payment key path and the staking key path is
+For Solana and Stellar, displayed rows are hardened account rows. For Cardano,
+the selected path is the payment key path and the staking key path is
 m/1852'/1815'/0'/2/0.
 
 
@@ -422,7 +464,7 @@ Bitcoin Cash:
 
   Default display is CashAddr with prefix "bitcoincash".
   Advanced legacy mode displays Base58Check P2PKH using version byte 0x00.
-  P2WPKH, P2WPKH-P2SH, and P2TR are not supported for Bitcoin Cash in v1.6.0.
+  P2WPKH, P2WPKH-P2SH, and P2TR are not supported for Bitcoin Cash in v1.6.4.
 
 Litecoin:
 
@@ -459,9 +501,9 @@ Stellar:
   Secret seed display uses Stellar StrKey with version byte 0x90.
   StrKey checksum is CRC16-XModem stored little-endian before base32 encoding.
 
-Monero:
+Archived v1.6.0 LTS Monero:
 
-  Derivation uses the v1.6.0 Monero Ed25519 path logic.
+  Derivation uses the v1.6.4 Monero Ed25519 path logic.
   Output includes private spend key, private view key, public spend key, and public view key.
   Standard mainnet address construction uses network byte 0x12 and a 4-byte Keccak checksum.
   The tool does not scan subaddresses or account balances.
@@ -529,7 +571,7 @@ PDF export:
   unit: points
   page size: A4
   title: Arculus Key Export
-  metadata line: coin, Arculus v1.6.0, UTC timestamp, optional root fingerprint
+  metadata line: coin, Arculus v1.6.4, UTC timestamp, optional root fingerprint
 
 PDF column selection:
 
@@ -538,7 +580,7 @@ PDF column selection:
   address
   private_key_wif for Bitcoin-family UTXO coins
   private_key_hex for Ethereum, Solana, Stellar, Cardano, XRP
-  private_spend_key_hex for Monero
+  private_spend_key_hex for archived v1.6.0 LTS/Python Monero output
 
 The PDF also renders an Extended Keys section when account extended keys are
 present in lastDerivedOutput.
@@ -566,26 +608,26 @@ Seed export always validates that the active mnemonic is a valid 12-word or
 24-word BIP39 mnemonic before creating the .arc file.
 
 
-ARC V2 Password Mode
+ARC V3 Password Mode
 --------------------
 
 Password mode uses the password text from the export dialog as the .arc
-encryption secret. The password is NFKD-normalized inside the ARC V2 KDF.
+encryption secret. The password is NFKD-normalized inside the ARC V3 KDF.
 
-New ARC V2 encrypted seed bundles use:
+New ARC V3 encrypted seed bundles use:
 
   magic: ARCULUS-ARC
-  format: arculus-encrypted-seed-v2
-  version: 2
+  format: arculus-encrypted-seed-v3
+  version: 3
+  credential_mode: password
   kdf.name: PBKDF2
   kdf.hash: SHA-512
   kdf.iterations: 1000000
   kdf.salt_b64: 32 random bytes encoded as base64
-  cipher.name: HMAC-SHA512-CTR
-  cipher.nonce_b64: 24 random bytes encoded as base64
-  ciphertext_b64: encrypted plaintext JSON
-  mac_b64: 64-byte HMAC-SHA512 tag encoded as base64
-  credential_mode: password
+  cipher.name: AES-256-GCM
+  cipher.nonce_b64: 12 random bytes encoded as base64
+  padding.name / padding.length: ZERO / 512
+  ciphertext_b64: 512 ciphertext bytes plus 16-byte GCM tag
 
 Plaintext JSON before encryption contains:
 
@@ -593,11 +635,12 @@ Plaintext JSON before encryption contains:
   word_count
   created_at
 
-The plaintext mnemonic is normalized to single-space BIP39 words before
-encryption. The BIP39 passphrase field is not stored in the .arc seed file.
+The compact payload JSON is copied into a zero-filled 512-byte plaintext. All
+metadata fields preceding ciphertext_b64 are serialized as compact JSON and
+authenticated as AES-GCM additional data. The BIP39 passphrase is not stored.
 
 
-ARC V2 Keyfile Mode
+ARC V3 Keyfile Mode
 -------------------
 
 Keyfile mode generates or loads at least 32 bytes of key material. The normal
@@ -612,7 +655,7 @@ Generated raw keyfile:
   version: 1
   key_b64: 64 random bytes encoded as base64
 
-The .arc encryption secret is:
+The HKDF input key material is:
 
   "arc-keyfile-v1:" || base64(keyfile_bytes)
 
@@ -622,15 +665,15 @@ Accepted import forms for raw keyfiles:
   JSON object with legacy magic KEYFILE and key field
   plain base64 key material text
 
-A raw keyfile must decode to at least 32 bytes. Generated v1.6.0 keyfiles are
+A raw keyfile must decode to at least 32 bytes. Generated v1.6.4 keyfiles are
 64 bytes.
 
 
-ARC V2 Keyfile + Password Mode
+ARC V3 Keyfile + Password Mode
 ------------------------------
 
 Keyfile + Password mode uses both possession of keyfile bytes and knowledge of
-the password. For new exports, v1.6.0 generates 64 random keyfile bytes and
+the password. For new exports, v1.6.4 generates 64 random keyfile bytes and
 writes them in encrypted keyfile form.
 
 Generated encrypted keyfile:
@@ -639,29 +682,28 @@ Generated encrypted keyfile:
   MIME type: application/json;charset=utf-8
   magic: ARCULUS-KEYFILE-ENC
   format: arculus-recovery-keyfile-enc-v1
-  version: 1
+  version: 2
   kdf.algo: PBKDF2-SHA512
-  kdf.iterations: 200000
+  kdf.iterations: 1000000
   kdf.salt_b64: 16 random bytes encoded as base64
-  cipher.name: HMAC-SHA512-CTR
-  cipher.nonce_b64: 16 random bytes encoded as base64
-  ciphertext_b64: encrypted raw keyfile bytes
-  mac_b64: HMAC-SHA512 tag
+  kdf.prehash: SHA-512
+  cipher.name: AES-256-GCM
+  cipher.nonce_b64: 12 random bytes encoded as base64
+  ciphertext_b64: 64 encrypted keyfile bytes plus 16-byte GCM tag
 
 Encrypted keyfile KDF:
 
   password bytes = UTF8(NFKD(password))
+  password hash = SHA-512(password bytes)
   salt = decoded kdf.salt_b64
-  PBKDF2-HMAC-SHA512 iterations = 200000
-  output length = 64 bytes
-  encKey = bytes 0..31
-  macKey = bytes 32..63
+  PBKDF2-HMAC-SHA512 iterations = 1000000
+  output = AES-256-GCM key
 
 The .arc encryption secret for combined mode is:
 
-  material = UTF8("arc-combined-v1\n" || NFKD(password) || "\n" || keyfile_secret)
-  digest = SHA-256(material)
-  secret = "arc-combined-v1:" || base64(digest)
+  input = keyfile_bytes || UTF8(NFKD(password))
+  bits = HKDF-SHA512(input, ARC salt, UTF8("arculus-arc-v3-combined-key"), 64)
+  secret = "arc-combined-v1:" || base64(bits)
 
 The password encrypts the .enc.key file and also participates in the combined
 .arc secret. Losing either the password or the matching keyfile prevents import.
@@ -773,6 +815,8 @@ Clear All runs handleClearAll. It clears:
   table and tab view state
   root fingerprint display
   lastDerivedOutput
+  credential-dialog password and confirmation fields
+  selected credential keyfile input and keyfile-secret state
 
 Clear All does not delete files already downloaded by the browser and does not
 wipe host clipboard history.
@@ -784,7 +828,7 @@ The idle watcher listens for:
   touchstart
   scroll
 
-Idle timing:
+Default idle timing:
 
   4 minutes after last watched event: show warning banner
   5 minutes after last watched event: run Clear All
@@ -797,6 +841,15 @@ The idle warning text is:
 The post-clear text is:
 
   Session cleared due to inactivity.
+
+Advanced Session Timeout values are 2 minutes, 5 minutes, 15 minutes, and Off.
+The selection is stored as arculusSessionTimeout. Finite selections show the
+warning 60 seconds before clearing.
+
+Tab-Switch Grace Period is enabled by default. Hiding the page starts a
+15-second clear timer; returning before expiry cancels it. Disabling the toggle
+restores immediate visibility-loss clearing. The selection is stored as
+arculusVisibilityGrace.
 
 
 Settings
@@ -819,6 +872,8 @@ may not persist.
 Advanced settings:
 
   Auto-Derive on Settings Change
+  Tab-Switch Grace Period
+  Session Timeout: 2 minutes / 5 minutes / 15 minutes / Off
   Legacy Address Format (Bitcoin Cash)
 
 Auto-Derive only runs after at least one successful derivation has populated
@@ -869,7 +924,7 @@ QR URI Construction
 If the address input already begins with a URI scheme matching /^[a-z]+:/i, the
 input is used unchanged.
 
-Otherwise v1.6.0 generates these QR payload strings:
+Otherwise v1.6.4 generates these QR payload strings:
 
   Solana:
     "solana:" || address
@@ -877,7 +932,7 @@ Otherwise v1.6.0 generates these QR payload strings:
   Stellar:
     "web+stellar:pay?destination=" || encodeURIComponent(address)
 
-  Monero:
+  Archived v1.6.0 LTS Monero:
     "monero:" || address
 
   Cardano:
@@ -913,12 +968,13 @@ service accepts an empty or zero destination tag. If a service requires a tag,
 use the tag supplied by that service.
 
 
-Python 1.6.0 Automation Surface
+Python 1.6.2 Automation Surface
 -------------------------------
 
-The current Python package and launcher are upgraded to APP_VERSION 1.6.0 for
-scripted derivation. The canonical HTML file remains the interactive source of
-truth, but Python CLI output is expected to match the v1.6.0 derivation vectors
+Until promotion synchronization, the current Python package and launcher
+report APP_VERSION 1.6.2 for scripted derivation. Arculus_Beta.html v1.6.4
+remains the interactive source of truth, while Python CLI output matches the
+documented v1.6.2 compatibility vectors
 for the supported command-line coin ids:
 
   bitcoin
@@ -938,7 +994,7 @@ CLI default behavior:
     python Arculus_Recovery.py --mnemonic "<words>" --coin <coin> --output-format json
 
   version string:
-    Arculus Recovery 1.6.0
+    Arculus Recovery 1.6.2
 
   default script type:
     auto
@@ -969,8 +1025,8 @@ Operational Procedure
 
 Recommended offline recovery procedure:
 
-  1. Open Arculus_Recovery.html from local storage on a trusted machine.
-  2. Confirm the title shows v1.6.0.
+  1. Open Arculus_Beta.html from local storage on a trusted machine.
+  2. Confirm the title shows v1.6.4.
   3. Disconnect the machine from networks when practical.
   4. Paste, import, or generate the mnemonic.
   5. Enter the BIP39 passphrase if the wallet used one.
@@ -1056,29 +1112,33 @@ Common failure states:
 Byte-Level Boundaries
 ---------------------
 
-The following values are hard requirements in v1.6.0:
+The following values are hard requirements in v1.6.4:
 
-  APP_VERSION: 1.6.0
+  APP_VERSION: 1.6.4
   ARC armor header: ARCULUS-ARC-V2
-  ARC encrypted format: arculus-encrypted-seed-v2
+  ARC encrypted format: arculus-encrypted-seed-v3
   ARC plaintext format: arculus-plain-seed-v1
-  ARC encrypted version: 2
+  ARC encrypted version: 3
   ARC plaintext version: 1
-  ARC V2 KDF: PBKDF2-HMAC-SHA512
-  ARC V2 KDF iterations for new exports: 1000000
-  ARC V2 import iteration floor: 600000
-  ARC V2 salt length: 32 bytes
-  ARC V2 nonce length: 24 bytes
-  ARC V2 MAC length: 64 bytes
-  ARC V2 cipher name: HMAC-SHA512-CTR
+  ARC V3 Password KDF: SHA-512 prehash then PBKDF2-HMAC-SHA512
+  ARC V3 Password KDF iterations: 1000000
+  ARC V3 Keyfile/combined KDF: HKDF-SHA512
+  ARC V3 salt length: 32 bytes
+  ARC V3 nonce length: 12 bytes
+  ARC V3 tag length: 16 bytes
+  ARC V3 padded plaintext length: 512 bytes
+  ARC V3 ciphertext/tag length: 528 bytes
+  ARC V3 cipher name: AES-256-GCM
   generated keyfile bytes: 64 bytes
-  encrypted keyfile KDF iterations: 200000
+  encrypted keyfile KDF iterations: 1000000
   encrypted keyfile salt length: 16 bytes
-  encrypted keyfile nonce length: 16 bytes
+  encrypted keyfile nonce length: 12 bytes
   BIP39 seed length: 64 bytes
   BIP39 seed PBKDF2 iterations: 2048
   supported word counts: 12 and 24
-  idle clear timeout: 5 minutes
+  default idle clear timeout: 5 minutes
+  selectable idle timeouts: 2, 5, 15 minutes, Off
+  default visibility-loss grace: 15 seconds
   idle warning lead time: 60 seconds
   clipboard countdown: 60 seconds
 
@@ -1086,7 +1146,7 @@ The following values are hard requirements in v1.6.0:
 Non-Goals
 ---------
 
-Arculus Recovery v1.6.0 does not:
+Arculus Recovery v1.6.4 does not:
 
   create transactions
   sign transactions
