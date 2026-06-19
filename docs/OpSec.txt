@@ -1,11 +1,30 @@
-Arculus Recovery v1.6.0 - Operational Security Specification
+Arculus Recovery v1.6.4 - Operational Security Specification
 ============================================================
+
+Release Boundary
+----------------
+
+This document specifies Arculus_Beta.html v1.6.4, the source being prepared for
+production promotion. The default session timeout is five minutes; supported
+values are 2, 5, 15 minutes, or Off. Visibility loss starts a default 15-second
+grace period and clears secrets if the user does not return. The live derived-output search can match private-key
+fields; operators must treat search text, visible matches, screen captures, and
+expanded output as secret-bearing display state even though search state is not
+exported.
+
+The archived browser builds now reside under lts/. Monero-specific guidance
+retained later applies only to lts/Arculus_Recovery_v1.6.0_LTS.html or a
+separate compatibility tool, not to the v1.6.4 browser selector.
+
+The configurable timeout, visibility-loss grace period, stricter CSP, embedded
+favicon, credential-dialog clearing, typed-array cleanup, and serialized
+sensitive operations are normative v1.6.4 requirements.
 
 Scope
 -----
 
 This document defines the operational security requirements for using
-Arculus_Recovery.html v1.6.0. It is tied to the actual implementation behavior:
+Arculus_Beta.html v1.6.4. It is tied to the actual implementation behavior:
 mnemonic generation and entry, BIP39 passphrase use, .arc export/import,
 password and keyfile credential modes, derived-output exports, QR generation,
 clipboard behavior, idle clearing, browser runtime limits, and native Tauri
@@ -84,7 +103,7 @@ Out of scope:
   - Cameras or observers with screen/keyboard visibility.
   - Coercion.
   - An attacker who already knows the mnemonic or correct .arc credential.
-  - A malicious copy of Arculus_Recovery.html.
+  - A malicious copy of Arculus_Beta.html.
 
 For high-value recovery, assume an ordinary daily-use online computer is not an
 acceptable secret-handling environment.
@@ -155,7 +174,7 @@ Disable:
   - browser profile sync
   - browser extensions where practical
 
-The v1.6.0 UI uses navigator.onLine for the network indicator:
+The v1.6.4 UI uses navigator.onLine for the network indicator:
 
   online:
       networkStatus class "online"
@@ -173,8 +192,8 @@ Recommended Session Procedure
 
 Before the session:
 
-  1. Obtain the intended Arculus_Recovery.html build from trusted local media.
-  2. Verify the visible app version is v1.6.0.
+  1. Obtain the intended Arculus_Beta.html build from trusted local media.
+  2. Verify the visible app version is v1.6.4.
   3. Use a fresh live OS or a dedicated offline machine for high-value work.
   4. Disable networking before opening the file.
   5. Close unrelated applications.
@@ -213,7 +232,7 @@ Mnemonic Handling
 
 Mnemonic input and generated mnemonics are Class A secrets.
 
-v1.6.0 behavior:
+v1.6.4 behavior:
 
   - Generated seeds use browser CSPRNG.
   - Generated/imported seeds are hidden after generation/import.
@@ -327,12 +346,12 @@ Default saved filename:
 
   Arculus_Encrypted_Seed.arc
 
-The filename does not prove the file is encrypted. v1.6.0 uses this filename
+The filename does not prove the file is encrypted. v1.6.4 uses this filename
 for both protected and unprotected seed exports. Inspect the decoded bundle
 format if protection status matters:
 
   Protected:
-      format == "arculus-encrypted-seed-v2"
+      format == "arculus-encrypted-seed-v3"
 
   Unprotected:
       format == "arculus-plain-seed-v1"
@@ -341,7 +360,8 @@ format if protection status matters:
 Password Mode
 -------------
 
-Password mode passes the user-entered password directly to ARC v2 encryption.
+Password mode normalizes and SHA-512 pre-hashes the password, then derives the
+ARC V3 AES key with PBKDF2-HMAC-SHA512 at 1000000 iterations.
 
 Minimum operational requirements:
 
@@ -388,9 +408,9 @@ Combined mode requires both:
   - keyfile bytes
   - password
 
-The app derives:
+The app derives with HKDF-SHA512:
 
-  "arc-combined-v1:" + base64(SHA-256(material))
+  "arc-combined-v1:" + base64(HKDF(keyfile_bytes || NFKD password, ARC salt))
 
 and uses that as the .arc credential.
 
@@ -412,15 +432,14 @@ Losing any required component prevents recovery.
 Encrypted Keyfile Security
 --------------------------
 
-Encrypted keyfiles protect keyfile bytes with PBKDF2-HMAC-SHA512 and an
-HMAC-SHA512 stream/MAC construction. They are safer to store than raw keyfiles
+Encrypted-keyfile v2 protects keyfile bytes with SHA-512 password pre-hashing,
+PBKDF2-HMAC-SHA512 at 1000000 iterations, and AES-256-GCM. It is safer to store than a raw keyfile
 but still require a high-entropy password.
 
 Operational notes:
 
-  - The encrypted keyfile MAC authenticates salt, nonce, and ciphertext.
-  - The encrypted keyfile metadata is less extensively MAC-bound than ARC v2
-    seed metadata.
+  - The 128-bit GCM tag authenticates ciphertext and the exact magic/format AAD.
+  - ARC V3 authenticates its complete metadata object as AES-GCM AAD.
   - The decrypted keyfile bytes exist in browser memory during import.
   - The encrypted keyfile password is separate from the BIP39 wallet passphrase.
 
@@ -461,7 +480,7 @@ QR Export Boundary
 
 QR export is designed for address payloads, not seeds or private keys.
 
-v1.6.0 behavior:
+v1.6.4 behavior:
 
   - QR modal accepts a user-entered address.
   - XRP r-address input prompts for an optional destination tag.
@@ -516,10 +535,14 @@ Operational rule:
 Idle Timeout and Clear All
 --------------------------
 
-Constants:
+Constants and persisted settings:
 
-  IDLE_TIMEOUT_MS = 5 * 60 * 1000
-  warning time = 60 seconds before timeout
+  DEFAULT_IDLE_TIMEOUT_MINUTES = 5
+  allowed values = "2", "5", "15", "off"
+  localStorage key = "arculusSessionTimeout"
+  VISIBILITY_CLEAR_GRACE_MS = 15000
+  localStorage key = "arculusVisibilityGrace"
+  warning time = 60 seconds before a finite timeout
 
 Events that reset the timer:
 
@@ -546,11 +569,21 @@ Clear All behavior:
   - clears word-grid inputs
   - removes valid/invalid classes from mnemonic inputs
   - clears BIP39 passphrase input
+  - closes the credential dialog and clears password/confirmation inputs
+  - clears the selected keyfile input and in-memory keyfile-secret string
   - clears raw output textarea
   - clears root fingerprint display
   - resets output view
   - sets lastDerivedOutput = null
   - reports "All fields cleared."
+
+Visibility-loss behavior:
+
+  - With grace enabled (default), hiding the page starts a 15-second timer.
+  - Returning before expiry cancels the timer.
+  - With grace disabled, sensitive state clears immediately when hidden.
+  - Credential-dialog password/keyfile state counts as sensitive even before a
+    mnemonic has been imported.
 
 Limitations:
 
@@ -563,7 +596,7 @@ Limitations:
 Browser Runtime Risk
 --------------------
 
-Arculus_Recovery.html is a local offline browser application, but browser
+Arculus_Beta.html is a local offline browser application, but browser
 runtimes are not hardened secret vaults.
 
 Risks:
@@ -752,7 +785,7 @@ Operator Checklist
 
 Before entering a real seed:
 
-  - v1.6.0 build confirmed
+  - v1.6.4 build confirmed
   - offline state confirmed
   - clean browser/profile confirmed
   - no extensions or sync
@@ -804,7 +837,7 @@ For high-value sessions, perform these checks before opening the HTML file:
   - Disable Bluetooth in firmware or hardware controls where possible.
   - Remove USB network adapters.
   - Disable cellular modems.
-  - Use a local copy of Arculus_Recovery.html, not a remote URL.
+  - Use a local copy of Arculus_Beta.html, not a remote URL.
   - Confirm the browser did not restore prior tabs into online services.
   - Confirm password managers and form-fill extensions are disabled.
   - Confirm no cloud storage client is syncing the working directory.
@@ -934,13 +967,13 @@ Failure to test a backup is equivalent to not having a backup.
 Handling Legacy Files
 ---------------------
 
-v1.6.0 can import older seed formats. Legacy import support is for migration,
+v1.6.4 can import older seed formats. Legacy import support is for migration,
 not for continued archival use.
 
 After importing a legacy .arc:
 
   1. Confirm the mnemonic and root fingerprint.
-  2. Export a new protected v1.6.0 .arc.
+  2. Export a new protected v1.6.4 .arc.
   3. Test import of the new file.
   4. Retire the legacy file according to the sensitivity of the original
      storage medium.
@@ -1010,7 +1043,7 @@ For operational records, keep non-secret metadata separate from secrets.
 
 Safe-ish metadata to record:
 
-  - app version v1.6.0
+  - app version v1.6.4
   - date of backup creation
   - coin
   - derivation path
