@@ -1,8 +1,9 @@
 # Changelog - Arculus Recovery
 
 All notable user-facing and compatibility-relevant changes are documented here.
-The current source of truth is `Arculus_Recovery.html` v1.6.0 plus the
-byte-level references in `docs/`.
+The v1.6.4 release-candidate source of truth is `Arculus_Beta.html` plus the
+byte-level references in `docs/`. Previously published v1.6.2 artifacts remain
+historical until v1.6.4 promotion and rebuild are complete.
 
 The project originally used a rolling `Arculus_Recovery` release tag, then
 `-production` suffixes, and now uses plain semantic versions for promoted
@@ -11,13 +12,266 @@ format.
 
 ## [Unreleased]
 
+### Added
+
+- Added a reusable Playwright test harness for `Arculus_Beta.html` with a
+  worker-scoped local HTTP server, application-page fixture, browser console and
+  page-error enforcement, and shared independent Web Crypto reference helpers.
+- Added browser conformance tests for ARC V3 Password, Keyfile, and Keyfile +
+  Password modes; fixed padding and field sizes; authenticated metadata and
+  ciphertext tampering; wrong credentials; encrypted-keyfile v2; and legacy
+  ARC V2/encrypted-keyfile v1 compatibility.
+- Added `test`, `test:crypto`, and `test:html` npm commands alongside the focused
+  `test:smoke` command.
+- Added an optional `PLAYWRIGHT_EXECUTABLE_PATH` override for environments that
+  provide a system Chromium-family browser instead of Playwright-managed
+  Chromium.
+- Added a dependency-free Python `unittest` harness covering BIP39 vectors,
+  mnemonic generation, BIP84 derivation, ARC V2 encryption/armor/tamper
+  rejection, CLI JSON output, launcher versioning, and packaged GUI assets.
+- Added a Windows Tauri release harness that validates synchronized release
+  identity, prepared frontend assets, bundle icons, Rust unit tests, and,
+  optionally, MSI/NSIS builds, artifact sizes, hashes, versioned filenames, and
+  Authenticode signatures.
+- Added `test:python`, `test:tauri`, `test:tauri:windows`, and `test:release` npm
+  commands for focused and combined release validation.
+
+- Added protected `.arc` format v3 to `Arculus_Beta.html`. V3 uses
+  AES-256-GCM, a 32-byte random salt, a 12-byte nonce, a 128-bit tag, and a
+  fixed 512-byte padded plaintext payload.
+- Added AES-256-GCM encrypted keyfile version 2 with authenticated keyfile magic
+  and format metadata. Existing encrypted keyfile version 1 import remains
+  supported.
+- Added an authenticated `credential_mode` field to ARC V3 bundles with
+  `password`, `keyfile`, or `both` values.
+
+- Added a Settings -> Advanced `Tab-Switch Grace Period` toggle. The default
+  behavior now waits 15 seconds before clearing sensitive fields when the tab
+  is hidden, and cancels the pending clear if the user returns in time. The
+  setting can be disabled to restore immediate clearing and is persisted
+  locally.
+- Added a persistent Settings -> Advanced `Session Timeout` selector with
+  2-minute, 5-minute, 15-minute, and Off options. Five minutes remains the
+  default, and timeout changes take effect immediately.
+- Added a restrictive Content Security Policy that denies network connections,
+  permits only the exact hashed inline scripts, and blocks script attributes,
+  objects, frames, workers, media, manifests, and form submissions.
+
 ### Changed
 
+- Changed new beta Password-mode ARC V3 key derivation to SHA-512 pre-hashing
+  followed by PBKDF2-HMAC-SHA512 at 1,000,000 iterations.
+- Changed new beta Keyfile-mode ARC V3 derivation to HKDF-SHA512. Combined mode
+  now mixes raw keyfile bytes and NFKD-normalized password bytes with
+  HKDF-SHA512 using the ARC salt and the fixed info string
+  `arculus-arc-v3-combined-key`.
+- Changed newly generated password-protected keyfiles to SHA-512 password
+  pre-hashing, PBKDF2-HMAC-SHA512 at 1,000,000 iterations, and AES-256-GCM with
+  a 12-byte nonce. Existing 200,000-iteration version 2 keyfiles remain readable.
+- ARC V3 authenticates all bundle metadata as AES-GCM additional authenticated
+  data and no longer emits the ARC V2 separate MAC field.
+
+- Debounced live root-fingerprint refreshes and serialized fingerprint and
+  address-derivation work through latest-request-wins queues. Manual and
+  automatic derivations can no longer overlap, queued stale work is collapsed,
+  derivations take priority over fingerprint refreshes, and Clear All
+  invalidates pending or in-flight results.
+- Moved derivation-info icon event registration out of the seed-import path so
+  its input and currency-change listeners are registered exactly once during
+  UI initialization instead of accumulating after repeated imports.
+- Embedded the favicon as a byte-identical base64 data URI so the standalone
+  HTML no longer depends on a relative favicon path.
+- Replaced the settings, QR export, and credential-dialog text close glyphs
+  with a shared, consistently sized SVG close icon while retaining their
+  accessible labels.
+- Replaced heavyweight mnemonic validation with checksum-only validation where
+  seed and master-key derivation are not required.
+- Changed live root-fingerprint refreshes to use a fingerprint-only derivation
+  path instead of creating immutable hex strings for the complete BIP39 seed
+  and master private key on every refresh.
+
+### Security
+
+- Added best-effort zeroing of temporary password, keyfile, salt, padded
+  plaintext, and decrypted-plaintext byte arrays in the new ARC V3 and
+  encrypted-keyfile v2 paths.
+- Preserved the legacy combined-secret construction exclusively for ARC V2
+  decryption so existing Password, Keyfile, and Keyfile + Password backups
+  remain recoverable.
+
+- Added best-effort zeroing for temporary `Uint8Array` buffers containing
+  mnemonic/passphrase encodings, BIP39 seed bytes, serialized private keys,
+  chain codes, HMAC results, checksums, and derivation intermediates.
+- Added cleanup of discarded BIP32, Ed25519/SLIP-0010, Cardano, Taproot, WIF,
+  extended-private-key, and Stellar StrKey working buffers after use.
+- JavaScript strings and `BigInt` values remain subject to JavaScript runtime
+  garbage collection and cannot be reliably overwritten in place.
+
+### Fixed
+
+- Made ARC V3 credential mode explicit so Password-mode strings beginning with
+  reserved keyfile prefixes cannot be misclassified or locked to the wrong
+  import workflow.
+- Cleared credential-dialog password, confirmation, file-input, and keyfile
+  secret state on completion, cancellation, timeout, and visibility clearing.
+- Made the password meter penalize exact repeated patterns and label its output
+  as a rough character-diversity score rather than an entropy guarantee.
+- Synchronized the Playwright fixture title expectation with v1.6.4.
+
+- Fixed stale smoke-test assumptions for the document title and ambiguous
+  Generate/Export button locators, and hardened local test-server teardown so
+  HTTP keep-alive connections cannot stall the runner.
+- Changed the Rust export unit-test fixture to write under the OS temporary
+  directory instead of the user's Downloads folder, allowing restricted CI and
+  sandboxed Windows release validation without changing production exports.
+
+- Fixed the mojibake ellipsis in the Bitcoin Cash CashAddr example shown in
+  Advanced Settings.
+
+### Verified
+
+- Verified ARC V3 Password, Keyfile, and Keyfile + Password modes against
+  independent Web Crypto PBKDF2, HKDF, and AES-GCM derivations.
+- Verified ARC V3 fixed-size padding, salt and nonce lengths, wrong-credential
+  rejection, and rejection of modified metadata or ciphertext.
+- Verified encrypted-keyfile v2 independently and confirmed encrypted-keyfile
+  v1 plus ARC V2 Password, Keyfile, and combined-mode compatibility.
+
+- Verified both inline scripts parse successfully and match the SHA-256 hashes
+  authorized by the Content Security Policy.
+- Verified the embedded favicon decodes to the exact original 3,976-byte PNG
+  and that no external favicon path remains.
+- Verified the beta HTML introduces no new whitespace errors.
+
+## [1.6.2] - 2026-06-17
+
+### Release Identity
+
+- Promoted the tested `Arculus_Beta.html` changes into the production
+  `Arculus_Recovery.html` file and updated the visible/browser version to
+  Arculus v1.6.2.
+- Removed the temporary beta HTML and beta changelog after promotion.
+- Updated the Python package and CLI version to v1.6.2 and synchronized the
+  Python GUI's packaged WebView asset with the production HTML.
+- Updated Tauri package, application, and Rust crate metadata to v1.6.2.
+- Rebuilt the Windows x64 executable, MSI, and NSIS installer.
+- Built v1.6.2 macOS Tauri artifacts for Intel, Apple Silicon, and universal
+  distribution.
+- Built v1.6.2 Linux amd64 Tauri artifacts as a raw ELF, Debian package, and
+  RPM package.
+
+### Added
+
+- Added a live search field beside the Extended Keys tab after derivation.
+- Added case-insensitive partial matching across derived row data, including
+  addresses and private-key fields; the table updates on every keystroke and
+  reports the visible/total row count.
+- Kept the same live filter available when the output panel is expanded, with
+  a clear no-results message when no derived row contains the entered text.
+
+### Verified
+
+- Verified partial address and private-key searches, search clearing,
+  no-results behavior, and filtering while the output panel is expanded.
+- Verified the promoted production HTML reports Arculus v1.6.2.
+- Verified the Python CLI reports v1.6.2 and completes deterministic Bitcoin
+  derivation successfully.
+- Verified the v1.6.2 Windows Tauri executable launches, the MSI reports
+  ProductVersion 1.6.2, and the executable, MSI, and NSIS artifacts are
+  unsigned as documented.
+- Verified the v1.6.2 macOS app bundles report version 1.6.2, contain the
+  expected x86_64, arm64, or universal Mach-O slices, pass ad-hoc codesign
+  verification, and are packaged in valid DMGs.
+- Verified the v1.6.2 Linux raw binary is an x86-64 ELF, the Debian package
+  reports Version 1.6.2 / Architecture amd64, and the RPM reports Version
+  1.6.2 / Architecture x86_64 / Signature none.
+
+## [1.6.1] - 2026-06-17
+
+### Release Identity
+
+- Promoted the former `Arculus_Beta.html` build to the production
+  `Arculus_Recovery.html` filename and updated its visible/browser version to
+  Arculus v1.6.1.
+- Archived v1.6.0 as `lts/Arculus_Recovery_v1.6.0_LTS.html`; its application title
+  now identifies it as Arculus Recovery v1.6.0 LTS.
+- Renamed the previous v1.5.0 LTS build to
+  `lts/Arculus Recovery_v1.5.0_LTS.html`.
+- Updated the Python GUI package to v1.6.1 and synchronized its packaged HTML
+  asset with the production `Arculus_Recovery.html` build.
+
+### Added
+
+- Added Polygon PoS support using Ethereum-compatible secp256k1 accounts,
+  EIP-55 addresses, the standard `m/44'/60'/0'` account path, and Polygon Amoy
+  testnet metadata.
+- Promoted the beta testnet profiles and additional account networks into the
+  production browser build, including Tron, BNB Chain, Avalanche C-Chain, and
+  Cosmos / ATOM.
+- Added a Settings -> Advanced `Testnet` toggle with per-network profiles for
+  every supported production currency.
+- Added UTXO testnet defaults by script family: `m/44'/1'/0'` for P2PKH,
+  `m/49'/1'/0'` for wrapped SegWit, `m/84'/1'/0'` for native SegWit, and
+  `m/86'/1'/0'` for Taproot.
+- Added Bitcoin Cash `bchtest:` CashAddr output, Litecoin `tltc1` and testnet
+  key encoding, Dogecoin testnet address/WIF prefixes, and Cardano
+  `addr_test` Shelley addresses.
+- Added testnet metadata for Ethereum, Tron, BNB Chain, Avalanche C-Chain,
+  Polygon, Cosmos, Solana, Stellar, Cardano, and XRP.
+- Added BIP39 autocomplete suggestions to the numbered mnemonic-entry grid.
+- Added the standalone HTML browser smoke-test workflow and
+  `npm run test:smoke` command.
+- Added `docs/ThirdPartyNotices.txt` as the consolidated location for
+  third-party attribution and license text removed from inline HTML comments.
+
+### Removed
+
+- Removed Polkadot and Monero from the v1.6.1 browser selector, derivation
+  routing, exports, and QR URI handling.
+
+### Compatibility Notes
+
+- ARC V2 seed-backup encryption and import behavior are unchanged from v1.6.0.
+- The Python GUI now embeds the v1.6.1 production browser application. The
+  Python CLI derivation engine remains a separate compatibility surface.
+- Promoted Tauri package, application, and Rust crate metadata to v1.6.1 and
+  rebuilt the Windows x64 executable, MSI, and NSIS installer from the v1.6.1
+  production browser application. macOS and Linux artifacts remain v1.6.0.
+
+### Changed
+
+- Replaced the coin datalist with a standard select control, alphabetized with
+  Bitcoin pinned as the default.
+- Derivation now selects the active network profile from the Testnet setting
+  while preserving the selected currency in output metadata.
+- Changing Bitcoin or Litecoin script type while Testnet is enabled updates
+  the default path to the corresponding testnet purpose path.
+- Generalized the Testnet setting across supported currencies.
+- Cached QR modal elements in the shared element map and added reliable Escape
+  handling for the modal fallback path.
+- Added confirmation before `Generate Random Seed` replaces existing seed
+  material.
+- Added immediate clearing of seed, passphrase, and derived output when the
+  browser tab loses visibility.
+- Clipboard-copy failures in derived tables and extended-key views now surface
+  a visible status message.
 - Relocated inline jsPDF third-party attribution and license comments from
   `Arculus_Beta.html` into `docs/ThirdPartyNotices.txt` without changing
   executable HTML behavior.
 - Cleaned garbled non-license comments in `Arculus_Beta.html` while leaving
   functional code unchanged.
+
+### Verified
+
+- Verified inline JavaScript parsing, standalone page initialization, seed
+  generation, BIP39 validation, settings, output views, QR generation, and PDF
+  export during the beta-to-production promotion.
+- Verified mainnet/testnet derivation behavior for the currencies retained in
+  the v1.6.1 production selector.
+- Verified the promoted production build reports Arculus v1.6.1 and the
+  archived v1.6.0 build reports Arculus Recovery v1.6.0 LTS.
+- Verified the v1.6.1 Windows Tauri executable launches, embeds the v1.6.1
+  prepared HTML asset, and produces versioned MSI and NSIS packages.
 
 ## [1.6.0] - 2026-06-14
 
@@ -25,7 +279,8 @@ format.
 
 - Promoted the repaired beta line to the canonical `Arculus_Recovery.html`
   v1.6.0 release.
-- Kept the previous canonical HTML build as `Arculus_Recovery_LTS.html`.
+- Kept the previous canonical HTML build as an LTS copy (now named
+  `lts/Arculus Recovery_v1.5.0_LTS.html`).
 - Updated Python package metadata, Tauri package metadata, Tauri app metadata,
   packaged HTML assets, and manual generation metadata for v1.6.0.
 - Rewrote the root documentation and `docs/` technical references around the
