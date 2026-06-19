@@ -1,13 +1,22 @@
-Arculus Recovery v1.6.0 - Linux Release Notes
-==============================================
+Arculus Recovery v1.6.2 - Linux Release Notes
+=============================================
+
+Historical status
+-----------------
+
+This file records the published v1.6.2 Linux artifacts and must retain their
+actual filenames, metadata, and hashes. Arculus_Beta.html v1.6.4 is the current
+release-candidate source, but no v1.6.4 Linux package is documented here until
+new binaries are built and measured. See Release_v1.6.4.txt for the promotion
+checklist.
 
 Scope
 -----
 
 This document records Linux-specific release, installation, verification, and
-operational notes for the v1.6.0 Tauri desktop build.
+operational notes for the v1.6.2 Tauri desktop build.
 
-The canonical application remains Arculus_Recovery.html v1.6.0. The Linux
+The canonical application remains Arculus_Recovery.html v1.6.2. The Linux
 Tauri build packages that same offline application inside a native WebKitGTK
 desktop wrapper with the Tauri save_export bridge.
 
@@ -15,22 +24,21 @@ desktop wrapper with the Tauri save_export bridge.
 Release Artifacts
 -----------------
 
-The v1.6.0 Linux release set currently contains amd64 artifacts only:
+The v1.6.2 Linux release set currently contains amd64 artifacts only:
 
   releases/tauri/linux/arculus-recovery
-  releases/tauri/linux/Arculus Recovery_1.6.0_amd64.deb
-  releases/tauri/linux/Arculus Recovery-1.6.0-1.x86_64.rpm
+  releases/tauri/linux/Arculus Recovery_1.6.2_amd64.deb
+  releases/tauri/linux/Arculus Recovery-1.6.2-1.x86_64.rpm
 
 The binary artifact is an x86-64 Linux ELF executable. The Debian package is
 for amd64 systems. The RPM package is for x86_64 systems.
 
 No Linux arm64/aarch64 package was produced for this release.
 
-No AppImage artifact is part of the v1.6.0 Linux release set. The AppImage
-bundling attempt compiled the application successfully, but Tauri's
-linuxdeploy AppImage packaging step failed inside the Docker amd64 build
-environment. Treat the raw ELF, .deb, and .rpm files as the published Linux
-artifacts for v1.6.0.
+No AppImage artifact is part of the v1.6.2 Linux release set. The v1.6.2 build
+published only the raw ELF, .deb, and .rpm files. The earlier v1.6.0 AppImage
+retry reached Tauri's linuxdeploy packaging step and failed inside the Docker
+amd64 build environment.
 
 
 Verified Artifact Metadata
@@ -43,7 +51,7 @@ The Linux binary was verified as:
 The Debian package metadata was verified as:
 
   Package: arculus-recovery
-  Version: 1.6.0
+  Version: 1.6.2
   Architecture: amd64
   Depends: libwebkit2gtk-4.1-0, libgtk-3-0
   Description: Offline BIP39/BIP32 recovery and key-derivation tool
@@ -51,7 +59,7 @@ The Debian package metadata was verified as:
 The RPM package metadata was verified as:
 
   Name: arculus-recovery
-  Version: 1.6.0
+  Version: 1.6.2
   Release: 1
   Architecture: x86_64
   Signature: none
@@ -66,9 +74,9 @@ SHA-256 Verification
 
 The Linux artifact hashes are recorded in docs/SHA256SUMS:
 
-  0d1f05b6658e33417de4692b40aa7c5bb44a9f80a92b6ec7ec5010dfebe9d273  releases/tauri/linux/Arculus Recovery-1.6.0-1.x86_64.rpm
-  992e2e436fff0af98f84598499f43c3b7fe194e7109de8e94747a72b3ac24a8d  releases/tauri/linux/Arculus Recovery_1.6.0_amd64.deb
-  9d178ffde81e6c7d83fae7f8ff6ec5a2ea83e97727bebc84fc93a4716d471c41  releases/tauri/linux/arculus-recovery
+  5ecca80fbcae77fb209d3f14fdd193009920c1031990fdbcd74246bcebc0a352  releases/tauri/linux/arculus-recovery
+  609d4b66b7b1ac1b11021390b330b2a207601dccd1de41dd8959e1568e45c01a  releases/tauri/linux/Arculus Recovery_1.6.2_amd64.deb
+  a334d2aaac79ce8049e42061d0ba471f9c9466cac1fbeddba83d206c74a3e447  releases/tauri/linux/Arculus Recovery-1.6.2-1.x86_64.rpm
 
 Verify from the repository root with:
 
@@ -87,11 +95,11 @@ Debian or Ubuntu Installation
 
 Install the .deb package with:
 
-  sudo apt install ./releases/tauri/linux/Arculus\ Recovery_1.6.0_amd64.deb
+  sudo apt install ./releases/tauri/linux/Arculus\ Recovery_1.6.2_amd64.deb
 
 or:
 
-  sudo dpkg -i ./releases/tauri/linux/Arculus\ Recovery_1.6.0_amd64.deb
+  sudo dpkg -i ./releases/tauri/linux/Arculus\ Recovery_1.6.2_amd64.deb
   sudo apt -f install
 
 The package declares these runtime dependencies:
@@ -109,11 +117,11 @@ RPM Installation
 
 Install the RPM package on Fedora-like systems with:
 
-  sudo dnf install ./releases/tauri/linux/Arculus\ Recovery-1.6.0-1.x86_64.rpm
+  sudo dnf install ./releases/tauri/linux/Arculus\ Recovery-1.6.2-1.x86_64.rpm
 
 On systems using rpm directly:
 
-  sudo rpm -i ./releases/tauri/linux/Arculus\ Recovery-1.6.0-1.x86_64.rpm
+  sudo rpm -i ./releases/tauri/linux/Arculus\ Recovery-1.6.2-1.x86_64.rpm
 
 The RPM is unsigned, so hash verification is mandatory before installation.
 
@@ -153,13 +161,12 @@ export only the required artifacts, and clear the session before shutdown.
 Build Reference
 ---------------
 
-The v1.6.0 Linux amd64 release was built in a Linux amd64 Docker environment
+The v1.6.2 Linux amd64 release was built in a Linux amd64 Docker environment
 from the prepared Tauri assets without editing HTML files.
 
 The package build command was:
 
   cargo tauri build --bundles deb,rpm --ci
 
-The AppImage command reached the linuxdeploy bundling step, then failed inside
-linuxdeploy. Do not document an AppImage as available unless a future release
-successfully produces and verifies one.
+No AppImage command was run for v1.6.2. Do not document an AppImage as
+available unless a future release successfully produces and verifies one.
