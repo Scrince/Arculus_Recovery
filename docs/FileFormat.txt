@@ -1,11 +1,35 @@
-Arculus Recovery v1.6.0 - Byte-Level File Format Specification
+Arculus Recovery v1.6.4 - Byte-Level File Format Specification
 ==============================================================
+
+Release Boundary
+----------------
+
+This is the normative file-format specification for Arculus_Beta.html v1.6.4,
+the source being prepared for production promotion. New protected seed bundles
+use ARC V3 and new encrypted keyfiles use encrypted-keyfile version 2. ARC V2
+and encrypted-keyfile version 1 remain readable compatibility formats.
+The production derived-output coin identifiers are bitcoin, bitcoincash,
+litecoin, dogecoin, ethereum, tron, bnbchain, avalanche, polygon, cosmos,
+solana, stellar, cardano, and xrp. Polkadot and Monero are not emitted by the
+v1.6.4 browser application.
+
+BNB Chain, Avalanche C-Chain, and Polygon rows use Ethereum-compatible
+private_key_hex, public_key_hex, evm_public_key_hex, and EIP-55 address fields
+plus their coin-specific note field. Tron rows add tron_hex_address and
+trc20_note. Cosmos rows use a cosmos1 Bech32 address and cosmos_note. Network
+metadata is "mainnet" or "testnet" according to the Advanced Testnet toggle.
+
+The v1.6.4 live derived-table search is presentation-only. Search text,
+matching-row counts, and expanded-panel state are not serialized to JSON, CSV,
+TXT, PDF, QR PNG, ARC, or keyfile output. Monero structures retained later are
+archived v1.6.0 LTS/Python compatibility records, not production v1.6.4 browser
+output. Arculus_Beta.html is the v1.6.4 file-format authority before promotion.
 
 Scope
 -----
 
 This document specifies every file format produced or consumed by
-Arculus_Recovery.html v1.6.0. It covers armored seed bundles, protected seed
+Arculus_Beta.html v1.6.4. It covers armored seed bundles, protected seed
 bundles, unprotected seed bundles, raw keyfiles, encrypted keyfiles, derived
 JSON, CSV, TXT, PDF, and QR PNG exports.
 
@@ -14,16 +38,16 @@ the cryptographic construction inside protected .arc and encrypted keyfile
 objects. Derivation.txt specifies the meaning of key and address fields inside
 derived-output files. QR.txt specifies the QR payload encoder in deeper detail.
 
-All non-PDF formats emitted by v1.6.0 are UTF-8 text unless explicitly stated
+All non-PDF formats emitted by v1.6.4 are UTF-8 text unless explicitly stated
 otherwise. The HTML implementation writes no byte-order mark. Plain text exports
 use LF line endings. Importers should tolerate CRLF in user-edited text, but
-v1.6.0 producers write LF.
+v1.6.4 producers write LF.
 
 
 Format Inventory
 ----------------
 
-v1.6.0 writes these file types:
+v1.6.4 writes these file types:
 
   Arculus_Encrypted_Seed.arc
       ARCULUS-ARC-V2 armored seed bundle. The internal bundle may be protected
@@ -50,11 +74,11 @@ v1.6.0 writes these file types:
   qr_<sanitized-address>.png
       QR code PNG generated from the QR canvas.
 
-v1.6.0 reads these file families:
+v1.6.4 reads these file families:
 
   - ARCULUS-ARC-V2 armored protected seed bundles
   - ARCULUS-ARC-V2 armored unprotected seed bundles
-  - raw JSON current protected seed bundles
+  - raw JSON current ARC V3 and legacy protected seed bundles
   - raw JSON current unprotected seed bundles
   - legacy PBKDF2-SHA256 stream seed bundles
   - legacy AES-GCM seed bundles
@@ -93,7 +117,7 @@ Base64:
       "=" padding as produced by btoa.
 
   Line wrapping:
-      None in v1.6.0-produced fields.
+      None in v1.6.4-produced fields.
 
 Hex:
 
@@ -152,7 +176,7 @@ Tauri path:
 .arc Armor
 ----------
 
-Every v1.6.0 seed export, protected or unprotected, is serialized by
+Every v1.6.4 seed export, protected or unprotected, is serialized by
 serializeSeedBundle(bundle):
 
   json = JSON.stringify(bundle)
@@ -189,19 +213,19 @@ Parser consequences:
   - The filename and extension are not used for dispatch.
 
 
-Protected .arc Bundle
----------------------
+Protected ARC V3 .arc Bundle
+----------------------------
 
-Current protected seed export is produced by encrypt_v2 and then optionally
-decorated with credential_mode.
+Current protected seed export is produced by encrypt_v3.
 
 Internal JSON object:
 
   {
     "magic": "ARCULUS-ARC",
-    "format": "arculus-encrypted-seed-v2",
-    "version": 2,
+    "format": "arculus-encrypted-seed-v3",
+    "version": 3,
     "created_at": "<Date.toISOString>",
+    "credential_mode": "password" | "keyfile" | "both",
     "kdf": {
       "name": "PBKDF2",
       "hash": "SHA-512",
@@ -209,12 +233,14 @@ Internal JSON object:
       "salt_b64": "<base64 32 bytes>"
     },
     "cipher": {
-      "name": "HMAC-SHA512-CTR",
-      "nonce_b64": "<base64 24 bytes>"
+      "name": "AES-256-GCM",
+      "nonce_b64": "<base64 12 bytes>"
     },
-    "ciphertext_b64": "<base64 N bytes>",
-    "mac_b64": "<base64 64 bytes>",
-    "credential_mode": "password" | "keyfile" | "both"
+    "padding": {
+      "name": "ZERO",
+      "length": 512
+    },
+    "ciphertext_b64": "<base64 528 bytes>"
   }
 
 Required cryptographic fields:
@@ -223,44 +249,49 @@ Required cryptographic fields:
       Fixed "ARCULUS-ARC".
 
   format:
-      Fixed "arculus-encrypted-seed-v2".
+      Fixed "arculus-encrypted-seed-v3".
 
   version:
-      Integer 2.
+      Integer 3.
 
   created_at:
-      Date.toISOString string. This field is in the ARC v2 MAC transcript.
+      Date.toISOString string. This field is authenticated as AES-GCM AAD.
+
+  credential_mode:
+      Exactly "password", "keyfile", or "both". This field selects the KDF
+      family and is authenticated as AES-GCM AAD.
 
   kdf.name:
-      Fixed "PBKDF2".
+      "PBKDF2" for Password mode. "HKDF" for Keyfile and both modes.
 
   kdf.hash:
       Fixed "SHA-512".
 
   kdf.iterations:
-      Integer. v1.6.0 export writes 1000000. Import requires >= 600000.
+      Present only for Password mode. Integer 1000000 exactly.
+
+For Keyfile and both modes, the exact kdf object is:
+
+  {"name":"HKDF","hash":"SHA-512","salt_b64":"<base64 32 bytes>"}
 
   kdf.salt_b64:
       Base64 of exactly 32 bytes.
 
   cipher.name:
-      Fixed "HMAC-SHA512-CTR".
+      Fixed "AES-256-GCM".
 
   cipher.nonce_b64:
-      Base64 of exactly 24 bytes.
+      Base64 of exactly 12 bytes.
+
+  padding.name / padding.length:
+      Fixed "ZERO" and integer 512.
 
   ciphertext_b64:
-      Base64 of encrypted plaintext JSON. Length equals plaintext UTF-8 byte
-      length. There is no fixed minimum or maximum at the format layer.
+      Base64 of exactly 528 bytes: 512 ciphertext bytes followed by the
+      16-byte AES-GCM tag returned by WebCrypto. ARC V3 has no mac_b64 field.
 
-  mac_b64:
-      Base64 of exactly 64 bytes.
-
-credential_mode:
-
-  Added by handleEncryptExportSeed after encryptSeedBundle returns. The value
-  is a UI hint and is not included in the v1.6.0 MAC transcript when produced by
-  v1.6.0. Import also accepts credentialMode and protection as aliases.
+The exact compact JSON serialization of all fields before ciphertext_b64 is
+AES-GCM additional authenticated data. Field order is normative.
 
 
 Protected .arc Plaintext
@@ -276,7 +307,8 @@ The encrypted plaintext JSON is:
 
 Serialization:
 
-  plaintext = UTF-8(JSON.stringify(payload))
+  payload_bytes = UTF-8(JSON.stringify(payload))
+  plaintext = payload_bytes || 0x00 repeated to exactly 512 bytes
 
 No indentation, no trailing LF, and no BOM are included. The encrypted payload
 contains only the mnemonic, word_count, and created_at. It does not contain the
@@ -322,19 +354,22 @@ Seed import dispatch is implemented by parseSeedBundle and decrypt:
 
   1. Parse armor or raw JSON into bundle.
 
-  2. If:
+  2. If bundle.version == 3 or format == "arculus-encrypted-seed-v3":
+       decryptV3(bundle, credential_secret)
+
+  3. If:
        bundle.magic == "ARCULUS-ARC"
        and bundle.format == "arculus-plain-seed-v1"
      then:
        return normalizeDecryptedMnemonic(bundle)
 
-  3. If:
+  4. If:
        bundle.magic == "ARCULUS-ARC"
        or bundle.version == 2
      then:
        decryptV2(bundle, credential_secret)
 
-  4. Otherwise:
+  5. Otherwise:
        decryptV1(bundle, credential_secret)
 
 decryptV1 handles:
@@ -344,7 +379,7 @@ decryptV1 handles:
   - format "arculus-encrypted-seed-python-v1"
   - format "arculus-encrypted-seed-v1" AES-GCM legacy branch.
 
-New v1.6.0 exports always use ARCULUS-ARC-V2 armor.
+New v1.6.4 exports always use ARCULUS-ARC-V2 armor.
 
 
 Raw Keyfile Format
@@ -382,12 +417,12 @@ Import accepts:
   - Base64-only text. Whitespace is stripped before base64 decode.
   - Legacy object with magic "KEYFILE" and field key.
 
-Decoded key material must be at least 32 bytes. v1.6.0-generated raw keyfiles
+Decoded key material must be at least 32 bytes. v1.6.4-generated raw keyfiles
 are exactly 64 bytes.
 
 
-Encrypted Keyfile Format
-------------------------
+Encrypted-Keyfile Version 2 Format
+----------------------------------
 
 Encrypted keyfiles are produced by makeArcKeyfile(password) when password is
 non-empty.
@@ -397,19 +432,19 @@ Generated JSON:
   {
     "magic": "ARCULUS-KEYFILE-ENC",
     "format": "arculus-recovery-keyfile-enc-v1",
-    "version": 1,
+    "version": 2,
     "created_at": "<Date.toISOString>",
     "kdf": {
       "algo": "PBKDF2-SHA512",
-      "iterations": 200000,
-      "salt_b64": "<base64 16 bytes>"
+      "iterations": 1000000,
+      "salt_b64": "<base64 16 bytes>",
+      "prehash": "SHA-512"
     },
     "cipher": {
-      "name": "HMAC-SHA512-CTR",
-      "nonce_b64": "<base64 16 bytes>"
+      "name": "AES-256-GCM",
+      "nonce_b64": "<base64 12 bytes>"
     },
-    "ciphertext_b64": "<base64 64 bytes>",
-    "mac_b64": "<base64 64 bytes>"
+    "ciphertext_b64": "<base64 80 bytes>"
   }
 
 Serialization:
@@ -423,37 +458,18 @@ Default filename:
 Generated field lengths:
 
   kdf.salt_b64:
-      base64 of 16 bytes.
+      base64 of 12 bytes.
 
   cipher.nonce_b64:
       base64 of 16 bytes.
 
   ciphertext_b64:
-      base64 of encrypted keyfile bytes. For v1.6.0-generated keyfiles this is
-      64 bytes before base64.
+      base64 of 64 encrypted keyfile bytes followed by the 16-byte GCM tag.
 
-  mac_b64:
-      base64 of 64 bytes.
-
-Import accepts aliases:
-
-  salt:
-      obj.kdf.salt_b64 or obj.kdf.s
-
-  iterations:
-      obj.kdf.iterations or obj.kdf.i or default 200000
-
-  nonce:
-      obj.cipher.nonce_b64 or obj.n
-
-  ciphertext:
-      obj.ciphertext_b64 or obj.ct
-
-  MAC:
-      obj.mac_b64 or obj.mac
-
-Import accepts current encrypted keyfile objects and legacy magic
-"KEYFILE-ENC".
+The exact additionalData bytes are UTF-8 of compact JSON containing only magic
+and format in that order. New exports use 1000000 iterations. Version 2 import
+also accepts exactly 200000 for files written by the earlier beta. Version 1
+and legacy KEYFILE-ENC objects remain importable through the legacy path.
 
 
 Keyfile Secret String
@@ -464,20 +480,20 @@ a secret string:
 
   "arc-keyfile-v1:" + base64(keyfile_bytes)
 
-Combined Keyfile + Password mode then hashes:
+Combined Keyfile + Password mode computes:
 
-  material = UTF-8(
-      "arc-combined-v1\n" +
-      NFKD(password) +
-      "\n" +
-      keyfile_secret
-  )
+  combined_ikm = keyfile_bytes || UTF8(NFKD(password))
+  combined_bits = HKDF-SHA512(
+      ikm = combined_ikm,
+      salt = 32-byte ARC V3 salt,
+      info = UTF8("arculus-arc-v3-combined-key"),
+      len = 64 bytes)
 
 and produces:
 
-  "arc-combined-v1:" + base64(SHA-256(material))
+  "arc-combined-v1:" + base64(combined_bits)
 
-These strings are credential inputs to the ARC v2 seed-file key schedule. They
+These strings are credential inputs to the ARC V3 HKDF-SHA512 key schedule. They
 are not file formats by themselves, but implementations must reproduce them
 exactly to import files protected by keyfile modes.
 
@@ -523,10 +539,10 @@ Supported coin ids:
   cardano
   xrp
 
-Python 1.6.0 producer note:
+Python 1.6.2 producer note:
 
   The Python CLI writes the same top-level JSON object shape for all supported
-  v1.6.0 command-line coin ids. It serializes with json.dumps(data, indent=2)
+  v1.6.4 command-line coin ids. It serializes with json.dumps(data, indent=2)
   followed by one LF byte. Python CSV is produced from the flattened row list
   and Python TXT is produced from the same object graph. The Python CLI does not
   write browser localStorage state, DOM state, hidden-seed UI state, or PDF
@@ -622,7 +638,7 @@ Solana/Stellar row additions:
   public_key_hex
   coin-specific note fields
 
-Monero row additions:
+Archived v1.6.0 LTS Monero row additions:
 
   private_spend_key_hex
   private_view_key_hex
@@ -958,7 +974,7 @@ and PDF are display exports.
 Filename Summary
 ----------------
 
-v1.6.0 default filenames:
+v1.6.4 default filenames:
 
   Arculus_Encrypted_Seed.arc
   Arculus_Recovery_Keyfile.key
@@ -1008,10 +1024,12 @@ A compatible importer should:
   - Accept LF and CRLF in the ARC armor.
   - Accept a missing final LF in ARC armor.
   - Reject invalid base64 for required binary fields.
-  - Reject protected ARC v2 salt lengths other than 32 bytes.
-  - Reject protected ARC v2 nonce lengths other than 24 bytes.
-  - Reject protected ARC v2 MAC lengths other than 64 bytes.
-  - Reject current protected .arc files with KDF iterations below 600000.
+  - Reject ARC V3 salt lengths other than 32 bytes.
+  - Reject ARC V3 nonce lengths other than 12 bytes.
+  - Reject ARC V3 ciphertext/tag lengths other than 528 bytes.
+  - Reject Password-mode ARC V3 KDF iterations other than 1000000.
+  - Reject ARC V3 padding metadata other than ZERO/512.
+  - Reject encrypted-keyfile v2 salt/nonce lengths other than 16/12 bytes.
   - Ignore unknown non-security fields in JSON objects where the implementation
     already ignores them.
   - Preserve JSON field values as strings exactly where those fields feed a MAC
@@ -1040,13 +1058,13 @@ Common top-level fields:
       Internal lower-case coin id selected by deriveOutput.
 
   network:
-      "mainnet" in v1.6.0.
+      "mainnet" in v1.6.4.
 
   word_count:
       12 or 24, copied from normalized mnemonic word count.
 
   accounts:
-      Array. v1.6.0 writes one account object for the selected derivation
+      Array. v1.6.4 writes one account object for the selected derivation
       operation.
 
 Common account fields for secp256k1 families:
@@ -1195,11 +1213,11 @@ Keyfile inputs:
 
 QR PNG import:
 
-  v1.6.0 does not import QR PNG files.
+  v1.6.4 does not import QR PNG files.
 
 Derived-output import:
 
-  v1.6.0 does not import derived JSON/CSV/TXT/PDF exports back into the app as
+  v1.6.4 does not import derived JSON/CSV/TXT/PDF exports back into the app as
   trusted key material.
 
 
@@ -1227,17 +1245,18 @@ extension or MIME type.
 Version-Specific Notes
 ----------------------
 
-v1.6.0 format facts:
+v1.6.4 format facts:
 
-  - APP_VERSION is "1.6.0".
-  - Current protected seed format is arculus-encrypted-seed-v2.
+  - APP_VERSION is "1.6.4".
+  - Current protected seed format is arculus-encrypted-seed-v3.
   - Current plain seed format is arculus-plain-seed-v1.
   - The outer seed armor is ARCULUS-ARC-V2 for both protected and plain seed
     bundles.
-  - credential_mode is appended after encryption and is therefore a UI hint, not
-    a MAC-bound field in v1.6.0-produced files.
-  - New protected seed exports use PBKDF2-HMAC-SHA512 with 1000000 iterations.
-  - Current protected seed imports reject iteration counts below 600000.
-  - Encrypted keyfiles use PBKDF2-HMAC-SHA512 with 200000 iterations.
+  - credential_mode is included in AES-GCM additional authenticated data.
+  - New Password-mode exports use SHA-512 prehash plus PBKDF2-HMAC-SHA512 with
+    1000000 iterations; Keyfile/combined modes use HKDF-SHA512.
+  - New encrypted keyfiles use SHA-512 prehash, PBKDF2-HMAC-SHA512 with
+    1000000 iterations, and AES-256-GCM; earlier-beta v2 files at 200000 and
+    legacy version 1 files remain importable.
   - Derived-output JSON/CSV/TXT/PDF files are plaintext.
   - QR PNG files are address-payload images, not seed backups.
