@@ -1,21 +1,43 @@
-Arculus Recovery v1.6.0 - Build Reproducibility Specification
+Arculus Recovery v1.6.4 - Build Reproducibility Specification
 =============================================================
+
+Release-candidate boundary (2026-06-19)
+---------------------------------------
+
+Arculus_Beta.html v1.6.4 is the source awaiting production promotion. No
+v1.6.4 native artifacts or final release hashes are claimed by this document
+until they are built and measured. The v1.6.2 and v1.6.0 artifact sections
+below remain immutable historical reproduction records.
+
+For v1.6.4 promotion, follow docs/Release_v1.6.4.txt. Do not substitute the
+v1.6.2 hashes below for new artifacts.
+
+
+Archived v1.6.2 release boundary (2026-06-18)
+----------------------------------------------
+
+This specification defines the current v1.6.2 release set and preserves the
+host records required to reproduce archived v1.6.0 artifacts. The production
+standalone browser file is Arculus_Recovery.html v1.6.2. Archived browser builds
+reside under lts/. See Release_v1.6.2.txt and SHA256SUMS for authoritative
+artifact identities.
 
 Scope
 -----
 
-This document defines the build inputs, host environments, commands, outputs,
-and verification rules needed to reproduce the v1.6.0 release artifacts.
+This document defines build inputs, host environments, commands, outputs, and
+verification rules for the current v1.6.2 release and the explicitly labeled
+archived v1.6.0 compatibility set.
 
 The filename preserves the project-local spelling:
 
   BuildReproducability.txt
 
-The canonical source of truth for application behavior remains:
+The canonical source of truth for current application behavior is:
 
   Arculus_Recovery.html
 
-The release hash manifest for official v1.6.0 release surfaces is:
+The release hash manifest for official current and archived release surfaces is:
 
   docs/SHA256SUMS
 
@@ -29,9 +51,8 @@ Release Surfaces
 
 The v1.6.0 release set covered by docs/SHA256SUMS is:
 
-  Arculus_Recovery.html
+  lts/Arculus_Recovery_v1.6.0_LTS.html
   Arculus_Recovery.py
-  releases/tauri/linux/arculus-recovery
   releases/tauri/linux/Arculus Recovery_1.6.0_amd64.deb
   releases/tauri/linux/Arculus Recovery-1.6.0-1.x86_64.rpm
   releases/tauri/macos/Arculus Recovery_1.6.0_aarch64.dmg
@@ -41,17 +62,57 @@ The v1.6.0 release set covered by docs/SHA256SUMS is:
 Older v1.5.0 artifacts may exist under releases/tauri/macos. They are not part
 of the v1.6.0 reproducibility target.
 
+The shared raw Linux binary path releases/tauri/linux/arculus-recovery now
+contains the current v1.6.2 build and is covered in the v1.6.2 section below.
+
+
+Current v1.6.2 Native Release Set
+---------------------------------
+
+The current v1.6.2 native release set adds these artifacts to the archived
+v1.6.0 baseline:
+
+  releases/tauri/windows/arculus-recovery.exe
+  releases/tauri/windows/Arculus Recovery_1.6.2_x64-setup.exe
+  releases/tauri/windows/Arculus Recovery_1.6.2_x64_en-US.msi
+  releases/tauri/macos/Arculus Recovery_1.6.2_x64.dmg
+  releases/tauri/macos/Arculus Recovery_1.6.2_aarch64.dmg
+  releases/tauri/macos/Arculus Recovery_1.6.2_universal.dmg
+  releases/tauri/linux/arculus-recovery
+  releases/tauri/linux/Arculus Recovery_1.6.2_amd64.deb
+  releases/tauri/linux/Arculus Recovery-1.6.2-1.x86_64.rpm
+
+The v1.6.2 release hashes are:
+
+  61317f534d80d39504f296c48be3ed45b256dc05162ac851fb035d6dfb8aa0cf  releases/tauri/windows/arculus-recovery.exe
+  8f461fe50df109a74cfe7b24873f218394c95b7b6356cd494684876e180a58f6  releases/tauri/windows/Arculus Recovery_1.6.2_x64-setup.exe
+  e11f404e2a1db85edcd42d534c6cd5c73cf286275e6b9e99d6d976752963a472  releases/tauri/windows/Arculus Recovery_1.6.2_x64_en-US.msi
+  1c1f3c55911a3baaa3f84d1537f33c92703a88d5baea5009e12d5ce5402a975c  releases/tauri/macos/Arculus Recovery_1.6.2_x64.dmg
+  eb996da31823d16d47472496d24f19a63709dd7c2166185c6fd28ed51b097718  releases/tauri/macos/Arculus Recovery_1.6.2_aarch64.dmg
+  50a575cadd4a6fce213923041b6a5bb3124f77727f51e9bf78f04f3b401ae1af  releases/tauri/macos/Arculus Recovery_1.6.2_universal.dmg
+  5ecca80fbcae77fb209d3f14fdd193009920c1031990fdbcd74246bcebc0a352  releases/tauri/linux/arculus-recovery
+  609d4b66b7b1ac1b11021390b330b2a207601dccd1de41dd8959e1568e45c01a  releases/tauri/linux/Arculus Recovery_1.6.2_amd64.deb
+  a334d2aaac79ce8049e42061d0ba471f9c9466cac1fbeddba83d206c74a3e447  releases/tauri/linux/Arculus Recovery-1.6.2-1.x86_64.rpm
+
+The v1.6.2 macOS app bundles were ad-hoc signed and the DMGs were generated
+from the signed bundles. They were not Apple-notarized. The v1.6.2 Linux RPM is
+unsigned. Hash verification is mandatory before installation or recovery use.
+
 
 Source Version Requirements
 ---------------------------
 
-The repository files must agree on v1.6.0:
+The current repository files must agree on v1.6.2:
 
-  package.json version: 1.6.0
-  src-tauri/Cargo.toml package.version: 1.6.0
-  src-tauri/tauri.conf.json version: 1.6.0
-  Arculus_Recovery.html APP_VERSION: v1.6.0
-  Python package/app version: 1.6.0
+  package.json version: 1.6.2
+  src-tauri/Cargo.toml package.version: 1.6.2
+  src-tauri/tauri.conf.json version: 1.6.2
+  Arculus_Recovery.html visible/browser version: v1.6.2
+  Python package/app version: 1.6.2
+
+The archived lts/Arculus_Recovery_v1.6.0_LTS.html file intentionally reports
+v1.6.0 LTS and is verified by its own SHA-256 entry. It is not a current source
+version requirement.
 
 Do not mix files from different releases. The HTML, Python launcher, packaged
 assets, Tauri wrapper, docs, and release artifacts are one build set.
@@ -62,11 +123,10 @@ Canonical Hashes
 
 The v1.6.0 release hashes are:
 
-  560656d2e884c5eb9d8d2fb5221acf79ec737b5618587cd4ae03e4de28990219  Arculus_Recovery.html
+  See docs/SHA256SUMS for the current archived LTS HTML hash.
   a976e8903e13ab4b8d119178a7e66a41492e96d9c47df141afc081ee0601ae00  Arculus_Recovery.py
   0d1f05b6658e33417de4692b40aa7c5bb44a9f80a92b6ec7ec5010dfebe9d273  releases/tauri/linux/Arculus Recovery-1.6.0-1.x86_64.rpm
   992e2e436fff0af98f84598499f43c3b7fe194e7109de8e94747a72b3ac24a8d  releases/tauri/linux/Arculus Recovery_1.6.0_amd64.deb
-  9d178ffde81e6c7d83fae7f8ff6ec5a2ea83e97727bebc84fc93a4716d471c41  releases/tauri/linux/arculus-recovery
   d0329d6f92a42b787b8528fe78aab23afbfcca7c95d94769b08c37dc5a22c24e  releases/tauri/macos/Arculus Recovery_1.6.0_aarch64.dmg
   948f42808397b13d34450e579869cdd20d23b94d2bb71ee6056c256dbddb6f2b  releases/tauri/macos/Arculus Recovery_1.6.0_universal.dmg
   14b577387ceca7db62c9551f890dcfb87e900d97ddb8fdc9ab6e9ef7ba11eed6  releases/tauri/macos/Arculus Recovery_1.6.0_x64.dmg
@@ -221,17 +281,17 @@ Package build command:
 
   CARGO_TARGET_DIR=/target cargo tauri build --bundles deb,rpm --ci
 
-Expected v1.6.0 Linux outputs:
+Expected v1.6.2 Linux outputs:
 
   /target/release/arculus-recovery
-  /target/release/bundle/deb/Arculus Recovery_1.6.0_amd64.deb
-  /target/release/bundle/rpm/Arculus Recovery-1.6.0-1.x86_64.rpm
+  /target/release/bundle/deb/Arculus Recovery_1.6.2_amd64.deb
+  /target/release/bundle/rpm/Arculus Recovery-1.6.2-1.x86_64.rpm
 
 Release-copy command pattern:
 
   cp /target/release/arculus-recovery releases/tauri/linux/
-  cp "/target/release/bundle/deb/Arculus Recovery_1.6.0_amd64.deb" releases/tauri/linux/
-  cp "/target/release/bundle/rpm/Arculus Recovery-1.6.0-1.x86_64.rpm" releases/tauri/linux/
+  cp "/target/release/bundle/deb/Arculus Recovery_1.6.2_amd64.deb" releases/tauri/linux/
+  cp "/target/release/bundle/rpm/Arculus Recovery-1.6.2-1.x86_64.rpm" releases/tauri/linux/
 
 The intermediate compiler dependency file arculus-recovery.d is not a release
 artifact and must not be copied into the release set.
@@ -250,28 +310,28 @@ Expected class:
 
 Verify Debian package metadata:
 
-  dpkg-deb --info "releases/tauri/linux/Arculus Recovery_1.6.0_amd64.deb"
+  dpkg-deb --info "releases/tauri/linux/Arculus Recovery_1.6.2_amd64.deb"
 
 Required fields:
 
   Package: arculus-recovery
-  Version: 1.6.0
+  Version: 1.6.2
   Architecture: amd64
   Depends: libwebkit2gtk-4.1-0, libgtk-3-0
 
 Verify RPM package metadata:
 
-  rpm -qip "releases/tauri/linux/Arculus Recovery-1.6.0-1.x86_64.rpm"
+  rpm -qip "releases/tauri/linux/Arculus Recovery-1.6.2-1.x86_64.rpm"
 
 Required fields:
 
   Name: arculus-recovery
-  Version: 1.6.0
+  Version: 1.6.2
   Release: 1
   Architecture: x86_64
   Signature: (none)
 
-The RPM is unsigned in v1.6.0. Hash verification is mandatory.
+The RPM is unsigned in v1.6.2. Hash verification is mandatory.
 
 
 Byte-for-Byte Constraints
