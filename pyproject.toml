@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arculus-recovery"
-version = "1.6.0"
+version = "1.6.2"
 description = "Offline Arculus-compatible BIP39/BIP32 recovery tool with PySide6 GUI and CLI."
 readme = "README.md"
 requires-python = ">=3.10"
