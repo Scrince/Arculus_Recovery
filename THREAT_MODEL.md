@@ -1,10 +1,10 @@
-# Threat Model - Arculus Recovery v1.6.0
+# Threat Model - Arculus Recovery v1.6.4
 
 ## Overview
 
 Arculus Recovery is a local offline recovery tool for BIP39/BIP32 wallet
 inspection, encrypted seed backup, deterministic address derivation, and local
-export. The canonical v1.6.0 surface is `Arculus_Recovery.html`. Python and
+export. The canonical v1.6.4 release-candidate surface is `Arculus_Beta.html`. Python and
 Tauri surfaces package or automate parts of that workflow.
 
 The central security objective is that the application does not transmit seed
@@ -37,7 +37,7 @@ machine.
 ```text
 User-controlled offline machine
   |
-  |-- Browser/WebView executing Arculus_Recovery.html
+  |-- Browser/WebView executing Arculus_Beta.html
   |     |-- BIP39 validation and generation
   |     |-- BIP39 seed stretching
   |     |-- secp256k1 / Ed25519 derivation
@@ -73,7 +73,7 @@ No required application network dependency during normal recovery.
 - BIP39 checksum validation.
 - CSPRNG mnemonic generation.
 - Deterministic derivation for reproducible verification.
-- ARC V2 authentication before decryption.
+- ARC V3 AES-GCM authentication before plaintext acceptance.
 - Keyfile and combined `.arc` protection modes.
 - Hidden-seed UI for generated/imported/manual seeds.
 - Local export with explicit user action.
@@ -97,7 +97,7 @@ No required application network dependency during normal recovery.
 
 | ID | Scenario | Impact | Mitigation |
 | --- | --- | --- | --- |
-| S-1 | User runs altered `Arculus_Recovery.html` | Critical | Verify release hashes; compare known test vectors |
+| S-1 | User runs altered `Arculus_Beta.html`/promoted production HTML | Critical | Verify release hashes; compare known test vectors |
 | S-2 | User opens tool with malicious extension enabled | Critical | Use clean offline browser profile |
 | S-3 | Weak `.arc` password is guessed offline | Critical | Use high-entropy password or keyfile/combined mode |
 | S-4 | Keyfile is lost | Critical | Back up keyfile separately from `.arc` |
@@ -108,7 +108,7 @@ No required application network dependency during normal recovery.
 | S-9 | Clipboard stores seed/private key | Critical | Avoid clipboard use; clear session; distrust clipboard managers |
 | S-10 | XRP destination tag omitted for custodian deposit | High | Obtain destination tag from custodian; tags are not derived |
 
-## ARC V2 Threat Notes
+## Legacy ARC V2 Threat Notes
 
 ARC V2 protects confidentiality and integrity of the mnemonic payload against
 offline file attackers when a strong credential is used. The MAC transcript
@@ -118,6 +118,24 @@ nonce, and ciphertext.
 The credential-mode hint is UI metadata and must not be treated as a security
 policy boundary by external tools. The BIP39 passphrase is intentionally not
 inside `.arc` files.
+
+## ARC V3 Threat Notes
+
+ARC V3 in v1.6.4 replaces the stream-cipher/MAC construction with
+AES-256-GCM. Its additional authenticated data binds all bundle metadata,
+including `credential_mode`, to the ciphertext. The field remains informational
+and does not itself establish authorization, but an attacker cannot change it
+without causing GCM authentication failure.
+
+The fixed 512-byte plaintext removes the direct ciphertext-length distinction
+between 12-word and 24-word mnemonic payloads. Password mode remains vulnerable
+to offline guessing if the operator chooses a weak password despite SHA-512
+pre-hashing and 1,000,000 PBKDF2 iterations. Keyfile and combined modes depend
+on preserving the entropy and secrecy of the original keyfile bytes.
+
+Encrypted-keyfile v2 uses AES-256-GCM and authenticates its magic and format.
+Loss of either the encrypted keyfile or its password remains unrecoverable, and
+exposure of both reveals the raw keyfile factor.
 
 ## Residual Risk
 
