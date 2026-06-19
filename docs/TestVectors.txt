@@ -1,15 +1,37 @@
-Arculus Recovery v1.6.0 - Canonical Test Vector Specification
+Arculus Recovery v1.6.4 - Canonical Test Vector Specification
 =============================================================
+
+Release Boundary
+----------------
+
+This document is the conformance suite for Arculus_Beta.html v1.6.4. Retained
+BIP39, BIP32, Ed25519, Cardano, XRP, ARC V3/legacy ARC V2, UTXO, Ethereum,
+Solana, and Stellar vectors remain byte-identical where their algorithms did
+not change. Production adds deterministic profiles for Tron, BNB Chain,
+Avalanche C-Chain, Polygon, and Cosmos and mainnet/testnet metadata profiles for
+all supported currencies.
+
+BNB Chain, Avalanche C-Chain, and Polygon use the same secp256k1 private key,
+uncompressed public key, Keccak-derived 20-byte account identifier, and EIP-55
+address as Ethereum for the same mnemonic, passphrase, and path. Their
+coin/network metadata and note-field names differ. Testnet selection for these
+account-model currencies does not change the key or address bytes. UTXO and
+Cardano testnet profiles do change address/version encoding as specified in
+Derivation.txt.
+
+Monero vectors retained later are archived v1.6.0 LTS/Python compatibility
+vectors. They are not production v1.6.4 browser conformance requirements.
+Arculus_Beta.html is the v1.6.4 vector target before production promotion.
 
 Scope
 -----
 
-This document is the byte-level conformance suite for Arculus_Recovery.html
-v1.6.0. It records deterministic input/output pairs for mnemonic validation,
+This document is the byte-level conformance suite for Arculus_Beta.html
+v1.6.4. It records deterministic input/output pairs for mnemonic validation,
 PBKDF2 seed stretching, BIP32 and SLIP-0010 root construction, account
-derivation, address encoding, ARC V2 encryption, and negative rejection paths.
+derivation, address encoding, ARC V3 and legacy ARC V2 encryption, and negative rejection paths.
 
-An implementation is specification-equivalent to v1.6.0 only when it produces
+An implementation is specification-equivalent to v1.6.4 only when it produces
 the exact bytes and exact encoded strings in this document for the stated
 inputs. Matching only an address while producing a different private key,
 public key, chain code, extended key, or encryption transcript is not
@@ -36,7 +58,7 @@ Bitcoin-family Base58 for Bitcoin, Bitcoin Cash legacy, Litecoin, and Dogecoin;
 XRPL Base58 for XRP. Bech32 strings are lowercase. Bech32m strings are
 lowercase. Ethereum addresses are EIP-55 checksum addresses.
 
-Mnemonic text is normalized exactly as v1.6.0 does before seed derivation:
+Mnemonic text is normalized exactly as v1.6.4 does before seed derivation:
 
   1. Trim leading and trailing JavaScript whitespace.
   2. Split on one or more whitespace code points.
@@ -170,10 +192,10 @@ BIP32 serialized public extended key payload before checksum is 78 bytes:
   key_data: 0339a36013301597daef41fdf21a57419e8c75857fbbfddf8b76b3a8dc9cd0d4d8
 
 
-Default v1.6.0 Account Paths
+Default v1.6.4 Account Paths
 ----------------------------
 
-The v1.6.0 UI preselects these account-level derivation paths for the supported
+The v1.6.4 UI preselects these account-level derivation paths for the supported
 coin selector values:
 
   Bitcoin: m/0'
@@ -183,12 +205,12 @@ coin selector values:
   Ethereum / ERC-20: m/44'/60'/0'
   Solana: m/44'/501'/0'
   Stellar: m/44'/148'/0'
-  Monero: m/44'/128'/0'
+  Archived v1.6.0 LTS Monero: m/44'/128'/0'
   Cardano: m/1852'/1815'/0'/0/0
   XRP: m/44'/144'/0'
 
 For secp256k1 coins, the displayed receiving rows append /0/i and displayed
-change rows append /1/i to the account path. For Solana and Stellar, v1.6.0
+change rows append /1/i to the account path. For Solana and Stellar, v1.6.4
 uses hardened account-style rows under the selected account path. For Monero,
 the account path itself is the displayed account address. For Cardano, the
 selected path is the payment key path and the staking key path is fixed at
@@ -628,8 +650,8 @@ Stellar address construction:
   encoding: RFC 4648 base32 without padding in display form
 
 
-Monero Mainnet, TV1, m/44'/128'/0'
-----------------------------------
+Archived v1.6.0 LTS Monero Mainnet, TV1, m/44'/128'/0'
+------------------------------------------------------
 
 Inputs:
 
@@ -788,8 +810,126 @@ XRP address construction:
   destination tag: not derived and not encoded in the key vector
 
 
-ARC V2 Fixed Encryption Vector
-------------------------------
+ARC V3 Fixed Encryption Vectors
+-------------------------------
+
+These vectors fix every random and time-dependent ARC V3 input. Standard
+base64 includes padding. Hex is lowercase. JSON is compact JSON.stringify
+output with insertion order exactly as shown in Encryption.txt.
+
+Common inputs:
+
+  mnemonic:
+    abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about
+
+  created_at:
+    2026-06-19T00:00:00.000Z
+
+  password:
+    correct horse battery staple
+
+  salt hex:
+    000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+
+  salt base64:
+    AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=
+
+  nonce hex:
+    a0a1a2a3a4a5a6a7a8a9aaab
+
+  nonce base64:
+    oKGio6Slpqeoqaqr
+
+Password-mode AAD UTF-8 text (one line, no LF):
+
+  {"magic":"ARCULUS-ARC","format":"arculus-encrypted-seed-v3","version":3,"created_at":"2026-06-19T00:00:00.000Z","credential_mode":"password","kdf":{"name":"PBKDF2","hash":"SHA-512","iterations":1000000,"salt_b64":"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="},"cipher":{"name":"AES-256-GCM","nonce_b64":"oKGio6Slpqeoqaqr"},"padding":{"name":"ZERO","length":512}}
+
+Password-mode ciphertext_b64, including the 16-byte GCM tag:
+
+  g2FuhcuOJKvU1HvZimhCDVs9cp1JJDGFaiiAtO7Fhhf1toJW35TtA8am1GqM6+QJrDQO03Vu6SXNSr8HyiJ7LNpAKiFEF64unQSXZtjdbb7c6YW+mTRWWaN3yCgnFKiofbTuGIiehNxUJq8rXWH9yA4ejOwht94uuGLKr3gBD56k4CsjXDb8iByp9WrTJGwSzIEAkgKpngWxBQM1raDWKeXuTISUb7+YKF0r3jJeoMpYo1CMpcRkf6uKgEX4FHvfNNQTfTMyDqyfZcmoL9v8pB7zMTCIlJq8hgt7Svt272oGx2ZFgZXR+iNbLdSROhk4RcNUauwOY4VIZsQGR/GpkKV2nNIBAI5rGYurrF2EZg8gSqSPHssLHxl6/QjHaamfz02C6+zZG7TElE3niu6LJNH84JXPsh87VJw4DJ9hFcqT9T/chUaCa8tpMesxpmRDDzmm77Z9I5lCFRTvv5jCOCaPWTAshXxdp276pqfhjnbrKGrejLDS7PJL6Wd7EmSYhT1R0KrYP2uke+0WKySwuPpjGHHFXzPI+gOg2FHA214AiuotkoQ63TVRhCElw4tXuTPg4giPoYLSjrusDQD3S8tc81mj7CBKntmxfL55AgxQVtSdHtC5mohPrO6G8P51XJQtpI6N0B/VuxYUhQQYkwAAF4gO536zo9U7XqSMQKdqZ/8OdWwyUuyDp08/qcvw
+
+Decoded ciphertext/tag length:
+
+  528 bytes
+
+SHA-256(decoded ciphertext_b64):
+
+  852e52d9a35f2d6539a6f1b58f5b1eaccdec430bb54e24aeceb7b531b97f8438
+
+The complete armored password-mode file is:
+
+  "ARCULUS-ARC-V2" || LF ||
+  base64(UTF8(JSON.stringify(bundle_with_ciphertext_b64))) || LF
+
+Complete armored length:
+
+  1468 bytes
+
+SHA-256(complete armored password-mode file):
+
+  296ba4ddb9af622ace1394db2827590d3db1d5704b198a7be6fdbb19c43a81d5
+
+Keyfile/combined common raw keyfile hex:
+
+  0b1c2d3e4f60718293a4b5c6d7e8f90a1b2c3d4e5f708192a3b4c5d6e7f8091a2b3c4d5e6f8091a2b3c4d5e6f708192a3b4c5d6e7f90a1b2c3d4e5f60718293a
+
+Keyfile-mode SHA-256(decoded ciphertext_b64):
+
+  db62af9586b0feb57f8be6a715716bdcd862e855ee1e43dcbf278b55c3a67cb4
+
+Keyfile-mode complete armored length and SHA-256:
+
+  1436 bytes
+  29ba07d21521cda5b38d274d880812b2cf6a8b0e769ef3885dc83e869a453e1f
+
+Combined-mode HKDF output hex:
+
+  90d2b3028780d80f0983033f6b37fbea75eda57c0cb741434086c27391011ae024c55a9bd190b253a4f0b3d58cded5729aaf26d7a0711cbe440e1beed9e32269
+
+Combined secret:
+
+  arc-combined-v1:kNKzAoeA2A8JgwM/azf76nXtpXwMt0FDQIbCc5EBGuAkxVqb0ZCyU6Tws9WM3tVymq8m16BxHL5EDhvu2eMiaQ==
+
+Combined-mode SHA-256(decoded ciphertext_b64):
+
+  280c53ba4778dad02e843b1bc64de219e3cb92d805547589b7cbc889c8aadffd
+
+Combined-mode complete armored length and SHA-256:
+
+  1432 bytes
+  d11a9de89a7a20957d523af2dcb5f31f94cb4d5bbba5b1e82459763f6922b05d
+
+
+Encrypted-Keyfile v2 Fixed Vector
+---------------------------------
+
+Inputs:
+
+  raw keyfile hex: same 64-byte keyfile above
+  password: keyfile password
+  salt hex: 101112131415161718191a1b1c1d1e1f
+  nonce hex: 202122232425262728292a2b
+  iterations: 1000000
+
+AAD UTF-8 text (one line, no LF):
+
+  {"magic":"ARCULUS-KEYFILE-ENC","format":"arculus-recovery-keyfile-enc-v1"}
+
+ciphertext_b64, including the 16-byte GCM tag:
+
+  deiM8E9tYdfIjSaJwM83eVCBECfhT383u/YLt6DNU0/cWYVBE2UzHkx83oQiP40KfYOPq1+TZAddZIPkYxR4QhY3o1nlHplJyK37+XRxuUA=
+
+Decoded ciphertext/tag length and SHA-256:
+
+  80 bytes
+  bfb5423ea8d89d8f09390fa3082c89e502312a7f00569772e6315bb7ecc0bb89
+
+Any change to password, salt, nonce, AAD, raw keyfile bytes, iteration count, or
+tag must fail authentication or produce a different vector.
+
+
+Legacy ARC V2 Fixed Encryption Vector
+-------------------------------------
 
 This vector fixes every random or time-dependent value used by ARC V2 so the
 KDF, stream cipher, HMAC transcript, and final armored file can be tested
@@ -889,7 +1029,7 @@ Common secp256k1 Path Matrix, TV1, Receiving Row 0
 --------------------------------------------------
 
 This matrix fixes the first receiving row for the common account paths that
-v1.6.0 can derive for secp256k1-based coins. Each row uses TV1, empty
+v1.6.4 can derive for secp256k1-based coins. Each row uses TV1, empty
 passphrase, mainnet, script selector Auto, count 1, and range empty.
 
 Bitcoin m/44'/0'/0':
@@ -1166,8 +1306,8 @@ Row 2:
   stake_private_key_hex: 2047891e88934a422e3ff6eea4caaaecda795724cd2bfacf91569896750e6f534a704748705e28a7bd69d009638add767f79c63eb9c839c8ffe0eff0b6e16772
 
 
-Additional Monero Deterministic Vectors
----------------------------------------
+Archived v1.6.0 LTS Additional Monero Deterministic Vectors
+-----------------------------------------------------------
 
 Alternate account path, TV1, empty passphrase:
 
@@ -1347,7 +1487,7 @@ Armored line 2:
 Negative Test Vectors
 ---------------------
 
-Conforming v1.6.0 implementations must reject every input in this section
+Conforming v1.6.4 implementations must reject every input in this section
 before producing account rows, downloadable bundles, QR payloads, or partial
 derived output.
 
@@ -1422,7 +1562,49 @@ Unsupported script:
   coin selector: Dogecoin
   script selector: P2TR
   expected result: reject
-  reason: Dogecoin Taproot output is not supported by v1.6.0
+  reason: Dogecoin Taproot output is not supported by v1.6.4
+
+Malformed ARC V3 salt:
+
+  salt length: 31 bytes
+  expected result: reject
+  reason: ARC V3 salt must be exactly 32 bytes
+
+Malformed ARC V3 nonce:
+
+  nonce length: 11 bytes
+  expected result: reject
+  reason: ARC V3 AES-GCM nonce must be exactly 12 bytes
+
+Malformed ARC V3 padding:
+
+  padding: {"name":"ZERO","length":511}
+  expected result: reject
+  reason: ARC V3 plaintext padding length must be exactly 512
+
+ARC V3 metadata mutation:
+
+  mutation: change credential_mode without recomputing ciphertext/tag
+  expected result: reject
+  reason: complete metadata JSON is AES-GCM additional authenticated data
+
+ARC V3 ciphertext/tag mutation:
+
+  mutation: flip any bit of decoded ciphertext_b64
+  expected result: reject
+  reason: AES-GCM authentication fails
+
+Encrypted-keyfile v2 iteration mismatch:
+
+  iterations: 999999
+  expected result: reject
+  reason: importer accepts only 1000000 and earlier-beta 200000
+
+Encrypted-keyfile v2 AAD mutation:
+
+  mutation: change magic or format without recomputing ciphertext/tag
+  expected result: reject
+  reason: exact magic/format JSON is AES-GCM additional authenticated data
 
 Malformed ARC V2 salt:
 
@@ -1470,7 +1652,7 @@ ARC V2 plaintext mismatch:
 Compliance Checklist
 --------------------
 
-A test harness for v1.6.0 should verify all of the following conditions:
+A test harness for v1.6.4 should verify all of the following conditions:
 
   1. TV1 mnemonic normalization produces the exact 93 bytes listed above.
   2. TV1 BIP39 PBKDF2 produces the exact 64-byte seed.
@@ -1485,25 +1667,28 @@ A test harness for v1.6.0 should verify all of the following conditions:
   11. Solana and Stellar use SLIP-0010 Ed25519 hardened derivation only.
   12. Monero emits spend/view key pairs and a standard mainnet address.
   13. Cardano emits the Shelley base address from payment and staking keys.
-  14. ARC V2 fixed encryption emits the exact ciphertext, MAC, and armor lines.
+  14. ARC V3 fixed Password, Keyfile, and combined vectors match exact
+      ciphertext/tag and armored-file SHA-256 values.
   15. Common secp256k1 path matrix rows match exact path, script type, address, public key, and private key bytes.
   16. JSON, CSV, and TXT export byte lengths and SHA-256 digests match for every supported coin.
   17. Expanded Solana and Stellar rows 0..3 match exact hardened paths, addresses, public keys, private keys, and Stellar secret seeds.
   18. Expanded Cardano rows 0..2 match exact payment paths, staking path, Shelley base addresses, and payment/stake key bytes.
   19. Additional Monero vectors match exact alternate-account and passphrase-sensitive spend/view key material.
   20. TV1 passphrase "TREZOR" first-row vectors match for every supported coin family.
-  21. ARC V2 fixed 24-word encryption emits the exact ciphertext, MAC, armor hash, and armor line 2.
-  22. Every negative test rejects without returning partial key material.
+  21. Legacy ARC V2 fixed 12/24-word vectors remain import-compatible.
+  22. Encrypted-keyfile v2 matches its exact AAD and ciphertext/tag vector.
+  23. Every negative test rejects without returning partial key material.
 
 No address-only comparison is sufficient. Private key bytes, public key bytes,
 chain codes, paths, script types, and encoded display forms are all normative.
 
 
-Python CLI v1.6.0 Parity Checks
--------------------------------
+Python CLI v1.6.2 Compatibility Parity Checks
+---------------------------------------------
 
-The Python CLI is a v1.6.0 scripted derivation surface. A Python parity harness
-must run with APP_VERSION equal to 1.6.0 and must verify at least the first
+The current Python CLI remains a v1.6.2 scripted derivation surface until
+promotion synchronization. A Python parity harness
+must run with APP_VERSION equal to 1.6.2 and must verify at least the first
 receiving row for every upgraded coin. The canonical mnemonic for the commands
 below is TV1:
 
@@ -1515,7 +1700,7 @@ Version check:
 
 Expected stdout:
 
-  Arculus Recovery 1.6.0
+  Arculus Recovery 1.6.2
 
 Bitcoin Cash command:
 
