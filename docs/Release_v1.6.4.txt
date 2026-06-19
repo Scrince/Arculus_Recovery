@@ -1,0 +1,117 @@
+Arculus v1.6.4 - Release Candidate Notes
+========================================
+
+Release boundary (documentation preparation 2026-06-19)
+-------------------------------------------------------
+
+Arculus_Beta.html reports APP_VERSION 1.6.4 and displays "Arculus v1.6.4".
+It is the normative source being prepared for promotion to
+Arculus_Recovery.html. Until promotion is completed and hashes are published,
+the existing v1.6.2 production artifacts remain historical release artifacts.
+
+Do not rename old installers or reuse old hashes as v1.6.4. Build each native
+artifact from the promoted v1.6.4 source, inspect its embedded version, and add
+its measured SHA-256 to docs/SHA256SUMS only after the final bytes exist.
+
+
+Encryption changes
+------------------
+
+New protected .arc exports retain ARCULUS-ARC-V2 outer armor for parser
+compatibility but use internal format arculus-encrypted-seed-v3 and version 3.
+The decoded JSON format/version, not the armor header, identifies the cipher.
+
+ARC V3 uses:
+
+  AES-256-GCM
+  32-byte CSPRNG salt
+  12-byte CSPRNG nonce
+  128-bit authentication tag
+  512-byte zero-padded plaintext
+  528 decoded ciphertext/tag bytes
+  authenticated compact JSON metadata, including credential_mode
+
+Password mode uses UTF-8 NFKD normalization, SHA-512 pre-hashing, and
+PBKDF2-HMAC-SHA512 at 1,000,000 iterations to derive the AES-256 key.
+
+Keyfile mode uses HKDF-SHA512 over the complete arc-keyfile-v1 credential,
+the ARC salt, and info string "Arculus ARC v3 AES-256-GCM key".
+
+Keyfile + Password mode concatenates raw keyfile bytes with UTF-8 NFKD password
+bytes, derives 64 bytes through HKDF-SHA512 with info
+"arculus-arc-v3-combined-key", prefixes the base64 result with
+"arc-combined-v1:", and runs that credential through the ARC AES-key HKDF.
+
+New password-protected keyfiles retain magic ARCULUS-KEYFILE-ENC and format
+arculus-recovery-keyfile-enc-v1 but write version 2. They use:
+
+  SHA-512 password pre-hash
+  PBKDF2-HMAC-SHA512 at 1,000,000 iterations
+  16-byte salt
+  AES-256-GCM
+  12-byte nonce
+  128-bit tag
+  exact magic/format compact JSON as additional authenticated data
+
+Earlier-beta encrypted-keyfile v2 files at 200,000 iterations remain readable.
+Encrypted-keyfile version 1 and ARC V1/V2 seed bundles remain importable with
+their original algorithms. New v1.6.4 exports do not downgrade to those legacy
+formats.
+
+
+Security and runtime changes
+----------------------------
+
+  - Restrictive Content Security Policy denies network connections and permits
+    only the exact hashed inline scripts.
+  - Credential mode is passed explicitly so password strings beginning with a
+    reserved keyfile prefix remain Password-mode credentials.
+  - Credential-dialog password, confirmation, file-input, and keyfile-secret
+    state is cleared on completion, cancellation, timeout, and visibility clear.
+  - The password meter penalizes exact repeated patterns and labels its result
+    as a rough character-diversity score, not an entropy guarantee.
+  - Session timeout is selectable as 2, 5, 15 minutes, or Off; five minutes is
+    the default.
+  - Visibility-loss clearing has a default 15-second grace period that is
+    cancelled if the user returns; immediate clearing remains selectable.
+  - Temporary byte arrays on new encryption/decryption paths receive best-
+    effort fill(0) cleanup. JavaScript string and runtime-copy limitations
+    remain.
+
+
+Compatibility and verification
+------------------------------
+
+The Playwright browser harness targets Arculus_Beta.html and covers smoke,
+ARC V3 Password/Keyfile/combined modes, independent Web Crypto conformance,
+metadata/ciphertext tampering, encrypted-keyfile v2, reserved-prefix password
+handling, credential cleanup, password-meter repetition handling, and legacy
+ARC V2/encrypted-keyfile v1 import compatibility.
+
+Run from the repository root:
+
+  npm install
+  npx playwright install chromium
+  npm run test:html
+
+Cross-platform instructions are in tests/fixtures/TESTING_INSTRUCTIONS.txt.
+The deterministic byte-level ARC V3 and encrypted-keyfile v2 vectors are in
+docs/TestVectors.txt. Exact constructions are normative in docs/Encryption.txt
+and serialized layouts are normative in docs/FileFormat.txt.
+
+
+Promotion checklist
+-------------------
+
+  1. Copy the reviewed Arculus_Beta.html bytes to Arculus_Recovery.html.
+  2. Synchronize packaged HTML assets and APP_VERSION values.
+  3. Synchronize package.json, Python, Cargo, and Tauri version metadata.
+  4. Recompute CSP hashes only if promoted HTML bytes are changed.
+  5. Run HTML, Python, and Tauri preflight tests.
+  6. Build Windows, macOS, and Linux artifacts on their documented hosts.
+  7. Inspect embedded versions and package metadata.
+  8. Measure final SHA-256 hashes and append only those measured values to
+     docs/SHA256SUMS.
+  9. Update BuildReproducability.txt and platform release notes with actual
+     artifact names, hosts, signatures, sizes, and hashes.
+ 10. Preserve Release_v1.6.1.txt and Release_v1.6.2.txt unchanged as history.
