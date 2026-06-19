@@ -1,10 +1,27 @@
-Arculus Recovery v1.6.0 - Recovery Procedure and Data Boundary Specification
+Arculus Recovery v1.6.4 - Recovery Procedure and Data Boundary Specification
 ============================================================================
+
+Release Boundary
+----------------
+
+This document specifies recovery with Arculus_Beta.html v1.6.4, the source
+being prepared for production promotion.
+The production selector contains Bitcoin, Bitcoin Cash, Litecoin, Dogecoin,
+Ethereum / ERC-20, Tron / TRC-20, BNB Chain, Avalanche C-Chain, Polygon,
+Cosmos / ATOM, Solana, Stellar, Cardano, and XRP. Every listed currency has an
+Advanced Testnet profile. Polkadot and Monero are not production browser
+recovery routes.
+
+The archived LTS files are lts/Arculus_Recovery_v1.6.0_LTS.html and
+lts/Arculus Recovery_v1.5.0_LTS.html. Monero procedures retained later apply
+only to the archived v1.6.0 file or a separate compatibility surface.
+Use a verified hash of Arculus_Beta.html until the identical source is promoted
+to the production filename and release hashes are published.
 
 Scope
 -----
 
-This document defines recovery procedures for Arculus_Recovery.html v1.6.0. It
+This document defines recovery procedures for Arculus_Beta.html v1.6.4. It
 covers direct mnemonic entry, generated/imported seed handling, protected and
 unprotected .arc import, credential-mode selection, BIP39 passphrase checks,
 derivation path recovery, address range selection, output export, QR generation,
@@ -65,7 +82,7 @@ Pre-Session Checklist
 
 Before entering real recovery material:
 
-  - Confirm local file is Arculus_Recovery.html v1.6.0.
+  - Confirm local file is Arculus_Beta.html v1.6.4.
   - Disconnect networking.
   - Disable browser sync and extensions where practical.
   - Use a private physical environment.
@@ -104,7 +121,7 @@ Supported word counts:
   - 12 words: 128 entropy bits, 4 checksum bits
   - 24 words: 256 entropy bits, 8 checksum bits
 
-v1.6.0 does not support 15-, 18-, or 21-word mnemonic recovery.
+v1.6.4 does not support 15-, 18-, or 21-word mnemonic recovery.
 
 
 Generated Seed Procedure
@@ -185,18 +202,18 @@ Plain .arc:
 Protected .arc:
 
   magic == "ARCULUS-ARC"
-  format == "arculus-encrypted-seed-v2"
-  version == 2
+  format == "arculus-encrypted-seed-v3"
+  version == 3
 
-  The user supplies the required credential mode. MAC verification occurs before
-  decryption. If MAC verification fails, the password/keyfile is wrong or the
+  The user supplies the required credential mode. AES-GCM authentication occurs
+  before plaintext is accepted. If authentication fails, the password/keyfile is wrong or the
   file is corrupted/tampered.
 
 Credential hint:
 
   credential_mode, credentialMode, or protection can select/lock the import
-  dialog mode. This hint is operational and must not be treated as proof of
-  cryptographic policy.
+  dialog mode. In ARC V3 it is authenticated as additional data, but it remains
+  a mode identifier rather than an authorization mechanism.
 
 After import:
 
@@ -238,16 +255,20 @@ If import fails:
 Default Derivation Paths
 ------------------------
 
-v1.6.0 default paths:
+v1.6.4 default paths:
 
   bitcoin       m/0'
   bitcoincash   m/0'
   litecoin      m/84'/2'/0'
   dogecoin      m/44'/3'/0'
   ethereum      m/44'/60'/0'
+  tron          m/44'/195'/0'
+  bnbchain      m/44'/60'/0'
+  avalanche     m/44'/60'/0'
+  polygon       m/44'/60'/0'
+  cosmos        m/44'/118'/0'
   solana        m/44'/501'/0'
   stellar       m/44'/148'/0'
-  monero        m/44'/128'/0'
   cardano       m/1852'/1815'/0'/0/0
   xrp           m/44'/144'/0'
 
@@ -315,7 +336,7 @@ Stellar:
 
   m/44'/148'/0'
 
-Monero:
+Archived v1.6.0 LTS Monero:
 
   m/44'/128'/0'
 
@@ -403,8 +424,9 @@ UTXO-style secp256k1 output:
 
 Account-style output:
 
-  Solana, Stellar, Monero, and Cardano use coin-specific row generation
-  specified in Derivation.txt.
+  Solana, Stellar, and Cardano use coin-specific row generation specified in
+  Derivation.txt. Tron, BNB Chain, Avalanche C-Chain, Polygon, Cosmos, and XRP
+  use their secp256k1 account-family rules.
 
 Recovery rule:
 
@@ -468,7 +490,7 @@ wallet tree and may create confusion if exported.
 Bitcoin Cash Display Choice
 ---------------------------
 
-v1.6.0 default Bitcoin Cash display/export uses CashAddr when the legacy toggle
+v1.6.4 default Bitcoin Cash display/export uses CashAddr when the legacy toggle
 is off.
 
 Operational issue:
@@ -525,8 +547,8 @@ The tool does not:
 Verify the intended chain/network in the wallet used for sweeping.
 
 
-Monero Boundary
----------------
+Archived v1.6.0 LTS Monero Boundary
+-----------------------------------
 
 Monero output includes spend/view material as specified in Derivation.txt.
 
@@ -538,7 +560,7 @@ wallet software, not in Arculus Recovery.
 Cardano Boundary
 ----------------
 
-Cardano output uses the v1.6.0 Icarus/CIP-1852 behavior specified in
+Cardano output uses the v1.6.4 Icarus/CIP-1852 behavior specified in
 Derivation.txt.
 
 The tool derives address/key material. It does not query staking state, rewards,
@@ -687,8 +709,8 @@ Use this procedure when the mnemonic is available on paper or another offline
 record.
 
   1. Prepare the offline environment according to OpSec.txt.
-  2. Open Arculus_Recovery.html locally.
-  3. Confirm v1.6.0.
+  2. Open Arculus_Beta.html locally.
+  3. Confirm v1.6.4.
   4. Select 12 or 24 words.
   5. Enter the mnemonic.
   6. Enter BIP39 passphrase if used. Leave empty only if no passphrase was used
@@ -715,7 +737,7 @@ Use this procedure when a protected .arc file is the mnemonic backup.
 
   1. Prepare offline environment.
   2. Place .arc file on local/removable media.
-  3. Open Arculus_Recovery.html locally.
+  3. Open Arculus_Beta.html locally.
   4. Click Import Seed.
   5. Select .arc file.
   6. If credential hint selects a mode, verify it matches your backup notes.
@@ -733,7 +755,7 @@ notes. Record the failure, verify mode and files, and restart cleanly if needed.
 Procedure: Backup Migration
 ---------------------------
 
-Use this when converting an older or uncertain backup into current v1.6.0 form.
+Use this when converting an older or uncertain backup into current v1.6.4 form.
 
   1. Import the old .arc or mnemonic offline.
   2. Validate mnemonic checksum.
@@ -934,7 +956,7 @@ Retirement procedure:
 Implementation Compatibility Checklist
 --------------------------------------
 
-A v1.6.0-compatible recovery implementation must:
+A v1.6.4-compatible recovery implementation must:
 
   - Support 12- and 24-word BIP39 English mnemonics.
   - Normalize mnemonic whitespace before BIP39 seed derivation.
@@ -944,7 +966,7 @@ A v1.6.0-compatible recovery implementation must:
   - Parse paths with "'", h, and H hardened suffixes.
   - Map Auto script type by first purpose component.
   - Derive UTXO receiving and change branches.
-  - Route Solana/Stellar/Monero/Cardano to their current v1.6.0 derivation
+  - Route Solana/Stellar/Cardano to their current v1.6.4 derivation
     families.
   - Import ARCULUS-ARC-V2 protected and plain bundles.
   - Preserve the distinction between BIP39 passphrase and .arc credentials.
