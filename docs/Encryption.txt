@@ -1,11 +1,194 @@
-Arculus Recovery v1.6.0 - Encryption Subsystem Internals
-=========================================================
+Arculus Recovery v1.6.4 - Encryption Subsystem Internals
+========================================================
+
+Release Boundary
+----------------
+
+This is the normative encryption specification for Arculus_Beta.html v1.6.4,
+the browser source being prepared for production promotion. New protected
+.arc exports use internal ARC V3. New password-protected keyfiles use
+encrypted-keyfile version 2. ARC V2 and encrypted-keyfile version 1 remain
+import-only compatibility formats and are specified later in this document.
+
+
+ARC V3 Protected Seed Format
+----------------------------
+
+New protected .arc exports use:
+
+  outer armor             = "ARCULUS-ARC-V2"
+  magic                   = "ARCULUS-ARC"
+  format                  = "arculus-encrypted-seed-v3"
+  version                 = 3
+  cipher                  = "AES-256-GCM"
+  salt length             = 32 bytes
+  nonce length            = 12 bytes
+  authentication tag      = 128 bits
+  padded plaintext length = 512 bytes
+  ciphertext length       = 528 bytes including the GCM tag
+
+The unchanged armor name is an outer transport marker, not the internal
+cryptographic version. Importers must inspect the decoded JSON version and
+format fields.
+
+ARC V3 bundle insertion order before ciphertext_b64 is:
+
+  magic
+  format
+  version
+  created_at
+  credential_mode
+  kdf
+  cipher
+  padding
+
+credential_mode is one of "password", "keyfile", or "both". The complete JSON
+serialization of these metadata fields is supplied to AES-GCM as additional
+authenticated data. ciphertext_b64 is appended after encryption and is not
+part of the additional-data serialization. ARC V3 has no mac_b64 field.
+
+The plaintext payload before padding is compact JSON in this insertion order:
+
+  {"mnemonic":"<single-space words>","word_count":12|24,
+   "created_at":"<same ISO timestamp as metadata>"}
+
+JSON.stringify emits UTF-8 with no extra whitespace. Those bytes are copied at
+offset zero into a zero-initialized 512-byte Uint8Array. Bytes from the end of
+the JSON through offset 511 are 0x00. Payloads longer than 512 bytes are
+rejected. AES-GCM returns 512 ciphertext bytes followed by the 16-byte GCM tag,
+for exactly 528 decoded ciphertext_b64 bytes. Decryption requires exactly 512
+authenticated plaintext bytes, removes trailing 0x00 bytes, decodes fatal
+UTF-8, parses JSON, normalizes the mnemonic, and verifies word_count when
+present.
+
+ARC V3 Password mode derives its AES key as follows:
+
+  password_bytes = UTF8(NFKD(password))
+  password_hash  = SHA-512(password_bytes)
+  aes_key = PBKDF2-HMAC-SHA512(
+      password   = password_hash,
+      salt       = 32-byte ARC salt,
+      iterations = 1000000,
+      output      = AES-256-GCM key
+  )
+
+ARC V3 Keyfile mode uses the complete ASCII credential string
+"arc-keyfile-v1:" || base64(keyfile_bytes) as HKDF input key material:
+
+  aes_key = HKDF-SHA512(
+      ikm  = UTF8(keyfile_secret),
+      salt = 32-byte ARC salt,
+      info = UTF8("Arculus ARC v3 AES-256-GCM key"),
+      len  = 32 bytes
+  )
+
+ARC V3 Keyfile + Password mode first computes:
+
+  combined_ikm = keyfile_bytes || UTF8(NFKD(password))
+  combined_bits = HKDF-SHA512(
+      ikm  = combined_ikm,
+      salt = 32-byte ARC salt,
+      info = UTF8("arculus-arc-v3-combined-key"),
+      len  = 64 bytes
+  )
+  combined_secret = "arc-combined-v1:" || base64(combined_bits)
+
+The combined_secret then follows the ARC V3 HKDF AES-key derivation above.
+ARC V2 combined-mode import explicitly retains the legacy SHA-256 construction;
+the new combined transcript applies only to newly written ARC V3 bundles.
+
+AES-GCM invocation for every ARC V3 mode is:
+
+  ciphertext_and_tag = AES-256-GCM-ENCRYPT(
+      key             = derived 32-byte AES key,
+      iv              = decoded cipher.nonce_b64, exactly 12 bytes,
+      plaintext       = exactly 512 padded bytes,
+      additionalData  = UTF8(JSON.stringify(metadata_object)),
+      tagLength       = 128 bits
+  )
+
+metadata_object is the bundle immediately before ciphertext_b64 is assigned.
+Its key order is magic, format, version, created_at, credential_mode, kdf,
+cipher, padding. Nested key order is also insertion order shown above. Any
+change to any of these bytes causes AES-GCM authentication failure.
+
+
+Encrypted-Keyfile Version 2
+---------------------------
+
+New password-protected keyfiles use encrypted-keyfile version 2 while retaining:
+
+  magic  = "ARCULUS-KEYFILE-ENC"
+  format = "arculus-recovery-keyfile-enc-v1"
+
+Their cryptographic parameters are:
+
+  version                 = 2
+  salt length             = 16 bytes
+  nonce length            = 12 bytes
+  password pre-hash       = SHA-512(UTF8(NFKD(password)))
+  KDF                     = PBKDF2-HMAC-SHA512, 1000000 iterations
+  cipher                  = AES-256-GCM
+  authentication tag      = 128 bits
+  plaintext keyfile       = 64 bytes for newly generated keyfiles
+  ciphertext length       = 80 bytes for a 64-byte keyfile
+
+The stored object insertion order is:
+
+  {
+    "magic": "ARCULUS-KEYFILE-ENC",
+    "format": "arculus-recovery-keyfile-enc-v1",
+    "version": 2,
+    "created_at": "<Date.toISOString string>",
+    "kdf": {
+      "algo": "PBKDF2-SHA512",
+      "iterations": 1000000,
+      "salt_b64": "<base64 16 bytes>",
+      "prehash": "SHA-512"
+    },
+    "cipher": {
+      "name": "AES-256-GCM",
+      "nonce_b64": "<base64 12 bytes>"
+    },
+    "ciphertext_b64": "<base64 ciphertext and 16-byte tag>"
+  }
+
+Password and key derivation are:
+
+  password_bytes = UTF8(NFKD(password))
+  password_hash  = SHA-512(password_bytes)
+  aes_key = PBKDF2-HMAC-SHA512(
+      password   = password_hash,
+      salt       = decoded kdf.salt_b64, exactly 16 bytes,
+      iterations = kdf.iterations,
+      output      = 32-byte AES-256 key
+  )
+
+New exports write 1000000 iterations. Import accepts exactly 1000000 for
+v1.6.4 files and exactly 200000 for encrypted-keyfile v2 files created by the
+earlier beta. Other values are rejected.
+
+The exact AES-GCM additional-data bytes are:
+
+  UTF8("{\"magic\":\"ARCULUS-KEYFILE-ENC\",\"format\":\"arculus-recovery-keyfile-enc-v1\"}")
+
+Encryption uses the 12-byte nonce, raw keyfile bytes as plaintext, and a
+128-bit tag. A generated 64-byte keyfile therefore produces 80 decoded
+ciphertext_b64 bytes. Version 2 encrypted keyfiles have no mac_b64 field.
+decryptArcKeyfileObject routes version 2 or cipher.name AES-256-GCM to this
+path and retains the original version 1 PBKDF2/HMAC stream and MAC importer.
+
+The new paths apply best-effort fill(0) cleanup to temporary Uint8Array values
+holding password encodings, password hashes, decoded keyfile bytes, salt,
+padded plaintext, and decrypted plaintext after use. This cannot erase
+JavaScript strings, immutable engine copies, CryptoKey objects, or all garbage-
+collected runtime memory.
 
 Scope
 -----
 
 This document is the byte-level specification of the seed-file and keyfile
-encryption subsystem implemented by Arculus_Recovery.html v1.6.0. It specifies
+encryption subsystem implemented by Arculus_Beta.html v1.6.4. It specifies
 the protected .arc envelope, the unprotected .arc envelope, raw keyfiles,
 encrypted keyfiles, the Keyfile + Password combined-secret mode, legacy import
 formats, key derivation, stream generation, authentication transcripts, import
@@ -16,9 +199,9 @@ address derivation, BIP32 trees, Ed25519 trees, QR payloads, derived-output
 exports, or wallet passphrase semantics except where those concepts touch seed
 export/import. Those topics are specified in the other files in this directory.
 
-The current v1.6.0 implementation is the single-file browser build:
+The current v1.6.4 implementation is the single-file browser build:
 
-  Arculus_Recovery.html
+  Arculus_Beta.html
 
 Normative references to function names in this document refer to that file.
 
@@ -29,7 +212,7 @@ Design Constraints
 The encryption subsystem is built under these constraints:
 
   1. Browser-native cryptography only.
-     The canonical v1.6.0 HTML build uses WebCrypto primitives exposed through
+     The canonical v1.6.4 HTML build uses WebCrypto primitives exposed through
      crypto.subtle and random bytes from crypto.getRandomValues. It does not
      require an external cryptographic package or network access.
 
@@ -37,22 +220,22 @@ The encryption subsystem is built under these constraints:
      Protected files are text files. The outer armor is an ASCII header plus a
      standard base64 body. Internal binary fields are standard base64 strings.
      A future offline recovery implementation can parse them using only UTF-8,
-     JSON, base64, PBKDF2, HMAC, SHA-256, SHA-512, AES-GCM for legacy v1, and
+     JSON, base64, PBKDF2, HKDF, SHA-256, SHA-512, AES-GCM, and
      byte-array operations.
 
-  3. New protected seed exports use encrypt-then-MAC.
-     v1.6.0 protected .arc exports derive independent encryption and MAC keys
-     from PBKDF2-HMAC-SHA512, encrypt with an HMAC-SHA512 counter-mode stream,
-     and authenticate all cryptographic metadata before decryption.
+  3. New protected seed exports use authenticated encryption.
+     v1.6.4 protected .arc exports derive an AES-256 key through the mode-
+     appropriate PBKDF2 or HKDF path and authenticate ciphertext plus complete
+     compact JSON metadata with AES-256-GCM.
 
   4. The current format must reject downgrade attempts.
-     The v2 MAC commits to the KDF algorithm, KDF hash, iteration count, cipher
-     name, salt, nonce, ciphertext, magic string, format string, version, and
-     creation timestamp. v2 imports reject KDF iteration counts below 600000.
+     ARC V3 additional data commits to KDF fields, cipher fields, padding,
+     credential mode, magic, format, version, and creation timestamp. Password
+     mode accepts exactly 1000000 iterations.
 
   5. Credential modes are operational wrappers around the same .arc envelope.
      Password, Keyfile, and Keyfile + Password all ultimately produce a secret
-     string. That string is passed to the same ARC v2 seed-file key schedule.
+     string. Explicit credential mode selects the ARC V3 PBKDF2 or HKDF path.
 
   6. The wallet passphrase is separate.
      The BIP39 passphrase field changes wallet derivation. It is not the .arc
@@ -73,12 +256,12 @@ The following terms are used exactly:
       derivation parameter, not an .arc encryption password.
 
   .arc password:
-      The secret string passed into ARC v2 seed-file encryption. Depending on
+      The secret passed into ARC V3 seed-file encryption. Depending on
       UI mode, this may be a human password, a keyfile-derived secret string,
       or a combined keyfile+password secret string.
 
   raw keyfile:
-      A JSON or base64 file containing random bytes. v1.6.0-generated raw
+      A JSON or base64 file containing random bytes. v1.6.4-generated raw
       keyfiles contain 64 bytes.
 
   encrypted keyfile:
@@ -133,7 +316,7 @@ Unless a section states otherwise:
 Implementation Constants
 ------------------------
 
-The v1.6.0 HTML implementation defines these constants:
+The v1.6.4 HTML implementation defines these constants:
 
   ARC_MAGIC                    = "ARCULUS-ARC"
   ARC_ARMOR_HEADER             = "ARCULUS-ARC-V2"
@@ -149,7 +332,24 @@ The v1.6.0 HTML implementation defines these constants:
   ARC_KEYFILE_FORMAT           = "arculus-recovery-keyfile-v1"
   ARC_KEYFILE_ENC_FORMAT       = "arculus-recovery-keyfile-enc-v1"
   ARC_KEYFILE_BYTES            = 64
-  ARC_KEYFILE_KDF_ITERATIONS   = 200000
+  ARC_KEYFILE_KDF_ITERATIONS   = 1000000
+  ARC_KEYFILE_LEGACY_KDF_ITERATIONS = 200000
+
+ARC V3 fixed values:
+
+  protected format             = "arculus-encrypted-seed-v3"
+  protected version            = 3
+  password KDF iterations      = 1000000
+  password pre-hash            = "SHA-512"
+  ARC salt bytes               = 32
+  AES-GCM nonce bytes          = 12
+  AES-GCM tag bits             = 128
+  padded plaintext bytes       = 512
+  decoded ciphertext bytes     = 528
+  cipher name                  = "AES-256-GCM"
+  padding name                 = "ZERO"
+  ARC HKDF info                = "Arculus ARC v3 AES-256-GCM key"
+  combined HKDF info           = "arculus-arc-v3-combined-key"
 
 Derived string constants:
 
@@ -161,10 +361,18 @@ Derived string constants:
   ARC v2 stream label          = "Arculus ARC v2 stream\0"
   ARC v2 MAC prefix            = "Arculus ARC v2 MAC"
 
-Keyfile encrypted format constants:
+Encrypted-keyfile v2 constants:
 
   keyfile KDF algo             = "PBKDF2-SHA512"
-  keyfile cipher name          = "HMAC-SHA512-CTR"
+  keyfile KDF prehash          = "SHA-512"
+  keyfile cipher name          = "AES-256-GCM"
+  keyfile salt bytes           = 16
+  keyfile nonce bytes          = 12
+  keyfile tag bits             = 128
+
+The ARC V2 labels and HMAC-SHA512-CTR keyfile cipher documented below are
+legacy import compatibility constants. They are not used for new v1.6.4
+exports.
 
 Combined credential constants:
 
@@ -176,7 +384,7 @@ Combined credential constants:
 Outer .arc Armor
 ----------------
 
-Every v1.6.0 seed export, encrypted or unprotected, is serialized by
+Every v1.6.4 seed export, encrypted or unprotected, is serialized by
 serializeSeedBundle(bundle):
 
   json_bytes = UTF-8(JSON.stringify(bundle))
@@ -212,11 +420,11 @@ Important parser consequences:
   - The same outer header is used for encrypted and unprotected .arc bundles.
 
 
-Protected .arc Bundle Structure
--------------------------------
+Legacy ARC V2 Protected Bundle Structure
+----------------------------------------
 
-The protected seed bundle produced by encrypt_v2(mnemonic, password) is a JSON
-object with this v1.6.0 insertion order before credential_mode is appended:
+The legacy protected seed bundle produced by encrypt_v2(mnemonic, password) is
+a JSON object with this insertion order before credential_mode is appended:
 
   {
     "magic": "ARCULUS-ARC",
@@ -241,8 +449,8 @@ After encryptSeedBundle returns, handleEncryptExportSeed appends:
 
   "credential_mode": "password" | "keyfile" | "both"
 
-credential_mode is a UI hint. It is appended after MAC calculation in v1.6.0.
-Therefore, it is not part of the MAC transcript for files produced by v1.6.0.
+credential_mode is a UI hint. It is appended after MAC calculation in v1.6.4.
+Therefore, it is not part of the legacy ARC V2 MAC transcript.
 Import also accepts the aliases credentialMode and protection as UI hints:
 
   hintedMode = normalizeArcCredentialMode(
@@ -462,12 +670,11 @@ The final block is truncated to the remaining data length. No padding is
 applied. A zero-length input produces a zero-length output.
 
 
-Why the Current Protected .arc Format Is Not AES-GCM
-----------------------------------------------------
+Why Legacy ARC V2 Is Not AES-GCM
+--------------------------------
 
-New v1.6.0 protected .arc exports use HMAC-SHA512-CTR plus HMAC-SHA512
-authentication, not AES-GCM. AES-GCM appears only in the legacy
-"arculus-encrypted-seed-v1" import path.
+Legacy ARC V2 protected .arc files use HMAC-SHA512-CTR plus HMAC-SHA512
+authentication, not AES-GCM. New v1.6.4 ARC V3 exports use AES-256-GCM.
 
 The current construction is:
 
@@ -558,7 +765,7 @@ Authenticated fields:
   - nonce bytes
   - ciphertext bytes
 
-Not authenticated by v1.6.0 producer:
+Not authenticated by v1.6.4 producer:
 
   - credential_mode
 
@@ -783,28 +990,28 @@ Credential Modes
 The credential dialog supports three protected modes:
 
   password:
-      User-entered password string is passed directly as ARC v2 password.
+      User-entered password is explicitly classified as Password mode, then
+      NFKD-normalized, SHA-512 pre-hashed, and passed to ARC V3 PBKDF2.
 
   keyfile:
       A raw or encrypted keyfile is converted to a secret string:
 
         "arc-keyfile-v1:" || base64(keyfile_bytes)
 
-      That secret string is passed as ARC v2 password.
+      That secret string is passed to ARC V3 HKDF-SHA512.
 
   both:
-      The selected/generated keyfile is converted to the keyfile secret string.
-      The UI password and keyfile secret are combined with SHA-256 into a
-      combined secret string:
+      Raw keyfile bytes and NFKD password bytes are combined with HKDF-SHA512
+      into a combined secret string:
 
-        "arc-combined-v1:" || base64(sha256(material))
+        "arc-combined-v1:" || base64(64-byte HKDF output)
 
-      The combined secret string is passed as ARC v2 password.
+      The combined secret string is passed to ARC V3 HKDF-SHA512.
 
 The credential dialog also has an advanced unprotected export option:
 
   unprotected:
-      makePlainSeedBundle is used instead of encrypt_v2.
+      makePlainSeedBundle is used instead of encrypt_v3.
 
 Password mode export requirements:
 
@@ -904,8 +1111,8 @@ Import accepts:
       key contains base64 raw key bytes
 
 
-Encrypted Keyfile Format
-------------------------
+Legacy Encrypted-Keyfile Version 1 Format
+-----------------------------------------
 
 Function:
 
@@ -913,7 +1120,7 @@ Function:
 
 Input keyBytes:
 
-  64 random bytes for v1.6.0-generated keyfiles.
+  64 random bytes for legacy generated keyfiles.
 
 Password:
 
@@ -1075,7 +1282,7 @@ Combined Keyfile + Password Secret
 
 Function:
 
-  combinedArcSecret(password, keyfileSecret)
+  combinedArcSecret(password, keyfileSecret, salt)
 
 Inputs:
 
@@ -1087,27 +1294,24 @@ Inputs:
 
         "arc-keyfile-v1:" || base64(keyfile_bytes)
 
-Material:
+Material and derivation:
 
-  material = UTF-8(
-      "arc-combined-v1\n" ||
-      NFKD(password) ||
-      "\n" ||
-      keyfileSecret
-  )
-
-Digest:
-
-  digest = SHA-256(material)
+  keyfile_bytes = base64decode(keyfileSecret after "arc-keyfile-v1:")
+  password_bytes = UTF8(NFKD(password))
+  input = keyfile_bytes || password_bytes
+  bits = HKDF-SHA512(
+      ikm = input,
+      salt = ARC V3 salt,
+      info = UTF8("arculus-arc-v3-combined-key"),
+      len = 64 bytes)
 
 Combined secret:
 
-  "arc-combined-v1:" || base64(digest)
+  "arc-combined-v1:" || base64(bits)
 
-The combined secret is the password argument passed to encryptSeedBundle and
-decryptSeedBundle. It is then normalized again with NFKD by arcV2Keys before
-PBKDF2. The string consists of ASCII prefix and standard base64 output, so
-NFKD does not alter generated combined secrets.
+The combined secret is passed to the ARC V3 HKDF AES-key derivation. Legacy
+ARC V2 import calls combinedArcSecret_legacy, which retains the older SHA-256
+newline transcript exactly for compatibility.
 
 Security consequence:
 
@@ -1157,7 +1361,8 @@ This branch accepts:
   or
   bundle.format == "arculus-encrypted-seed-python-v1"
 
-This is a legacy compatibility branch and is distinct from current ARC v2.
+This is a legacy PBKDF2-SHA256 compatibility branch and is distinct from the
+PBKDF2-SHA512/HMAC legacy ARC V2 path as well as current ARC V3.
 
 Legacy inputs:
 
@@ -1209,7 +1414,7 @@ Plaintext:
   JSON.parse(TextDecoder().decode(decrypted))
   normalizeDecryptedMnemonic(payload)
 
-New v1.6.0 exports do not produce this format.
+New v1.6.4 exports do not produce this format.
 
 
 Legacy Seed Import Family: AES-GCM v1
@@ -1261,7 +1466,7 @@ Plaintext:
   JSON.parse(TextDecoder().decode(decrypted))
   normalizeDecryptedMnemonic(payload)
 
-New v1.6.0 exports do not produce this format.
+New v1.6.4 exports do not produce this format.
 
 
 Dispatch Matrix
@@ -1271,6 +1476,10 @@ decrypt(bundle, password) dispatches as follows:
 
   if bundle is not an object:
       reject as unsupported encrypted seed file format
+
+  if bundle.version == 3
+     or bundle.format == "arculus-encrypted-seed-v3":
+      return decryptV3(bundle, password)
 
   if bundle.magic == "ARCULUS-ARC"
      and bundle.format == "arculus-plain-seed-v1":
@@ -1285,7 +1494,8 @@ decrypt(bundle, password) dispatches as follows:
 
 Compatibility notes:
 
-  - Current protected v2 exports use magic "ARCULUS-ARC" and version 2.
+  - Current protected exports use magic "ARCULUS-ARC" and internal version 3.
+  - Legacy protected v2 imports use magic "ARCULUS-ARC" and version 2.
   - Current plain exports use magic "ARCULUS-ARC" and format
     "arculus-plain-seed-v1".
   - Legacy raw JSON files without the armor header are still parsed as JSON.
@@ -1298,8 +1508,13 @@ Format Compatibility Matrix
 
 Seed file formats:
 
-  ARCULUS-ARC-V2 armored protected v2
+  ARCULUS-ARC-V2 armored protected v3
       Export: yes
+      Import: yes
+      Protection: AES-256-GCM; Password PBKDF2-SHA512 or Keyfile HKDF-SHA512
+
+  ARCULUS-ARC-V2 armored protected v2
+      Export: no
       Import: yes
       Protection: PBKDF2-HMAC-SHA512, HMAC-SHA512-CTR, HMAC-SHA512 MAC
 
@@ -1308,10 +1523,10 @@ Seed file formats:
       Import: yes
       Protection: none
 
-  Raw JSON current protected v2 object
+  Raw JSON legacy protected v2 object
       Export: no, but JSON parser accepts it
       Import: yes if fields validate
-      Protection: same as current protected v2
+      Protection: same as legacy protected v2
 
   Legacy HMAC-SHA256 stream object
       Export: no
@@ -1333,9 +1548,15 @@ Keyfile formats:
       Export: no
       Import: yes
 
-  ARCULUS-KEYFILE-ENC encrypted JSON
+  ARCULUS-KEYFILE-ENC encrypted JSON version 2
       Export: yes
       Import: yes
+      Protection: SHA-512 pre-hash, PBKDF2-SHA512, AES-256-GCM
+
+  ARCULUS-KEYFILE-ENC encrypted JSON version 1
+      Export: no
+      Import: yes
+      Protection: PBKDF2-SHA512, HMAC-SHA512-CTR and HMAC-SHA512
 
   KEYFILE legacy JSON
       Export: no
@@ -1349,7 +1570,7 @@ Keyfile formats:
 Protected Fields and Unprotected Fields
 ---------------------------------------
 
-Protected by current ARC v2 seed-file encryption:
+Protected by current ARC V3 AES-GCM:
 
   - mnemonic plaintext confidentiality at rest
   - mnemonic plaintext integrity after MAC success and JSON parse
@@ -1365,9 +1586,8 @@ Protected by current ARC v2 seed-file encryption:
   - nonce bytes
   - ciphertext bytes
 
-Not protected by current ARC v2 seed-file encryption:
+Not protected by current ARC V3 seed-file encryption:
 
-  - credential_mode hint appended after MAC generation
   - outer armor header itself
   - filesystem filename
   - file modification timestamp
@@ -1381,46 +1601,44 @@ Not protected by current ARC v2 seed-file encryption:
   - clipboard contents
   - screenshots, screen recording, browser extensions, or compromised OS state
 
-Protected by encrypted keyfile format:
+Protected by encrypted-keyfile version 2 AES-GCM:
 
   - keyfile bytes at rest
-  - salt, nonce, and ciphertext integrity through HMAC-SHA512 over
-    salt || nonce || ciphertext
+  - exact magic and format AAD bytes
+  - ciphertext integrity through the 128-bit GCM tag
 
 Not protected by encrypted keyfile format:
 
   - filename
   - created_at metadata
-  - kdf/cipher metadata integrity as a structured transcript
-  - magic and format fields by MAC commitment
+  - created_at and kdf/cipher metadata are validated but are not included in AAD
 
-The encrypted keyfile MAC is simpler than ARC v2 seed-file MAC. It authenticates
-the raw salt, nonce, and ciphertext bytes but does not bind the metadata strings
-through a separate transcript.
+Encrypted-keyfile version 1 has the older HMAC coverage specified in its legacy
+section. Version 2 has no separate MAC field.
 
 
 Failure Behavior
 ----------------
 
-Protected .arc structural failures:
+ARC V3 protected .arc structural failures:
 
   - unsupported magic/version/format
   - missing kdf or cipher object
   - unsupported KDF name or hash
   - unsupported cipher name
-  - KDF iterations below 600000
+  - Password-mode KDF iterations other than 1000000
   - invalid or missing base64 fields
   - invalid decoded salt length
   - invalid decoded nonce length
-  - invalid decoded MAC length
+  - padding name other than ZERO or length other than 512
 
 Protected .arc authentication failure:
 
-  If equalBytes(actualMac, expectedMac) is false, decryptV2 throws:
+  If AES-GCM authentication fails, decryptV3 throws:
 
     "Unable to decrypt seed file. The password may be incorrect or the file may be corrupted."
 
-No decryption is attempted before this check succeeds.
+No plaintext is accepted before this check succeeds.
 
 Protected .arc plaintext failures:
 
@@ -1445,22 +1663,15 @@ corruption for protected seed files and encrypted keyfiles.
 KDF Iteration Rationale
 -----------------------
 
-Current protected seed exports use:
+Current Password-mode ARC V3 exports use SHA-512 password pre-hashing followed
+by PBKDF2-HMAC-SHA512 at exactly 1000000 iterations. The iteration value is
+included in authenticated metadata. Keyfile and combined modes start from
+high-entropy keyfile material and use HKDF-SHA512 rather than PBKDF2.
 
-  PBKDF2-HMAC-SHA512, 1000000 iterations
-
-Current protected seed imports require:
-
-  iterations >= 600000
-
-This import floor allows files from recent hardened builds while preventing an
-attacker from lowering the stored iteration count to make password guessing
-cheaper. The iteration count is also included in the ARC v2 MAC transcript, so
-an attacker cannot modify it without causing MAC failure.
-
-Encrypted keyfiles use:
-
-  PBKDF2-HMAC-SHA512, 200000 iterations
+Current encrypted-keyfile v2 exports use SHA-512 password pre-hashing followed
+by PBKDF2-HMAC-SHA512 at 1000000 iterations. Import also accepts exactly 200000
+for encrypted-keyfile v2 files written by the earlier beta. Legacy ARC V2 and
+encrypted-keyfile v1 imports retain their stored/legacy iteration rules.
 
 The keyfile KDF protects random 64-byte key material rather than a mnemonic
 directly. In combined mode, the keyfile password protects the encrypted keyfile,
@@ -1482,7 +1693,7 @@ password, PIN, or personally meaningful phrase should be treated as weak even
 with 1000000 PBKDF2 iterations.
 
 The cryptographic strength of Keyfile mode is bounded by possession of the
-keyfile bytes. v1.6.0-generated keyfiles contain 64 random bytes. If the keyfile
+keyfile bytes. v1.6.4-generated keyfiles contain 64 random bytes. If the keyfile
 is copied to cloud storage, email, screenshots, or a compromised machine, the
 .arc file protected only by that keyfile should be considered compromised by
 anyone who obtains both files.
@@ -1595,14 +1806,23 @@ ARC v2 protected seed functions:
   arcV2MacData(bundle, saltBytes, nonceBytes, ciphertext)
       NUL-separated metadata transcript plus salt, nonce, and ciphertext.
 
+  encrypt_v3(mnemonic, password, requestedMode)
+      Current protected seed export using ARC V3 AES-256-GCM.
+
+  decryptV3(bundle, password)
+      Current protected seed import with authenticated metadata.
+
+  deriveV3Key(credential, salt, useHkdf)
+      Selects Password PBKDF2 or Keyfile/combined HKDF AES-key derivation.
+
   encrypt_v2(mnemonic, password)
-      Current protected seed export.
+      Legacy ARC V2 compatibility producer retained for tests.
 
   decryptV2(bundle, password)
       Current protected seed import.
 
-  encryptSeedBundle(mnemonic, password)
-      Wrapper for encrypt_v2.
+  encryptSeedBundle(mnemonic, password, credentialMode)
+      Wrapper for encrypt_v3.
 
   decryptSeedBundle(bundle, password)
       Wrapper for decrypt.
@@ -1631,8 +1851,14 @@ Keyfile functions:
   arcKeyfileSecretFromBytes(bytes)
       Validates key material and returns arc-keyfile-v1 secret string.
 
+  encryptArcKeyfileBytes_v2(keyBytes, password)
+      Current encrypted-keyfile v2 AES-256-GCM producer.
+
+  decryptArcKeyfileObject_v2(obj, password)
+      Validates and decrypts encrypted-keyfile v2.
+
   encryptArcKeyfileBytes(keyBytes, password)
-      Password-encrypts keyfile bytes.
+      Legacy encrypted-keyfile v1 producer retained for compatibility tests.
 
   decryptArcKeyfileObject(obj, password)
       Authenticates and decrypts encrypted keyfile JSON.
@@ -1700,7 +1926,7 @@ Treat these as plaintext secret-bearing artifacts:
 
 Treat these as non-secret but integrity-relevant:
 
-  - ARC v2 constants
+  - ARC V3 and legacy ARC V2 constants
   - KDF iteration counts
   - MAC transcript field order
   - stream labels
@@ -1711,40 +1937,34 @@ Treat these as non-secret but integrity-relevant:
 Compliance Checklist
 --------------------
 
-An implementation is compatible with Arculus_Recovery.html v1.6.0 protected
+An implementation is compatible with Arculus_Beta.html v1.6.4 protected
 .arc exports if it satisfies all of the following:
 
   - Parses ARCULUS-ARC-V2 armor exactly enough to recover JSON bundle bytes.
   - Uses UTF-8 for all text fields.
-  - Applies NFKD normalization to the credential string before PBKDF2.
-  - Requires current v2 magic, format, version, KDF name/hash, and cipher name.
+  - Requires ARC magic, v3 format/version, credential_mode, KDF, cipher, and padding.
   - Requires salt length 32 bytes.
-  - Requires nonce length 24 bytes.
-  - Requires MAC length 64 bytes.
-  - Requires iterations >= 600000.
-  - Derives 64-byte PBKDF2-HMAC-SHA512 master key.
-  - Derives enc_key and mac_key with the exact label strings.
-  - Constructs the MAC transcript with the exact field order and 0x00
-    separators.
-  - Verifies HMAC-SHA512 before decrypting.
-  - Generates HMAC-SHA512 stream blocks from:
-
-        UTF8("Arculus ARC v2 stream\0") || nonce || uint64_be(counter)
-
-  - XORs ciphertext with the stream to recover plaintext.
-  - Parses plaintext JSON as UTF-8.
+  - Requires nonce length 12 bytes and tag length 128 bits.
+  - Requires ZERO padding length 512 and decoded ciphertext length 528 bytes.
+  - Uses SHA-512 pre-hash plus PBKDF2-HMAC-SHA512 at exactly 1000000
+    iterations for Password mode.
+  - Uses the documented HKDF-SHA512 IKM, salt, and info values for Keyfile and
+    combined modes.
+  - Serializes metadata in the documented insertion order and supplies those
+    exact UTF-8 JSON bytes as AES-GCM additionalData.
+  - Verifies AES-GCM authentication before accepting plaintext.
+  - Removes trailing zero padding and parses fatal UTF-8 JSON.
   - Normalizes mnemonic words and validates word_count if present.
 
-An implementation is compatible with v1.6.0 encrypted keyfiles if it:
+An implementation is compatible with v1.6.4 encrypted keyfiles if it:
 
   - Parses JSON keyfile objects.
   - Accepts current encrypted magic/format.
-  - Accepts documented legacy aliases.
-  - Applies NFKD password normalization.
-  - Uses PBKDF2-HMAC-SHA512 with 200000 default iterations for generated files.
-  - Splits derived bytes into 32-byte encKey and 32-byte macKey.
-  - Verifies HMAC-SHA512 over salt || nonce || ciphertext before decrypting.
-  - Decrypts with the same HMAC-SHA512 stream transform.
+  - Writes version 2, SHA-512 prehash, PBKDF2-SHA512 at 1000000 iterations,
+    a 16-byte salt, a 12-byte nonce, and AES-256-GCM with a 128-bit tag.
+  - Uses the exact magic/format JSON AAD bytes documented above.
+  - Accepts version 2 files with 200000 iterations for earlier-beta compatibility.
+  - Retains encrypted-keyfile version 1 import and documented legacy aliases.
   - Requires recovered key material to be at least 32 bytes before building
     the arc-keyfile-v1 secret string.
 
@@ -1752,7 +1972,7 @@ An implementation is compatible with v1.6.0 encrypted keyfiles if it:
 Non-Goals
 ---------
 
-The v1.6.0 encryption subsystem does not:
+The v1.6.4 encryption subsystem does not:
 
   - fetch network state
   - use remote key escrow
