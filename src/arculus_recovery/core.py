@@ -16,7 +16,7 @@ from typing import Dict, List, Tuple
 from urllib.parse import quote
 
 
-APP_VERSION = "1.6.0"
+APP_VERSION = "1.6.4"
 
 
 # --- Embedded BIP39 English word list ---
@@ -2104,6 +2104,17 @@ BTC_TESTNET = {
     "hrp": "tb",
 }
 
+BCH_TESTNET = {
+    "p2pkh": {"xprv": 0x04358394, "xpub": 0x043587CF},
+    "p2wpkh-p2sh": None,
+    "p2wpkh": None,
+    "p2tr": None,
+    "wif": 0xEF,
+    "p2pkh_prefix": 0x6F,
+    "p2sh_prefix": 0xC4,
+    "cashaddr_prefix": "bchtest",
+}
+
 LTC_MAINNET = {
     # SLIP-0132 versions for Litecoin where applicable.
     "p2pkh": {"xprv": 0x019D9CFE, "xpub": 0x019DA462},
@@ -2115,6 +2126,17 @@ LTC_MAINNET = {
     "p2pkh_prefix": 0x30,
     "p2sh_prefix": 0x32,
     "hrp": "ltc",
+}
+
+LTC_TESTNET = {
+    "p2pkh": {"xprv": 0x04358394, "xpub": 0x043587CF},
+    "p2wpkh-p2sh": {"xprv": 0x044A4E28, "xpub": 0x044A5262},
+    "p2wpkh": {"xprv": 0x045F18BC, "xpub": 0x045F1CF6},
+    "p2tr": {"xprv": 0x04358394, "xpub": 0x043587CF},
+    "wif": 0xEF,
+    "p2pkh_prefix": 0x6F,
+    "p2sh_prefix": 0x3A,
+    "hrp": "tltc",
 }
 
 DOGE_MAINNET = {
@@ -2129,6 +2151,17 @@ DOGE_MAINNET = {
     "p2pkh_prefix": 0x1E,
     "p2sh_prefix": 0x16,
     "hrp": "doge",
+}
+
+DOGE_TESTNET = {
+    "p2pkh": {"xprv": 0x04358394, "xpub": 0x043587CF},
+    "p2wpkh-p2sh": {"xprv": 0x04358394, "xpub": 0x043587CF},
+    "p2wpkh": {"xprv": 0x04358394, "xpub": 0x043587CF},
+    "p2tr": None,
+    "wif": 0xF1,
+    "p2pkh_prefix": 0x71,
+    "p2sh_prefix": 0xC4,
+    "hrp": "tdge",
 }
 
 BCH_MAINNET = {
@@ -2151,6 +2184,35 @@ ETH_MAINNET = {
     "address_family": "ethereum",
 }
 
+def evm_network(label: str, note_key: str) -> dict:
+    return {
+        "p2pkh": {"xprv": 0x0488ADE4, "xpub": 0x0488B21E},
+        "p2wpkh-p2sh": {"xprv": 0x0488ADE4, "xpub": 0x0488B21E},
+        "p2wpkh": {"xprv": 0x0488ADE4, "xpub": 0x0488B21E},
+        "p2tr": {"xprv": 0x0488ADE4, "xpub": 0x0488B21E},
+        "wif": None,
+        "address_family": "evm",
+        "evm_label": label,
+        "evm_note_key": note_key,
+    }
+
+
+ETH_TESTNET = {**ETH_MAINNET}
+BNB_MAINNET = evm_network("BNB Chain", "bnb_chain_note")
+BNB_TESTNET = evm_network("BNB Chain Testnet", "bnb_chain_note")
+AVALANCHE_MAINNET = evm_network("Avalanche C-Chain", "avalanche_c_chain_note")
+AVALANCHE_TESTNET = evm_network("Avalanche Fuji C-Chain", "avalanche_c_chain_note")
+POLYGON_MAINNET = evm_network("Polygon PoS", "polygon_note")
+POLYGON_TESTNET = evm_network("Polygon Amoy Testnet", "polygon_note")
+
+TRON_MAINNET = evm_network("TRON", "tron_note")
+TRON_MAINNET["address_family"] = "tron"
+TRON_TESTNET = {**TRON_MAINNET}
+
+COSMOS_MAINNET = evm_network("Cosmos Hub", "cosmos_note")
+COSMOS_MAINNET.update({"address_family": "cosmos", "address_hrp": "cosmos"})
+COSMOS_TESTNET = {**COSMOS_MAINNET}
+
 XRP_MAINNET = {
     "p2pkh": {"xprv": 0x0488ADE4, "xpub": 0x0488B21E},
     "p2wpkh-p2sh": {"xprv": 0x0488ADE4, "xpub": 0x0488B21E},
@@ -2161,21 +2223,28 @@ XRP_MAINNET = {
 }
 
 SOLANA_MAINNET = {"address_family": "solana"}
+SOLANA_TESTNET = {"address_family": "solana"}
 STELLAR_MAINNET = {"address_family": "stellar"}
-MONERO_MAINNET = {"address_family": "monero"}
-CARDANO_MAINNET = {"address_family": "cardano"}
+STELLAR_TESTNET = {"address_family": "stellar"}
+CARDANO_MAINNET = {"address_family": "cardano", "address_hrp": "addr", "network_id": 1}
+CARDANO_TESTNET = {"address_family": "cardano", "address_hrp": "addr_test", "network_id": 0}
+XRP_TESTNET = {**XRP_MAINNET}
 
 COINS = {
     "bitcoin": {"coin_type": 0, "mainnet": BTC_MAINNET, "testnet": BTC_TESTNET},
-    "bitcoincash": {"coin_type": 0, "mainnet": BCH_MAINNET, "testnet": None},
-    "litecoin": {"coin_type": 2, "mainnet": LTC_MAINNET, "testnet": None},
-    "dogecoin": {"coin_type": 3, "mainnet": DOGE_MAINNET, "testnet": None},
-    "ethereum": {"coin_type": 60, "mainnet": ETH_MAINNET, "testnet": None},
-    "solana": {"coin_type": 501, "mainnet": SOLANA_MAINNET, "testnet": None},
-    "stellar": {"coin_type": 148, "mainnet": STELLAR_MAINNET, "testnet": None},
-    "monero": {"coin_type": 128, "mainnet": MONERO_MAINNET, "testnet": None},
-    "cardano": {"coin_type": 1815, "mainnet": CARDANO_MAINNET, "testnet": None},
-    "xrp": {"coin_type": 144, "mainnet": XRP_MAINNET, "testnet": None},
+    "bitcoincash": {"coin_type": 0, "mainnet": BCH_MAINNET, "testnet": BCH_TESTNET},
+    "litecoin": {"coin_type": 2, "mainnet": LTC_MAINNET, "testnet": LTC_TESTNET},
+    "dogecoin": {"coin_type": 3, "mainnet": DOGE_MAINNET, "testnet": DOGE_TESTNET},
+    "ethereum": {"coin_type": 60, "mainnet": ETH_MAINNET, "testnet": ETH_TESTNET},
+    "bnbchain": {"coin_type": 60, "mainnet": BNB_MAINNET, "testnet": BNB_TESTNET},
+    "avalanche": {"coin_type": 60, "mainnet": AVALANCHE_MAINNET, "testnet": AVALANCHE_TESTNET},
+    "polygon": {"coin_type": 60, "mainnet": POLYGON_MAINNET, "testnet": POLYGON_TESTNET},
+    "tron": {"coin_type": 195, "mainnet": TRON_MAINNET, "testnet": TRON_TESTNET},
+    "cosmos": {"coin_type": 118, "mainnet": COSMOS_MAINNET, "testnet": COSMOS_TESTNET},
+    "solana": {"coin_type": 501, "mainnet": SOLANA_MAINNET, "testnet": SOLANA_TESTNET},
+    "stellar": {"coin_type": 148, "mainnet": STELLAR_MAINNET, "testnet": STELLAR_TESTNET},
+    "cardano": {"coin_type": 1815, "mainnet": CARDANO_MAINNET, "testnet": CARDANO_TESTNET},
+    "xrp": {"coin_type": 144, "mainnet": XRP_MAINNET, "testnet": XRP_TESTNET},
 }
 
 DEFAULT_ACCOUNT_DERIVATION = {
@@ -2184,11 +2253,22 @@ DEFAULT_ACCOUNT_DERIVATION = {
     "litecoin": "m/84'/2'/0'",
     "dogecoin": "m/44'/3'/0'",
     "ethereum": "m/44'/60'/0'",
+    "bnbchain": "m/44'/60'/0'",
+    "avalanche": "m/44'/60'/0'",
+    "polygon": "m/44'/60'/0'",
+    "tron": "m/44'/195'/0'",
+    "cosmos": "m/44'/118'/0'",
     "solana": "m/44'/501'/0'",
     "stellar": "m/44'/148'/0'",
-    "monero": "m/44'/128'/0'",
     "cardano": "m/1852'/1815'/0'/0/0",
     "xrp": "m/44'/144'/0'",
+}
+
+TESTNET_UTXO_DERIVATION = {
+    "p2pkh": "m/44'/1'/0'",
+    "p2wpkh-p2sh": "m/49'/1'/0'",
+    "p2wpkh": "m/84'/1'/0'",
+    "p2tr": "m/86'/1'/0'",
 }
 
 B58_ALPHABET = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
@@ -2590,8 +2670,9 @@ def mnemonic_entropy_bytes(mnemonic: str) -> bytes:
     return entropy.to_bytes(entropy_bits // 8, "big")
 
 
-def cardano_icarus_master_from_entropy(entropy: bytes) -> Dict[str, bytes]:
-    key_bytes = bytearray(hashlib.pbkdf2_hmac("sha512", b"", entropy, 4096, dklen=96))
+def cardano_icarus_master_from_entropy(entropy: bytes, passphrase: str = "") -> Dict[str, bytes]:
+    password = normalize_nfkd(passphrase or "").encode("utf-8")
+    key_bytes = bytearray(hashlib.pbkdf2_hmac("sha512", password, entropy, 4096, dklen=96))
     key_bytes[0] &= 0xF8
     key_bytes[31] &= 0x1F
     key_bytes[31] |= 0x40
@@ -2645,11 +2726,16 @@ def cardano_paths_for_index(base_path: str, index: int) -> Dict[str, str]:
     }
 
 
-def cardano_shelley_base_address(payment_public_key: bytes, staking_public_key: bytes) -> str:
+def cardano_shelley_base_address(
+    payment_public_key: bytes,
+    staking_public_key: bytes,
+    network_id: int = 1,
+    hrp: str = "addr",
+) -> str:
     payment_hash = hashlib.blake2b(payment_public_key, digest_size=28).digest()
     stake_hash = hashlib.blake2b(staking_public_key, digest_size=28).digest()
-    raw = bytes([0x01]) + payment_hash + stake_hash
-    return bech32_encode("addr", convertbits(raw, 8, 5, True))
+    raw = bytes([network_id & 0x0F]) + payment_hash + stake_hash
+    return bech32_encode(hrp, convertbits(raw, 8, 5, True))
 
 
 def inv_mod(a: int, n: int) -> int:
@@ -3238,6 +3324,18 @@ def ethereum_address_from_private_key(privkey: int) -> str:
     return ethereum_checksum_address(keccak256(ser_pubkey_uncompressed(pub))[-20:])
 
 
+def tron_address_from_private_key(privkey: int) -> tuple[str, str]:
+    pub = point_mul(privkey, G)
+    if pub is None:
+        raise ValueError("invalid TRON public key")
+    payload = b"\x41" + keccak256(ser_pubkey_uncompressed(pub))[-20:]
+    return b58check(payload), payload.hex()
+
+
+def cosmos_address_from_public_key(pubkey: bytes, hrp: str = "cosmos") -> str:
+    return bech32_encode(hrp, convertbits(hash160(pubkey), 8, 5, True))
+
+
 def xrp_classic_address_from_public_key(pubkey: bytes) -> str:
     return b58check(b"\x00" + hash160(pubkey), XRP_B58_ALPHABET)
 
@@ -3293,14 +3391,17 @@ def derive_account(mnemonic: str, passphrase: str, derivation: str, script_type:
     account = derive(root, derivation)
     address_family = netcfg.get("address_family")
     is_ethereum = address_family == "ethereum"
+    is_evm = address_family in ("ethereum", "evm")
+    is_tron = address_family == "tron"
+    is_cosmos = address_family == "cosmos"
     is_xrp = address_family == "xrp"
-    st = address_family if address_family in ("ethereum", "xrp") else (purpose_to_script_type(derivation) if script_type == "auto" else script_type)
+    st = address_family if address_family in ("ethereum", "evm", "tron", "cosmos", "xrp") else (purpose_to_script_type(derivation) if script_type == "auto" else script_type)
     root_versions = netcfg["p2pkh"]
     x_versions = netcfg["p2pkh"]
     y_versions = netcfg["p2wpkh-p2sh"]
     z_versions = netcfg["p2wpkh"]
     tr_versions = netcfg["p2tr"]
-    if st not in ("ethereum", "xrp") and not netcfg.get(st):
+    if st not in ("ethereum", "evm", "tron", "cosmos", "xrp") and not netcfg.get(st):
         raise ValueError(f"{st} is not supported for this coin/network")
     if st == "p2tr" and not tr_versions:
         raise ValueError("taproot is not supported for this coin/network")
@@ -3341,15 +3442,27 @@ def derive_account(mnemonic: str, passphrase: str, derivation: str, script_type:
             pub = ser_pubkey(child.pub())
             item = {
                 "path": f"{derivation}/{branch}/{i}",
-                "address": None if st in ("p2tr", "ethereum", "xrp") else pubkey_to_address(pub, st, netcfg),
+                "address": None if st in ("p2tr", "ethereum", "evm", "tron", "cosmos", "xrp") else pubkey_to_address(pub, st, netcfg),
                 "public_key_hex": pub.hex(),
                 "private_key_hex": ser256(child.k).hex(),
             }
-            if is_ethereum:
+            if is_evm:
                 item["address"] = ethereum_address_from_private_key(child.k)
-                item["ethereum_public_key_hex"] = ser_pubkey_uncompressed(child.pub()).hex()
-                item["erc20_address"] = item["address"]
-                item["erc20_note"] = "ERC-20 tokens on Ethereum use this same account address."
+                item["evm_public_key_hex"] = ser_pubkey_uncompressed(child.pub()).hex()
+                if is_ethereum:
+                    item["ethereum_public_key_hex"] = item["evm_public_key_hex"]
+                    item["erc20_address"] = item["address"]
+                    item["erc20_note"] = "ERC-20 tokens on Ethereum use this same account address."
+                else:
+                    note_key = netcfg.get("evm_note_key", "evm_note")
+                    label = netcfg.get("evm_label", "EVM chain")
+                    item[note_key] = f"{label} uses Ethereum-compatible 0x addresses with this same secp256k1 account key."
+            elif is_tron:
+                item["address"], item["tron_hex_address"] = tron_address_from_private_key(child.k)
+                item["trc20_note"] = "TRC-20 tokens on TRON use this same account address."
+            elif is_cosmos:
+                item["address"] = cosmos_address_from_public_key(pub, netcfg.get("address_hrp", "cosmos"))
+                item["cosmos_note"] = "Cosmos Hub account address using secp256k1 and Bech32 HRP cosmos."
             elif is_xrp:
                 item["address"] = xrp_classic_address_from_public_key(pub)
                 item["xrp_classic_address"] = item["address"]
@@ -3476,9 +3589,9 @@ def derive_monero_output(seed: bytes, derivation: str, count: int, start_index: 
     return {"coin": "monero", "network": network, "word_count": word_count, "accounts": [out_account]}
 
 
-def derive_cardano_output(mnemonic: str, derivation: str, count: int, start_index: int, word_count: int, network: str) -> Dict:
+def derive_cardano_output(mnemonic: str, passphrase: str, derivation: str, count: int, start_index: int, word_count: int, network: str, netcfg: dict) -> Dict:
     entropy = mnemonic_entropy_bytes(mnemonic)
-    root = cardano_icarus_master_from_entropy(entropy)
+    root = cardano_icarus_master_from_entropy(entropy, passphrase)
     account = derive_cardano(root, derivation)
     out_account = _empty_account(derivation, "cardano")
     out_account.update(
@@ -3501,7 +3614,12 @@ def derive_cardano_output(mnemonic: str, derivation: str, count: int, start_inde
             {
                 "path": paths["payment_path"],
                 "staking_path": paths["staking_path"],
-                "address": cardano_shelley_base_address(payment_pub, staking_pub),
+                "address": cardano_shelley_base_address(
+                    payment_pub,
+                    staking_pub,
+                    netcfg.get("network_id", 1),
+                    netcfg.get("address_hrp", "addr"),
+                ),
                 "public_key_hex": payment_pub.hex(),
                 "stake_public_key_hex": staking_pub.hex(),
                 "private_key_hex": payment["k"].hex(),
@@ -3542,7 +3660,12 @@ def run_derivation(
         netcfg = coin_cfg["mainnet"]
 
     coin_type = coin_cfg["coin_type"]
-    base_derivation = (derivation or "").strip() or DEFAULT_ACCOUNT_DERIVATION[coin_key]
+    base_derivation = (derivation or "").strip()
+    if not base_derivation and testnet and coin_key in ("bitcoin", "bitcoincash", "litecoin", "dogecoin"):
+        default_script = script_type if script_type != "auto" else ("p2wpkh" if coin_key in ("bitcoin", "litecoin") else "p2pkh")
+        base_derivation = TESTNET_UTXO_DERIVATION[default_script]
+    if not base_derivation:
+        base_derivation = DEFAULT_ACCOUNT_DERIVATION[coin_key]
     base_derivation = normalize_path(base_derivation)
     network_name = "testnet" if testnet else "mainnet"
     word_count = len(normalize_mnemonic_words(mnemonic))
@@ -3551,12 +3674,10 @@ def run_derivation(
         return derive_solana_output(bip39_to_seed(mnemonic, passphrase), base_derivation, count, start_index, word_count, network_name)
     if address_family == "stellar":
         return derive_stellar_output(bip39_to_seed(mnemonic, passphrase), base_derivation, count, start_index, word_count, network_name)
-    if address_family == "monero":
-        return derive_monero_output(bip39_to_seed(mnemonic, passphrase), base_derivation, count, start_index, word_count, network_name)
     if address_family == "cardano":
-        return derive_cardano_output(mnemonic, base_derivation, count, start_index, word_count, network_name)
+        return derive_cardano_output(mnemonic, passphrase, base_derivation, count, start_index, word_count, network_name, netcfg)
 
-    if all_common and coin_key in ("ethereum", "xrp"):
+    if all_common and address_family in ("ethereum", "evm", "tron", "cosmos", "xrp"):
         derivations = [f"m/44'/{coin_type}'/0'"]
     elif all_common and coin_key == "bitcoincash":
         derivations = [f"m/44'/{coin_type}'/0'"]
@@ -3676,9 +3797,13 @@ def _coin_display_name(coin: str) -> str:
         "litecoin": "Litecoin",
         "dogecoin": "Dogecoin",
         "ethereum": "Ethereum",
+        "bnbchain": "BNB Chain",
+        "avalanche": "Avalanche C-Chain",
+        "polygon": "Polygon",
+        "tron": "Tron",
+        "cosmos": "Cosmos / ATOM",
         "solana": "Solana",
         "stellar": "Stellar",
-        "monero": "Monero",
         "cardano": "Cardano",
         "xrp": "XRP",
     }.get(coin, coin or "export")
@@ -3753,13 +3878,9 @@ def save_derived_pdf(data: Dict, path: str, root_fingerprint: str = "") -> None:
         root_fp = root_fp.split(":", 1)[1].strip()
 
     coin_id = data.get("coin")
-    is_hex_key_coin = coin_id in ("ethereum", "solana", "stellar", "cardano", "xrp")
-    if coin_id == "monero":
-        private_col = "private_spend_key_hex"
-        private_header = "PRIVATE SPEND KEY HEX"
-    else:
-        private_col = "private_key_hex" if is_hex_key_coin else "private_key_wif"
-        private_header = "PRIVATE KEY HEX" if is_hex_key_coin else "PRIVATE KEY WIF"
+    is_hex_key_coin = coin_id in ("ethereum", "bnbchain", "avalanche", "polygon", "tron", "cosmos", "solana", "stellar", "cardano", "xrp")
+    private_col = "private_key_hex" if is_hex_key_coin else "private_key_wif"
+    private_header = "PRIVATE KEY HEX" if is_hex_key_coin else "PRIVATE KEY WIF"
     cols = [
         ("branch", "BRANCH", 52, 9),
         ("path", "PATH", 110, 22),
@@ -4150,8 +4271,12 @@ def to_bip21_uri(address: str, memo: str = '', coin_context: str = '') -> str:
     if _re.match(r'^[a-zA-Z]+:', a): return a
     if coin == 'solana': return 'solana:' + a
     if coin == 'stellar': return 'web+stellar:pay?destination=' + quote(a, safe='')
-    if coin == 'monero': return 'monero:' + a
     if coin == 'cardano': return a
+    if coin == 'tron': return 'tron:' + a
+    if coin == 'bnbchain': return 'bnb:' + a
+    if coin == 'avalanche': return 'avalanche:' + a
+    if coin == 'polygon': return 'polygon:' + a
+    if coin == 'cosmos': return 'cosmos:' + a
     if coin == 'bitcoincash': return 'bitcoincash:' + a
     if _re.match(r'^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,}', a): return 'bitcoin:' + a
     if _re.match(r'^[qp][023456789acdefghjklmnpqrstuvwxyz]{41,}', a): return 'bitcoincash:' + a
