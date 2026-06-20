@@ -24,8 +24,8 @@ network-required recovery feature.
 
 ## Source of Truth
 
-The canonical v1.6.4 release-candidate implementation is `Arculus_Beta.html`
-file. The docs in `docs/` specify v1.6.4 byte-level behavior. The Python CLI is
+The canonical v1.6.4 production implementation is `Arculus_Recovery.html`.
+The docs in `docs/` specify v1.6.4 byte-level behavior. The Python CLI is
 a compatibility superset and may retain explicitly documented currencies that
 the browser selector does not expose.
 
@@ -34,7 +34,7 @@ or document the compatibility boundary explicitly.
 
 ## Development Rules
 
-- Keep `Arculus_Beta.html` usable as a direct local file and preserve that property when promoting it.
+- Keep `Arculus_Recovery.html` usable as a direct local file.
 - Keep runtime recovery independent of internet access.
 - Treat `.arc`, keyfile, BIP39, BIP32, Ed25519, address encoding, QR payload,
   and export schema changes as security-sensitive.
@@ -83,14 +83,15 @@ the bundled workspace runtime when available.
 
 Run the checks that match the touched surface:
 
-- Run `npm run test:html` for changes to `Arculus_Beta.html` or its browser
+- Run `npm run test:html` for changes to `Arculus_Recovery.html` or its browser
   harness. Use `test:smoke` or `test:crypto` for a focused iteration.
 - Run `npm run test:python` for Python core, CLI, launcher, packaging, or GUI
   asset-discovery changes.
-- Run `npm run test:tauri` for Tauri/Rust or prepared-asset changes. On Windows,
-  run `npm run test:tauri:windows` before publishing MSI/NSIS installers and
-  add `-RequireSignature` when the release policy requires code signing.
-- Open `Arculus_Beta.html` locally with networking disabled.
+- Run `npm run test:tauri` for Tauri/Rust or prepared-asset changes. Before
+  publishing, run `npm run test:tauri:windows`, `npm run test:tauri:macos`, or
+  `npm run test:tauri:linux` on the matching build host. Use the corresponding
+  `:validate` command to verify published artifacts without rebuilding.
+- Open `Arculus_Recovery.html` locally with networking disabled.
 - Validate the standard `abandon ... about` mnemonic.
 - Generate and validate both 12-word and 24-word mnemonics when BIP39 changed.
 - Derive at least one known Bitcoin address vector.
