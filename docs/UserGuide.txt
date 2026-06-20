@@ -4,8 +4,8 @@ Arculus Recovery v1.6.4 - Byte-Level User and Operator Guide
 Release Boundary
 ----------------
 
-This guide describes Arculus_Beta.html v1.6.4, the source being prepared for
-production promotion. The coin selector contains Bitcoin, Bitcoin Cash,
+This guide describes the promoted production Arculus_Recovery.html v1.6.4.
+The coin selector contains Bitcoin, Bitcoin Cash,
 Litecoin, Dogecoin, Ethereum /
 ERC-20, Tron / TRC-20, BNB Chain, Avalanche C-Chain, Polygon, Cosmos / ATOM,
 Solana, Stellar, Cardano, and XRP. The Advanced Testnet toggle selects a
@@ -28,14 +28,14 @@ and writes AES-256-GCM encrypted-keyfile version 2 files. It continues to read
 legacy ARC V2, older ARC formats, and encrypted-keyfile version 1. The
 outer .arc armor header remains ARCULUS-ARC-V2, so operators should use the
 decoded bundle version rather than the armor line to identify the cipher
-format. See Encryption.txt and the repository README beta notes for
+format. See Encryption.txt and the repository README release notes for
 the exact KDF, padding, authentication, and compatibility rules.
 
 Source of Truth
 ---------------
 
 This guide describes the standalone browser application implemented by the
-repository root file Arculus_Beta.html with APP_VERSION equal to v1.6.4.
+repository root file Arculus_Recovery.html with APP_VERSION equal to v1.6.4.
 The HTML file is the authoritative implementation for the UI, mnemonic
 normalization, key derivation, address construction, ARC seed-file encryption,
 QR generation, export formatting, and runtime clearing behavior.
@@ -968,24 +968,26 @@ service accepts an empty or zero destination tag. If a service requires a tag,
 use the tag supplied by that service.
 
 
-Python 1.6.2 Automation Surface
+Python 1.6.4 Automation Surface
 -------------------------------
 
-Until promotion synchronization, the current Python package and launcher
-report APP_VERSION 1.6.2 for scripted derivation. Arculus_Beta.html v1.6.4
-remains the interactive source of truth, while Python CLI output matches the
-documented v1.6.2 compatibility vectors
-for the supported command-line coin ids:
+The synchronized Python package and launcher report APP_VERSION 1.6.4 for
+scripted derivation. Arculus_Recovery.html v1.6.4 remains the interactive
+source of truth. The supported command-line coin ids are:
 
   bitcoin
+  avalanche
   bitcoincash
+  bnbchain
+  cardano
+  cosmos
   litecoin
   dogecoin
   ethereum
+  polygon
   solana
   stellar
-  monero
-  cardano
+  tron
   xrp
 
 CLI default behavior:
@@ -1025,7 +1027,7 @@ Operational Procedure
 
 Recommended offline recovery procedure:
 
-  1. Open Arculus_Beta.html from local storage on a trusted machine.
+  1. Open Arculus_Recovery.html from local storage on a trusted machine.
   2. Confirm the title shows v1.6.4.
   3. Disconnect the machine from networks when practical.
   4. Paste, import, or generate the mnemonic.
