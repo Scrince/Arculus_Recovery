@@ -4,8 +4,8 @@ Arculus Recovery v1.6.4 - Passphrase and Secret Handling Specification
 Release Boundary
 ----------------
 
-This document specifies Arculus_Beta.html v1.6.4, the source being prepared for
-production promotion. BIP39
+This document specifies the promoted production Arculus_Recovery.html v1.6.4.
+BIP39
 passphrase normalization, ARC password handling, keyfile secret construction,
 and Keyfile + Password combination are unchanged from v1.6.0. Currency-profile
 and derived-table-search changes do not alter passphrase bytes or credential
@@ -16,14 +16,14 @@ Password-mode credentials are SHA-512 pre-hashed before PBKDF2.
 Keyfile mode uses HKDF-SHA512. Keyfile + Password mode concatenates decoded raw
 keyfile bytes with UTF-8 NFKD password bytes, then applies HKDF-SHA512 with the
 ARC salt and info string "arculus-arc-v3-combined-key". ARC V2 decryption keeps
-the legacy SHA-256 combined-secret transcript. The full byte-level beta
+the legacy SHA-256 combined-secret transcript. The full byte-level
 construction is specified in Encryption.txt.
 
 Scope
 -----
 
 This document specifies the exact role of passphrases and user-entered secrets
-in Arculus_Beta.html v1.6.4. It distinguishes the BIP39 wallet passphrase,
+in Arculus_Recovery.html v1.6.4. It distinguishes the BIP39 wallet passphrase,
 the protected .arc credential, raw keyfile material, encrypted keyfile
 passwords, and Keyfile + Password combined secrets.
 
