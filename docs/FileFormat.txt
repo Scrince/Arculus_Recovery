@@ -4,8 +4,8 @@ Arculus Recovery v1.6.4 - Byte-Level File Format Specification
 Release Boundary
 ----------------
 
-This is the normative file-format specification for Arculus_Beta.html v1.6.4,
-the source being prepared for production promotion. New protected seed bundles
+This is the normative file-format specification for the promoted production
+Arculus_Recovery.html v1.6.4. New protected seed bundles
 use ARC V3 and new encrypted keyfiles use encrypted-keyfile version 2. ARC V2
 and encrypted-keyfile version 1 remain readable compatibility formats.
 The production derived-output coin identifiers are bitcoin, bitcoincash,
@@ -23,13 +23,13 @@ The v1.6.4 live derived-table search is presentation-only. Search text,
 matching-row counts, and expanded-panel state are not serialized to JSON, CSV,
 TXT, PDF, QR PNG, ARC, or keyfile output. Monero structures retained later are
 archived v1.6.0 LTS/Python compatibility records, not production v1.6.4 browser
-output. Arculus_Beta.html is the v1.6.4 file-format authority before promotion.
+output. Arculus_Recovery.html is the v1.6.4 production file-format authority.
 
 Scope
 -----
 
 This document specifies every file format produced or consumed by
-Arculus_Beta.html v1.6.4. It covers armored seed bundles, protected seed
+Arculus_Recovery.html v1.6.4. It covers armored seed bundles, protected seed
 bundles, unprotected seed bundles, raw keyfiles, encrypted keyfiles, derived
 JSON, CSV, TXT, PDF, and QR PNG exports.
 
