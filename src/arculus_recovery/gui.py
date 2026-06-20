@@ -98,7 +98,7 @@ def launch_gui() -> None:
     if icon_path:
         app.setWindowIcon(QIcon(str(icon_path)))
     window = QMainWindow()
-    window.setWindowTitle(f"Arculus Recovery v{APP_VERSION}")
+    window.setWindowTitle(f"Arculus v{APP_VERSION}")
     if icon_path:
         window.setWindowIcon(QIcon(str(icon_path)))
     window.resize(1180, 860)
