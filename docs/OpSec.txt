@@ -4,8 +4,8 @@ Arculus Recovery v1.6.4 - Operational Security Specification
 Release Boundary
 ----------------
 
-This document specifies Arculus_Beta.html v1.6.4, the source being prepared for
-production promotion. The default session timeout is five minutes; supported
+This document specifies the promoted production Arculus_Recovery.html v1.6.4.
+The default session timeout is five minutes; supported
 values are 2, 5, 15 minutes, or Off. Visibility loss starts a default 15-second
 grace period and clears secrets if the user does not return. The live derived-output search can match private-key
 fields; operators must treat search text, visible matches, screen captures, and
@@ -24,7 +24,7 @@ Scope
 -----
 
 This document defines the operational security requirements for using
-Arculus_Beta.html v1.6.4. It is tied to the actual implementation behavior:
+Arculus_Recovery.html v1.6.4. It is tied to the actual implementation behavior:
 mnemonic generation and entry, BIP39 passphrase use, .arc export/import,
 password and keyfile credential modes, derived-output exports, QR generation,
 clipboard behavior, idle clearing, browser runtime limits, and native Tauri
@@ -103,7 +103,7 @@ Out of scope:
   - Cameras or observers with screen/keyboard visibility.
   - Coercion.
   - An attacker who already knows the mnemonic or correct .arc credential.
-  - A malicious copy of Arculus_Beta.html.
+  - A malicious copy of Arculus_Recovery.html.
 
 For high-value recovery, assume an ordinary daily-use online computer is not an
 acceptable secret-handling environment.
@@ -192,7 +192,7 @@ Recommended Session Procedure
 
 Before the session:
 
-  1. Obtain the intended Arculus_Beta.html build from trusted local media.
+  1. Obtain the intended Arculus_Recovery.html build from trusted local media.
   2. Verify the visible app version is v1.6.4.
   3. Use a fresh live OS or a dedicated offline machine for high-value work.
   4. Disable networking before opening the file.
@@ -596,7 +596,7 @@ Limitations:
 Browser Runtime Risk
 --------------------
 
-Arculus_Beta.html is a local offline browser application, but browser
+Arculus_Recovery.html is a local offline browser application, but browser
 runtimes are not hardened secret vaults.
 
 Risks:
@@ -837,7 +837,7 @@ For high-value sessions, perform these checks before opening the HTML file:
   - Disable Bluetooth in firmware or hardware controls where possible.
   - Remove USB network adapters.
   - Disable cellular modems.
-  - Use a local copy of Arculus_Beta.html, not a remote URL.
+  - Use a local copy of Arculus_Recovery.html, not a remote URL.
   - Confirm the browser did not restore prior tabs into online services.
   - Confirm password managers and form-fill extensions are disabled.
   - Confirm no cloud storage client is syncing the working directory.
