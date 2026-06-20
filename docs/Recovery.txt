@@ -4,8 +4,8 @@ Arculus Recovery v1.6.4 - Recovery Procedure and Data Boundary Specification
 Release Boundary
 ----------------
 
-This document specifies recovery with Arculus_Beta.html v1.6.4, the source
-being prepared for production promotion.
+This document specifies recovery with the promoted production
+Arculus_Recovery.html v1.6.4.
 The production selector contains Bitcoin, Bitcoin Cash, Litecoin, Dogecoin,
 Ethereum / ERC-20, Tron / TRC-20, BNB Chain, Avalanche C-Chain, Polygon,
 Cosmos / ATOM, Solana, Stellar, Cardano, and XRP. Every listed currency has an
@@ -15,13 +15,12 @@ recovery routes.
 The archived LTS files are lts/Arculus_Recovery_v1.6.0_LTS.html and
 lts/Arculus Recovery_v1.5.0_LTS.html. Monero procedures retained later apply
 only to the archived v1.6.0 file or a separate compatibility surface.
-Use a verified hash of Arculus_Beta.html until the identical source is promoted
-to the production filename and release hashes are published.
+Use the verified Arculus_Recovery.html hash published in docs/SHA256SUMS.
 
 Scope
 -----
 
-This document defines recovery procedures for Arculus_Beta.html v1.6.4. It
+This document defines recovery procedures for Arculus_Recovery.html v1.6.4. It
 covers direct mnemonic entry, generated/imported seed handling, protected and
 unprotected .arc import, credential-mode selection, BIP39 passphrase checks,
 derivation path recovery, address range selection, output export, QR generation,
@@ -82,7 +81,7 @@ Pre-Session Checklist
 
 Before entering real recovery material:
 
-  - Confirm local file is Arculus_Beta.html v1.6.4.
+  - Confirm local file is Arculus_Recovery.html v1.6.4.
   - Disconnect networking.
   - Disable browser sync and extensions where practical.
   - Use a private physical environment.
@@ -709,7 +708,7 @@ Use this procedure when the mnemonic is available on paper or another offline
 record.
 
   1. Prepare the offline environment according to OpSec.txt.
-  2. Open Arculus_Beta.html locally.
+  2. Open Arculus_Recovery.html locally.
   3. Confirm v1.6.4.
   4. Select 12 or 24 words.
   5. Enter the mnemonic.
@@ -737,7 +736,7 @@ Use this procedure when a protected .arc file is the mnemonic backup.
 
   1. Prepare offline environment.
   2. Place .arc file on local/removable media.
-  3. Open Arculus_Beta.html locally.
+  3. Open Arculus_Recovery.html locally.
   4. Click Import Seed.
   5. Select .arc file.
   6. If credential hint selects a mode, verify it matches your backup notes.
