@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Arculus v1.6.2</title>
-  <link rel="icon" type="image/png" href="src/arculus_recovery/assets/favicon.png" />
+  <!-- Update the script-src hashes whenever either inline script changes. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-ctj4hQXwgwp4GvHbzbXsF1V0FCCfaqPVrDix/6za1Ao=' 'sha256-sMCQYraszBg9Au6wg+OaDBvLSVJhg07yG+7Rz035FHE='; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; manifest-src 'none'; base-uri 'none'; form-action 'none'" />
+  <title>Arculus v1.6.4</title>
+  <link rel="icon" type="image/png" href="data:image/png;base64,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" />
   <style>
 	    :root {
 	      --bg: #f7f8fa;
@@ -320,6 +322,16 @@
 	      height: 34px;
 	      padding: 0;
 	      line-height: 1;
+	    }
+	    .settings-close svg {
+	      width: 18px;
+	      height: 18px;
+	      display: block;
+	      margin: auto;
+	      fill: none;
+	      stroke: currentColor;
+	      stroke-width: 2;
+	      stroke-linecap: round;
 	    }
 	    .setting-row {
 	      display: flex;
@@ -947,7 +959,7 @@
   <div class="app">
     <div class="title-row">
       <h1>Arculus</h1>
-      <span class="app-version">v1.6.2</span>
+      <span class="app-version">v1.6.4</span>
       <button id="settingsBtn" type="button" class="settings-button" aria-label="Open settings" title="Settings"></button>
       <div id="networkStatus" class="network-status" title="Browser network status" aria-live="polite">
         <span class="network-dot" aria-hidden="true"></span>
@@ -1064,7 +1076,7 @@
       <div class="arc-credential-panel">
         <div class="settings-header" style="margin-bottom:0;">
           <h2 id="arcCredentialTitle">Protect .arc File</h2>
-          <button id="arcCredentialCloseBtn" type="button" class="settings-close" aria-label="Close credential dialog">x</button>
+          <button id="arcCredentialCloseBtn" type="button" class="settings-close" aria-label="Close credential dialog"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
         <p id="arcCredentialDesc" class="arc-credential-desc"></p>
         <div class="arc-credential-tabs">
@@ -1120,7 +1132,7 @@
       <div class="qr-panel">
         <div class="qr-header">
           <h2 id="qrModalTitle">QR Export</h2>
-          <button id="qrModalCloseBtn" type="button" class="settings-close" aria-label="Close QR">x</button>
+          <button id="qrModalCloseBtn" type="button" class="settings-close" aria-label="Close QR"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
         <!-- Step 1: address input (always shown) -->
         <div style="width:100%;display:flex;gap:8px;align-items:stretch;">
@@ -1159,7 +1171,7 @@
       <div class="settings-panel">
         <div class="settings-header">
           <h2 id="settingsTitle">Settings</h2>
-          <button id="settingsCloseBtn" type="button" class="settings-close" aria-label="Close settings">x</button>
+          <button id="settingsCloseBtn" type="button" class="settings-close" aria-label="Close settings"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
         <div class="setting-row" style="flex-direction:column; align-items:flex-start; gap:10px;">
           <span style="font-weight:600;">Theme</span>
@@ -1198,6 +1210,28 @@
               <span class="toggle-track"></span>
             </label>
           </div>
+          <div class="setting-row">
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              <span style="font-weight:600;">Tab-Switch Grace Period</span>
+              <span style="font-size:12px;color:var(--muted);">Wait 15 seconds before clearing sensitive fields when this tab is hidden. Returning during that time cancels the clear.</span>
+            </div>
+            <label class="toggle" aria-label="Use a 15-second tab-switch grace period">
+              <input type="checkbox" id="visibilityGraceToggle" checked />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              <span style="font-weight:600;">Session Timeout</span>
+              <span style="font-size:12px;color:var(--muted);">Clear sensitive fields after a period without keyboard, pointer, touch, or scroll activity.</span>
+            </div>
+            <select id="sessionTimeoutSelect" aria-label="Session timeout" style="width:auto;min-width:110px;">
+              <option value="2">2 minutes</option>
+              <option value="5" selected>5 minutes</option>
+              <option value="15">15 minutes</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
           <div class="setting-row" id="testnetSettingRow">
             <div style="display:flex;flex-direction:column;gap:3px;">
               <span style="font-weight:600;">Testnet</span>
@@ -1211,7 +1245,7 @@
           <div class="setting-row">
             <div style="display:flex;flex-direction:column;gap:3px;">
               <span style="font-weight:600;">Legacy Address Format (Bitcoin Cash)</span>
-              <span style="font-size:12px;color:var(--muted);">Use legacy Base58 addresses (starting with <code style="font-family:monospace;">1</code>) instead of the default CashAddr format (<code style="font-family:monospace;">bitcoincash:qâ€¦</code>). Applies to Bitcoin Cash only.</span>
+              <span style="font-size:12px;color:var(--muted);">Use legacy Base58 addresses (starting with <code style="font-family:monospace;">1</code>) instead of the default CashAddr format (<code style="font-family:monospace;">bitcoincash:q&hellip;</code>). Applies to Bitcoin Cash only.</span>
             </div>
             <label class="toggle" aria-label="Use legacy BCH address format">
               <input type="checkbox" id="legacyAddrToggle" />
@@ -1258,7 +1292,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 </script>
 
   <script>
-    const APP_VERSION = '1.6.2';
+    const APP_VERSION = '1.6.4';
     const BIP39_WORDS = ['abandon','ability','able','about','above','absent','absorb','abstract','absurd','abuse','access','accident','account','accuse','achieve','acid','acoustic','acquire','across','act','action','actor','actress','actual','adapt','add','addict','address','adjust','admit','adult','advance','advice','aerobic','affair','afford','afraid','again','age','agent','agree','ahead','aim','air','airport','aisle','alarm','album','alcohol','alert','alien','all','alley','allow','almost','alone','alpha','already','also','alter','always','amateur','amazing','among','amount','amused','analyst','anchor','ancient','anger','angle','angry','animal','ankle','announce','annual','another','answer','antenna','antique','anxiety','any','apart','apology','appear','apple','approve','april','arch','arctic','area','arena','argue','arm','armed','armor','army','around','arrange','arrest','arrive','arrow','art','artefact','artist','artwork','ask','aspect','assault','asset','assist','assume','asthma','athlete','atom','attack','attend','attitude','attract','auction','audit','august','aunt','author','auto','autumn','average','avocado','avoid','awake','aware','away','awesome','awful','awkward','axis','baby','bachelor','bacon','badge','bag','balance','balcony','ball','bamboo','banana','banner','bar','barely','bargain','barrel','base','basic','basket','battle','beach','bean','beauty','because','become','beef','before','begin','behave','behind','believe','below','belt','bench','benefit','best','betray','better','between','beyond','bicycle','bid','bike','bind','biology','bird','birth','bitter','black','blade','blame','blanket','blast','bleak','bless','blind','blood','blossom','blouse','blue','blur','blush','board','boat','body','boil','bomb','bone','bonus','book','boost','border','boring','borrow','boss','bottom','bounce','box','boy','bracket','brain','brand','brass','brave','bread','breeze','brick','bridge','brief','bright','bring','brisk','broccoli','broken','bronze','broom','brother','brown','brush','bubble','buddy','budget','buffalo','build','bulb','bulk','bullet','bundle','bunker','burden','burger','burst','bus','business','busy','butter','buyer','buzz','cabbage','cabin','cable','cactus','cage','cake','call','calm','camera','camp','can','canal','cancel','candy','cannon','canoe','canvas','canyon','capable','capital','captain','car','carbon','card','cargo','carpet','carry','cart','case','cash','casino','castle','casual','cat','catalog','catch','category','cattle','caught','cause','caution','cave','ceiling','celery','cement','census','century','cereal','certain','chair','chalk','champion','change','chaos','chapter','charge','chase','chat','cheap','check','cheese','chef','cherry','chest','chicken','chief','child','chimney','choice','choose','chronic','chuckle','chunk','churn','cigar','cinnamon','circle','citizen','city','civil','claim','clap','clarify','claw','clay','clean','clerk','clever','click','client','cliff','climb','clinic','clip','clock','clog','close','cloth','cloud','clown','club','clump','cluster','clutch','coach','coast','coconut','code','coffee','coil','coin','collect','color','column','combine','come','comfort','comic','common','company','concert','conduct','confirm','congress','connect','consider','control','convince','cook','cool','copper','copy','coral','core','corn','correct','cost','cotton','couch','country','couple','course','cousin','cover','coyote','crack','cradle','craft','cram','crane','crash','crater','crawl','crazy','cream','credit','creek','crew','cricket','crime','crisp','critic','crop','cross','crouch','crowd','crucial','cruel','cruise','crumble','crunch','crush','cry','crystal','cube','culture','cup','cupboard','curious','current','curtain','curve','cushion','custom','cute','cycle','dad','damage','damp','dance','danger','daring','dash','daughter','dawn','day','deal','debate','debris','decade','december','decide','decline','decorate','decrease','deer','defense','define','defy','degree','delay','deliver','demand','demise','denial','dentist','deny','depart','depend','deposit','depth','deputy','derive','describe','desert','design','desk','despair','destroy','detail','detect','develop','device','devote','diagram','dial','diamond','diary','dice','diesel','diet','differ','digital','dignity','dilemma','dinner','dinosaur','direct','dirt','disagree','discover','disease','dish','dismiss','disorder','display','distance','divert','divide','divorce','dizzy','doctor','document','dog','doll','dolphin','domain','donate','donkey','donor','door','dose','double','dove','draft','dragon','drama','drastic','draw','dream','dress','drift','drill','drink','drip','drive','drop','drum','dry','duck','dumb','dune','during','dust','dutch','duty','dwarf','dynamic','eager','eagle','early','earn','earth','easily','east','easy','echo','ecology','economy','edge','edit','educate','effort','egg','eight','either','elbow','elder','electric','elegant','element','elephant','elevator','elite','else','embark','embody','embrace','emerge','emotion','employ','empower','empty','enable','enact','end','endless','endorse','enemy','energy','enforce','engage','engine','enhance','enjoy','enlist','enough','enrich','enroll','ensure','enter','entire','entry','envelope','episode','equal','equip','era','erase','erode','erosion','error','erupt','escape','essay','essence','estate','eternal','ethics','evidence','evil','evoke','evolve','exact','example','excess','exchange','excite','exclude','excuse','execute','exercise','exhaust','exhibit','exile','exist','exit','exotic','expand','expect','expire','explain','expose','express','extend','extra','eye','eyebrow','fabric','face','faculty','fade','faint','faith','fall','false','fame','family','famous','fan','fancy','fantasy','farm','fashion','fat','fatal','father','fatigue','fault','favorite','feature','february','federal','fee','feed','feel','female','fence','festival','fetch','fever','few','fiber','fiction','field','figure','file','film','filter','final','find','fine','finger','finish','fire','firm','first','fiscal','fish','fit','fitness','fix','flag','flame','flash','flat','flavor','flee','flight','flip','float','flock','floor','flower','fluid','flush','fly','foam','focus','fog','foil','fold','follow','food','foot','force','forest','forget','fork','fortune','forum','forward','fossil','foster','found','fox','fragile','frame','frequent','fresh','friend','fringe','frog','front','frost','frown','frozen','fruit','fuel','fun','funny','furnace','fury','future','gadget','gain','galaxy','gallery','game','gap','garage','garbage','garden','garlic','garment','gas','gasp','gate','gather','gauge','gaze','general','genius','genre','gentle','genuine','gesture','ghost','giant','gift','giggle','ginger','giraffe','girl','give','glad','glance','glare','glass','glide','glimpse','globe','gloom','glory','glove','glow','glue','goat','goddess','gold','good','goose','gorilla','gospel','gossip','govern','gown','grab','grace','grain','grant','grape','grass','gravity','great','green','grid','grief','grit','grocery','group','grow','grunt','guard','guess','guide','guilt','guitar','gun','gym','habit','hair','half','hammer','hamster','hand','happy','harbor','hard','harsh','harvest','hat','have','hawk','hazard','head','health','heart','heavy','hedgehog','height','hello','helmet','help','hen','hero','hidden','high','hill','hint','hip','hire','history','hobby','hockey','hold','hole','holiday','hollow','home','honey','hood','hope','horn','horror','horse','hospital','host','hotel','hour','hover','hub','huge','human','humble','humor','hundred','hungry','hunt','hurdle','hurry','hurt','husband','hybrid','ice','icon','idea','identify','idle','ignore','ill','illegal','illness','image','imitate','immense','immune','impact','impose','improve','impulse','inch','include','income','increase','index','indicate','indoor','industry','infant','inflict','inform','inhale','inherit','initial','inject','injury','inmate','inner','innocent','input','inquiry','insane','insect','inside','inspire','install','intact','interest','into','invest','invite','involve','iron','island','isolate','issue','item','ivory','jacket','jaguar','jar','jazz','jealous','jeans','jelly','jewel','job','join','joke','journey','joy','judge','juice','jump','jungle','junior','junk','just','kangaroo','keen','keep','ketchup','key','kick','kid','kidney','kind','kingdom','kiss','kit','kitchen','kite','kitten','kiwi','knee','knife','knock','know','lab','label','labor','ladder','lady','lake','lamp','language','laptop','large','later','latin','laugh','laundry','lava','law','lawn','lawsuit','layer','lazy','leader','leaf','learn','leave','lecture','left','leg','legal','legend','leisure','lemon','lend','length','lens','leopard','lesson','letter','level','liar','liberty','library','license','life','lift','light','like','limb','limit','link','lion','liquid','list','little','live','lizard','load','loan','lobster','local','lock','logic','lonely','long','loop','lottery','loud','lounge','love','loyal','lucky','luggage','lumber','lunar','lunch','luxury','lyrics','machine','mad','magic','magnet','maid','mail','main','major','make','mammal','man','manage','mandate','mango','mansion','manual','maple','marble','march','margin','marine','market','marriage','mask','mass','master','match','material','math','matrix','matter','maximum','maze','meadow','mean','measure','meat','mechanic','medal','media','melody','melt','member','memory','mention','menu','mercy','merge','merit','merry','mesh','message','metal','method','middle','midnight','milk','million','mimic','mind','minimum','minor','minute','miracle','mirror','misery','miss','mistake','mix','mixed','mixture','mobile','model','modify','mom','moment','monitor','monkey','monster','month','moon','moral','more','morning','mosquito','mother','motion','motor','mountain','mouse','move','movie','much','muffin','mule','multiply','muscle','museum','mushroom','music','must','mutual','myself','mystery','myth','naive','name','napkin','narrow','nasty','nation','nature','near','neck','need','negative','neglect','neither','nephew','nerve','nest','net','network','neutral','never','news','next','nice','night','noble','noise','nominee','noodle','normal','north','nose','notable','note','nothing','notice','novel','now','nuclear','number','nurse','nut','oak','obey','object','oblige','obscure','observe','obtain','obvious','occur','ocean','october','odor','off','offer','office','often','oil','okay','old','olive','olympic','omit','once','one','onion','online','only','open','opera','opinion','oppose','option','orange','orbit','orchard','order','ordinary','organ','orient','original','orphan','ostrich','other','outdoor','outer','output','outside','oval','oven','over','own','owner','oxygen','oyster','ozone','pact','paddle','page','pair','palace','palm','panda','panel','panic','panther','paper','parade','parent','park','parrot','party','pass','patch','path','patient','patrol','pattern','pause','pave','payment','peace','peanut','pear','peasant','pelican','pen','penalty','pencil','people','pepper','perfect','permit','person','pet','phone','photo','phrase','physical','piano','picnic','picture','piece','pig','pigeon','pill','pilot','pink','pioneer','pipe','pistol','pitch','pizza','place','planet','plastic','plate','play','please','pledge','pluck','plug','plunge','poem','poet','point','polar','pole','police','pond','pony','pool','popular','portion','position','possible','post','potato','pottery','poverty','powder','power','practice','praise','predict','prefer','prepare','present','pretty','prevent','price','pride','primary','print','priority','prison','private','prize','problem','process','produce','profit','program','project','promote','proof','property','prosper','protect','proud','provide','public','pudding','pull','pulp','pulse','pumpkin','punch','pupil','puppy','purchase','purity','purpose','purse','push','put','puzzle','pyramid','quality','quantum','quarter','question','quick','quit','quiz','quote','rabbit','raccoon','race','rack','radar','radio','rail','rain','raise','rally','ramp','ranch','random','range','rapid','rare','rate','rather','raven','raw','razor','ready','real','reason','rebel','rebuild','recall','receive','recipe','record','recycle','reduce','reflect','reform','refuse','region','regret','regular','reject','relax','release','relief','rely','remain','remember','remind','remove','render','renew','rent','reopen','repair','repeat','replace','report','require','rescue','resemble','resist','resource','response','result','retire','retreat','return','reunion','reveal','review','reward','rhythm','rib','ribbon','rice','rich','ride','ridge','rifle','right','rigid','ring','riot','ripple','risk','ritual','rival','river','road','roast','robot','robust','rocket','romance','roof','rookie','room','rose','rotate','rough','round','route','royal','rubber','rude','rug','rule','run','runway','rural','sad','saddle','sadness','safe','sail','salad','salmon','salon','salt','salute','same','sample','sand','satisfy','satoshi','sauce','sausage','save','say','scale','scan','scare','scatter','scene','scheme','school','science','scissors','scorpion','scout','scrap','screen','script','scrub','sea','search','season','seat','second','secret','section','security','seed','seek','segment','select','sell','seminar','senior','sense','sentence','series','service','session','settle','setup','seven','shadow','shaft','shallow','share','shed','shell','sheriff','shield','shift','shine','ship','shiver','shock','shoe','shoot','shop','short','shoulder','shove','shrimp','shrug','shuffle','shy','sibling','sick','side','siege','sight','sign','silent','silk','silly','silver','similar','simple','since','sing','siren','sister','situate','six','size','skate','sketch','ski','skill','skin','skirt','skull','slab','slam','sleep','slender','slice','slide','slight','slim','slogan','slot','slow','slush','small','smart','smile','smoke','smooth','snack','snake','snap','sniff','snow','soap','soccer','social','sock','soda','soft','solar','soldier','solid','solution','solve','someone','song','soon','sorry','sort','soul','sound','soup','source','south','space','spare','spatial','spawn','speak','special','speed','spell','spend','sphere','spice','spider','spike','spin','spirit','split','spoil','sponsor','spoon','sport','spot','spray','spread','spring','spy','square','squeeze','squirrel','stable','stadium','staff','stage','stairs','stamp','stand','start','state','stay','steak','steel','stem','step','stereo','stick','still','sting','stock','stomach','stone','stool','story','stove','strategy','street','strike','strong','struggle','student','stuff','stumble','style','subject','submit','subway','success','such','sudden','suffer','sugar','suggest','suit','summer','sun','sunny','sunset','super','supply','supreme','sure','surface','surge','surprise','surround','survey','suspect','sustain','swallow','swamp','swap','swarm','swear','sweet','swift','swim','swing','switch','sword','symbol','symptom','syrup','system','table','tackle','tag','tail','talent','talk','tank','tape','target','task','taste','tattoo','taxi','teach','team','tell','ten','tenant','tennis','tent','term','test','text','thank','that','theme','then','theory','there','they','thing','this','thought','three','thrive','throw','thumb','thunder','ticket','tide','tiger','tilt','timber','time','tiny','tip','tired','tissue','title','toast','tobacco','today','toddler','toe','together','toilet','token','tomato','tomorrow','tone','tongue','tonight','tool','tooth','top','topic','topple','torch','tornado','tortoise','toss','total','tourist','toward','tower','town','toy','track','trade','traffic','tragic','train','transfer','trap','trash','travel','tray','treat','tree','trend','trial','tribe','trick','trigger','trim','trip','trophy','trouble','truck','true','truly','trumpet','trust','truth','try','tube','tuition','tumble','tuna','tunnel','turkey','turn','turtle','twelve','twenty','twice','twin','twist','two','type','typical','ugly','umbrella','unable','unaware','uncle','uncover','under','undo','unfair','unfold','unhappy','uniform','unique','unit','universe','unknown','unlock','until','unusual','unveil','update','upgrade','uphold','upon','upper','upset','urban','urge','usage','use','used','useful','useless','usual','utility','vacant','vacuum','vague','valid','valley','valve','van','vanish','vapor','various','vast','vault','vehicle','velvet','vendor','venture','venue','verb','verify','version','very','vessel','veteran','viable','vibrant','vicious','victory','video','view','village','vintage','violin','virtual','virus','visa','visit','visual','vital','vivid','vocal','voice','void','volcano','volume','vote','voyage','wage','wagon','wait','walk','wall','walnut','want','warfare','warm','warrior','wash','wasp','waste','water','wave','way','wealth','weapon','wear','weasel','weather','web','wedding','weekend','weird','welcome','west','wet','whale','what','wheat','wheel','when','where','whip','whisper','wide','width','wife','wild','will','win','window','wine','wing','wink','winner','winter','wire','wisdom','wise','wish','witness','wolf','woman','wonder','wood','wool','word','work','world','worry','worth','wrap','wreck','wrestle','wrist','write','wrong','yard','year','yellow','you','young','youth','zebra','zero','zone','zoo'];
     const BIP39_SET = new Set(BIP39_WORDS);
     const BIP39_INDEX = Object.fromEntries(BIP39_WORDS.map((w, i) => [w, i]));
@@ -1639,6 +1673,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       themeModeDarkPlus: document.getElementById('themeModeDarkPlus'),
       themeModeTerminal: document.getElementById('themeModeTerminal'),
       clearAllBtn: document.getElementById('clearAllBtn'),
+      visibilityGraceToggle: document.getElementById('visibilityGraceToggle'),
+      sessionTimeoutSelect: document.getElementById('sessionTimeoutSelect'),
       testnetToggle: document.getElementById('testnetToggle'),
       testnetSettingRow: document.getElementById('testnetSettingRow'),
       legacyAddrToggle: document.getElementById('legacyAddrToggle')
@@ -1666,7 +1702,14 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     let importedSeedState = null;
     let showingImportedSeed = false;
     let rootFingerprintRefreshToken = 0;
+    let rootFingerprintRefreshTimer = null;
+    let rootFingerprintRefreshRunning = false;
+    let rootFingerprintRefreshPending = false;
+    let derivationRequestToken = 0;
+    let derivationRunning = false;
+    let pendingDerivationRequest = null;
     let lastDerivedOutput = null;
+    const ROOT_FINGERPRINT_DEBOUNCE_MS = 300;
     const ARC_MAGIC = 'ARCULUS-ARC';
     const ARC_ARMOR_HEADER = 'ARCULUS-ARC-V2';
     const ARC_V2_FORMAT = 'arculus-encrypted-seed-v2';
@@ -1680,26 +1723,40 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     const ARC_KEYFILE_FORMAT = 'arculus-recovery-keyfile-v1';
     const ARC_KEYFILE_ENC_FORMAT = 'arculus-recovery-keyfile-enc-v1';
     const ARC_KEYFILE_BYTES = 64;
-    const ARC_KEYFILE_KDF_ITERATIONS = 200000;
-    const IDLE_TIMEOUT_MS = 5 * 60 * 1000;   // 5 minutes
+    const ARC_KEYFILE_KDF_ITERATIONS = 1000000;
+    const ARC_KEYFILE_LEGACY_KDF_ITERATIONS = 200000;
+    const DEFAULT_IDLE_TIMEOUT_MINUTES = 5;
+    const ALLOWED_IDLE_TIMEOUTS = new Set(['2', '5', '15', 'off']);
     const CLIPBOARD_CLEAR_SECS = 60;
+    const VISIBILITY_CLEAR_GRACE_MS = 15 * 1000;
 
     // Idle timer
     let idleTimer = null;
     let idleWarningTimer = null;
+
+    function selectedIdleTimeoutMs() {
+      const value = els.sessionTimeoutSelect?.value || String(DEFAULT_IDLE_TIMEOUT_MINUTES);
+      if (value === 'off') return 0;
+      const minutes = Number(value);
+      return Number.isFinite(minutes) && minutes > 0
+        ? minutes * 60 * 1000
+        : DEFAULT_IDLE_TIMEOUT_MINUTES * 60 * 1000;
+    }
 
     function resetIdleTimer() {
       clearTimeout(idleTimer);
       clearTimeout(idleWarningTimer);
       const banner = document.getElementById('idleBanner');
       if (banner) banner.classList.remove('visible');
+      const idleTimeoutMs = selectedIdleTimeoutMs();
+      if (idleTimeoutMs === 0) return;
       idleWarningTimer = setTimeout(() => {
         const b = document.getElementById('idleBanner');
         if (b) {
           b.textContent = 'Idle timeout in 60 seconds. All fields will be cleared.';
           b.classList.add('visible');
         }
-      }, IDLE_TIMEOUT_MS - 60000);
+      }, idleTimeoutMs - 60000);
       idleTimer = setTimeout(() => {
         handleClearAll();
         const b = document.getElementById('idleBanner');
@@ -1708,7 +1765,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
           b.classList.add('visible');
           setTimeout(() => b.classList.remove('visible'), 5000);
         }
-      }, IDLE_TIMEOUT_MS);
+      }, idleTimeoutMs);
     }
 
     function startIdleWatcher() {
@@ -1718,13 +1775,41 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       resetIdleTimer();
     }
 
-    function handleVisibilitySecurityClear() {
+    let visibilityClearTimer = null;
+
+    function cancelVisibilitySecurityClear() {
+      if (visibilityClearTimer === null) return;
+      clearTimeout(visibilityClearTimer);
+      visibilityClearTimer = null;
+    }
+
+    function clearSensitiveDataAfterVisibilityLoss() {
+      visibilityClearTimer = null;
       if (!document.hidden) return;
       const hasDerivedOutput = Boolean(lastDerivedOutput) || Boolean((els.output.value || '').trim());
       const hasSensitiveInput = hasSeedMaterial() || Boolean((els.passphrase.value || '').trim());
-      if (!hasSensitiveInput && !hasDerivedOutput) return;
+      const hasCredentialInput = Boolean((els.arcPasswordInput.value || '').trim())
+        || Boolean((els.arcPasswordConfirmInput.value || '').trim())
+        || Boolean(arcCredentialKeyfileSecret)
+        || Boolean(els.arcKeyfileInput.files?.length);
+      if (!hasSensitiveInput && !hasDerivedOutput && !hasCredentialInput) return;
       handleClearAll();
       uiStatus('Sensitive fields cleared because the tab lost focus.');
+    }
+
+    function handleVisibilitySecurityClear() {
+      if (!document.hidden) {
+        cancelVisibilitySecurityClear();
+        return;
+      }
+
+      cancelVisibilitySecurityClear();
+      const graceMs = els.visibilityGraceToggle?.checked ? VISIBILITY_CLEAR_GRACE_MS : 0;
+      if (graceMs === 0) {
+        clearSensitiveDataAfterVisibilityLoss();
+        return;
+      }
+      visibilityClearTimer = setTimeout(clearSensitiveDataAfterVisibilityLoss, graceMs);
     }
 
     // Clipboard auto-clear
@@ -2227,6 +2312,13 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       styleMnemonicBox();
     }
 
+    function refreshDerivationInfoIcon() {
+      const icon = document.getElementById('derivationInfoIcon');
+      if (!icon) return;
+      const value = (els.derivation.value || '').trim();
+      icon.style.display = value === "m/0'" ? '' : 'none';
+    }
+
     function applyImportedSeed(mnemonic, sourceName) {
       const words = normalizeMnemonicWords(mnemonic);
       importedSeedState = {
@@ -2245,18 +2337,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         hidden_on_screen: true
       }, null, 2);
       scheduleRootFingerprintRefresh();
-      // Show derivation path info icon only when path is m/0' (the Arculus default)
-      function refreshDerivationInfoIcon() {
-        const icon = document.getElementById('derivationInfoIcon');
-        if (!icon) return;
-        const val = (els.derivation.value || '').trim();
-        icon.style.display = (val === "m/0'") ? '' : 'none';
-      }
-      els.derivation.addEventListener('input', refreshDerivationInfoIcon);
-      // Also re-evaluate whenever the coin selector resets the derivation path
-      els.coin.addEventListener('change', () => setTimeout(refreshDerivationInfoIcon, 0));
-      // Show on load; default is Bitcoin with m/0'
-      window.addEventListener('DOMContentLoaded', refreshDerivationInfoIcon);
       refreshDerivationInfoIcon();
     }
 
@@ -2271,6 +2351,23 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       if (words.length === 12 || words.length === 24) setSeedLen(words.length);
       setObfuscatedSeedInputs(words);
       els.mnemonic.placeholder = protectedSeedPlaceholder();
+      scheduleRootFingerprintRefresh();
+    }
+
+    function maskManuallyEnteredSeed() {
+      if (importedSeedState) return;
+      const raw = els.mnemonic.value.trim();
+      if (!raw) return;
+      const words = normalizeMnemonicWords(raw);
+      if (words.length !== 12 && words.length !== 24) return;
+      importedSeedState = {
+        mnemonic: words.join(' '),
+        sourceName: 'manually entered seed',
+        kind: 'entered'
+      };
+      showingImportedSeed = false;
+      setObfuscatedSeedInputs(words);
+      els.mnemonic.placeholder = 'Seed hidden. Hold \u201cShow Seed\u201d to reveal.';
       scheduleRootFingerprintRefresh();
     }
 
@@ -2303,27 +2400,52 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       }
     }
 
-    async function refreshRootFingerprintDisplay() {
-      const token = ++rootFingerprintRefreshToken;
+    async function refreshRootFingerprintDisplay(token) {
       const mnemonic = getActiveMnemonic();
+      const passphrase = els.passphrase.value;
       const words = normalizeMnemonicWords(mnemonic);
       if (words.length !== 12 && words.length !== 24) {
-        setRootFingerprintDisplay('');
+        if (token === rootFingerprintRefreshToken) setRootFingerprintDisplay('');
         return;
       }
       try {
-        const analysis = await analyzeMnemonic(mnemonic, els.passphrase.value);
+        const fingerprint = await rootFingerprintFromMnemonic(mnemonic, passphrase);
         if (token !== rootFingerprintRefreshToken) return;
-        setRootFingerprintDisplay(analysis.root_fingerprint || '');
+        setRootFingerprintDisplay(fingerprint);
       } catch {
         if (token !== rootFingerprintRefreshToken) return;
         setRootFingerprintDisplay('');
       }
     }
 
+    async function runRootFingerprintRefreshQueue() {
+      if (rootFingerprintRefreshRunning || derivationRunning) {
+        rootFingerprintRefreshPending = true;
+        return;
+      }
+      rootFingerprintRefreshRunning = true;
+      try {
+        do {
+          rootFingerprintRefreshPending = false;
+          const token = rootFingerprintRefreshToken;
+          await refreshRootFingerprintDisplay(token);
+        } while (rootFingerprintRefreshPending && !pendingDerivationRequest);
+      } finally {
+        rootFingerprintRefreshRunning = false;
+        if (pendingDerivationRequest) void runDerivationQueue();
+        else if (rootFingerprintRefreshPending) void runRootFingerprintRefreshQueue();
+      }
+    }
+
     function scheduleRootFingerprintRefresh() {
+      rootFingerprintRefreshToken += 1;
+      clearTimeout(rootFingerprintRefreshTimer);
       setRootFingerprintDisplay('');
-      refreshRootFingerprintDisplay();
+      rootFingerprintRefreshTimer = setTimeout(() => {
+        rootFingerprintRefreshTimer = null;
+        rootFingerprintRefreshPending = true;
+        void runRootFingerprintRefreshQueue();
+      }, ROOT_FINGERPRINT_DEBOUNCE_MS);
     }
 
     function styleWordInput(inp) {
@@ -2463,6 +2585,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       const entropy = intToBytes(entropyInt, Math.floor(entropyBits / 8));
       const hash = await sha256(entropy);
       const expectedChecksum = Number(bytesToBigInt(hash) >> BigInt(256 - checksumBits));
+      zeroBytes(entropy, hash);
       const checksumOk = checksumInt === expectedChecksum;
       const seedType = detectSeedFormat(wc, true, checksumOk);
 
@@ -2479,18 +2602,65 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
       const seed = await bip39Seed(mnemonic, passphrase);
       const root = await masterFromSeed(seed);
-      details.bip39_seed_512_bit = bytesToHex(seed);
-      details.master_private_key = bytesToHex(ser256(root.k));
-      details.master_chain_code = bytesToHex(root.c);
+      const rootPrivateBytes = ser256(root.k);
       const rootPub = serPub(pointMul(root.k, G));
-      details.root_fingerprint = bytesToHex((await hash160(rootPub)).slice(0, 4));
-      details.message = 'Mnemonic is valid BIP39 (English word list + checksum).';
-      return { wordsOk: true, checksumOk: true, ...details };
+      const rootHash = await hash160(rootPub);
+      try {
+        details.bip39_seed_512_bit = bytesToHex(seed);
+        details.master_private_key = bytesToHex(rootPrivateBytes);
+        details.master_chain_code = bytesToHex(root.c);
+        details.root_fingerprint = bytesToHex(rootHash.subarray(0, 4));
+        details.message = 'Mnemonic is valid BIP39 (English word list + checksum).';
+        return { wordsOk: true, checksumOk: true, ...details };
+      } finally {
+        zeroBytes(seed, root.c, root.parentFp, rootPrivateBytes, rootPub, rootHash);
+      }
     }
 
     async function checkMnemonic(mnemonic, passphrase = '') {
-      const analysis = await analyzeMnemonic(mnemonic, passphrase);
-      return { wordsOk: analysis.wordsOk, checksumOk: analysis.checksumOk, message: analysis.message };
+      const words = normalizeMnemonicWords(mnemonic);
+      if (words.length !== 12 && words.length !== 24) {
+        return { wordsOk: false, checksumOk: false, message: 'Only 12-word and 24-word mnemonics are supported.' };
+      }
+      if (words.some(word => !BIP39_SET.has(word))) {
+        return { wordsOk: false, checksumOk: false, message: 'Mnemonic contains unknown words outside the BIP39 English list.' };
+      }
+      const checksumBits = Math.floor(words.length / 3);
+      let acc = 0n;
+      for (const word of words) acc = (acc << 11n) | BigInt(BIP39_INDEX[word]);
+      const suppliedChecksum = Number(acc & ((1n << BigInt(checksumBits)) - 1n));
+      const entropy = mnemonicEntropyBytes(mnemonic);
+      const hash = await sha256(entropy);
+      try {
+        const expectedChecksum = Number(bytesToBigInt(hash) >> BigInt(256 - checksumBits));
+        const checksumOk = suppliedChecksum === expectedChecksum;
+        return {
+          wordsOk: true,
+          checksumOk,
+          message: checksumOk
+            ? 'Mnemonic is valid BIP39 (English word list + checksum).'
+            : 'Mnemonic words are valid BIP39 words, but checksum is invalid.'
+        };
+      } finally {
+        zeroBytes(entropy, hash);
+      }
+    }
+
+    async function rootFingerprintFromMnemonic(mnemonic, passphrase = '') {
+      const check = await checkMnemonic(mnemonic);
+      if (!(check.wordsOk && check.checksumOk)) return '';
+      const seed = await bip39Seed(mnemonic, passphrase);
+      let root = null;
+      let rootPub = null;
+      let rootHash = null;
+      try {
+        root = await masterFromSeed(seed);
+        rootPub = serPub(pointMul(root.k, G));
+        rootHash = await hash160(rootPub);
+        return bytesToHex(rootHash.subarray(0, 4));
+      } finally {
+        zeroBytes(seed, root?.c, root?.parentFp, rootPub, rootHash);
+      }
     }
 
     async function generateRandomMnemonic(wordCount) {
@@ -2509,6 +2679,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         bits >>= 11n;
       }
       const mnemonic = words.join(' ');
+      zeroBytes(entropy, hash);
       const check = await checkMnemonic(mnemonic, '');
       if (!(check.wordsOk && check.checksumOk)) throw new Error('Generated mnemonic failed validation.');
       return mnemonic;
@@ -2528,6 +2699,12 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       let o = 0;
       for (const a of arrs) { out.set(a, o); o += a.length; }
       return out;
+    }
+
+    function zeroBytes(...buffers) {
+      for (const buffer of buffers) {
+        if (buffer instanceof Uint8Array) buffer.fill(0);
+      }
     }
 
     async function sha256(bytes) {
@@ -2871,14 +3048,19 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
     async function ed25519PublicKeyFromSeed(seed) {
       const h = await crypto.subtle.digest('SHA-512', seed);
-      const scalarBytes = new Uint8Array(h).slice(0, 32);
-      scalarBytes[0] &= 248;
-      scalarBytes[31] &= 127;
-      scalarBytes[31] |= 64;
-      const point = ed25519PointMul(leBytesToBigInt(scalarBytes));
-      const encoded = bigIntToLeBytes(point.y, 32);
-      encoded[31] = (encoded[31] & 0x7f) | Number((point.x & 1n) << 7n);
-      return encoded;
+      const digestBytes = new Uint8Array(h);
+      const scalarBytes = digestBytes.slice(0, 32);
+      try {
+        scalarBytes[0] &= 248;
+        scalarBytes[31] &= 127;
+        scalarBytes[31] |= 64;
+        const point = ed25519PointMul(leBytesToBigInt(scalarBytes));
+        const encoded = bigIntToLeBytes(point.y, 32);
+        encoded[31] = (encoded[31] & 0x7f) | Number((point.x & 1n) << 7n);
+        return encoded;
+      } finally {
+        zeroBytes(digestBytes, scalarBytes);
+      }
     }
 
     function ed25519PublicKeyFromScalarBytes(scalarBytes) {
@@ -2905,46 +3087,67 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       return intToBytes(entropy, entropyBits / 8);
     }
 
-    async function cardanoIcarusMasterFromEntropy(entropyBytes) {
-      const keyBytes = await pbkdf2Sha512(new Uint8Array(), entropyBytes, 4096, 96);
-      keyBytes[0] &= 0xf8;
-      keyBytes[31] &= 0x1f;
-      keyBytes[31] |= 0x40;
-      return { k: keyBytes.slice(0, 64), c: keyBytes.slice(64, 96) };
+    async function cardanoIcarusMasterFromEntropy(entropyBytes, passphraseBytes = new Uint8Array()) {
+      const keyBytes = await pbkdf2Sha512(passphraseBytes, entropyBytes, 4096, 96);
+      try {
+        keyBytes[0] &= 0xf8;
+        keyBytes[31] &= 0x1f;
+        keyBytes[31] |= 0x40;
+        return { k: keyBytes.slice(0, 64), c: keyBytes.slice(64, 96) };
+      } finally {
+        zeroBytes(keyBytes);
+      }
     }
 
     function cardanoPublicKeyFromPrivate(k) {
-      return ed25519PublicKeyFromScalarBytes(k.slice(0, 32));
+      const scalarBytes = k.slice(0, 32);
+      try {
+        return ed25519PublicKeyFromScalarBytes(scalarBytes);
+      } finally {
+        zeroBytes(scalarBytes);
+      }
     }
 
     async function ckdPrivCardano(node, index) {
       const idxBytes = ser32LE(index);
       const priv = node.k;
       const pub = cardanoPublicKeyFromPrivate(priv);
-      let z, cDigest;
-      if (index & HARDENED) {
-        z = await hmacSha512(node.c, concatBytes(Uint8Array.of(0), priv, idxBytes));
-        cDigest = await hmacSha512(node.c, concatBytes(Uint8Array.of(1), priv, idxBytes));
-      } else {
-        z = await hmacSha512(node.c, concatBytes(Uint8Array.of(2), pub, idxBytes));
-        cDigest = await hmacSha512(node.c, concatBytes(Uint8Array.of(3), pub, idxBytes));
+      const zData = concatBytes(Uint8Array.of((index & HARDENED) ? 0 : 2), (index & HARDENED) ? priv : pub, idxBytes);
+      const cData = concatBytes(Uint8Array.of((index & HARDENED) ? 1 : 3), (index & HARDENED) ? priv : pub, idxBytes);
+      const z = await hmacSha512(node.c, zData);
+      const cDigest = await hmacSha512(node.c, cData);
+      const leftBytes = priv.slice(0, 32);
+      const rightBytes = priv.slice(32, 64);
+      const zLeftBytes = z.slice(0, 28);
+      const zRightBytes = z.slice(32, 64);
+      let childLeftBytes = null;
+      let childRightBytes = null;
+      try {
+        const kl = leBytesToBigInt(leftBytes);
+        const kr = leBytesToBigInt(rightBytes);
+        const zl = leBytesToBigInt(zLeftBytes);
+        const zr = leBytesToBigInt(zRightBytes);
+        const childLeft = kl + (8n * zl);
+        if (childLeft % ED25519_L === 0n) throw new Error('Invalid Cardano child key');
+        const childRight = (kr + zr) % (1n << 256n);
+        childLeftBytes = bigIntToLeBytes(childLeft, 32);
+        childRightBytes = bigIntToLeBytes(childRight, 32);
+        return {
+          k: concatBytes(childLeftBytes, childRightBytes),
+          c: cDigest.slice(32, 64)
+        };
+      } finally {
+        zeroBytes(idxBytes, pub, zData, cData, z, cDigest, leftBytes, rightBytes, zLeftBytes, zRightBytes, childLeftBytes, childRightBytes);
       }
-      const kl = leBytesToBigInt(priv.slice(0, 32));
-      const kr = leBytesToBigInt(priv.slice(32, 64));
-      const zl = leBytesToBigInt(z.slice(0, 28));
-      const zr = leBytesToBigInt(z.slice(32, 64));
-      const childLeft = kl + (8n * zl);
-      if (childLeft % ED25519_L === 0n) throw new Error('Invalid Cardano child key');
-      const childRight = (kr + zr) % (1n << 256n);
-      return {
-        k: concatBytes(bigIntToLeBytes(childLeft, 32), bigIntToLeBytes(childRight, 32)),
-        c: cDigest.slice(32, 64)
-      };
     }
 
     async function deriveCardano(node, path) {
       let cur = node;
-      for (const i of parsePath(path)) cur = await ckdPrivCardano(cur, i);
+      for (const i of parsePath(path)) {
+        const next = await ckdPrivCardano(cur, i);
+        if (cur !== node) zeroBytes(cur.k, cur.c);
+        cur = next;
+      }
       return cur;
     }
 
@@ -3095,7 +3298,13 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     async function base58check(payload, alphabet = B58) {
       const c1 = await sha256(payload);
       const c2 = await sha256(c1);
-      return base58encode(concatBytes(payload, c2.slice(0, 4)), alphabet);
+      const checksum = c2.slice(0, 4);
+      const encoded = concatBytes(payload, checksum);
+      try {
+        return base58encode(encoded, alphabet);
+      } finally {
+        zeroBytes(c1, c2, checksum, encoded);
+      }
     }
 
     function bech32Polymod(values) {
@@ -3189,7 +3398,13 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
     function stellarStrKey(versionByte, payload) {
       const body = concatBytes(Uint8Array.of(versionByte), payload);
-      return base32Encode(concatBytes(body, crc16Xmodem(body)));
+      const checksum = crc16Xmodem(body);
+      const encoded = concatBytes(body, checksum);
+      try {
+        return base32Encode(encoded);
+      } finally {
+        zeroBytes(body, checksum, encoded);
+      }
     }
 
     function stellarPublicAddress(publicKey) {
@@ -3265,12 +3480,22 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
     async function hash160(bytes) {
       const s = await sha256(bytes);
-      return ripemd160(s);
+      try {
+        return ripemd160(s);
+      } finally {
+        zeroBytes(s);
+      }
     }
 
     async function taggedHash(tag, bytes) {
-      const tagHash = await sha256(await textToBytes(tag));
-      return sha256(concatBytes(tagHash, tagHash, bytes));
+      const tagBytes = await textToBytes(tag);
+      const tagHash = await sha256(tagBytes);
+      const payload = concatBytes(tagHash, tagHash, bytes);
+      try {
+        return await sha256(payload);
+      } finally {
+        zeroBytes(tagBytes, tagHash, payload);
+      }
     }
 
     function xOnlyPub(point) {
@@ -3285,7 +3510,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       const pub = pointMul(privKey, G);
       const evenPriv = (pub.y & 1n) ? mod(N - privKey, N) : privKey;
       const evenPub = (pub.y & 1n) ? negatePoint(pub) : pub;
-      const tweakBytes = await taggedHash('TapTweak', xOnlyPub(evenPub));
+      const tweakInput = xOnlyPub(evenPub);
+      const tweakBytes = await taggedHash('TapTweak', tweakInput);
+      zeroBytes(tweakInput);
       const tweak = bytesToBigInt(tweakBytes);
       if (tweak >= N) throw new Error('Invalid Taproot tweak');
       const outputPub = pointAdd(evenPub, pointMul(tweak, G));
@@ -3311,52 +3538,85 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       // Match Python tool behavior exactly for seed derivation input.
       const m = normalizeNFKD((mnemonic || '').trim().split(/\s+/).filter(Boolean).join(' '));
       const p = normalizeNFKD(passphrase || '');
-      return pbkdf2Sha512(await textToBytes(m), await textToBytes('mnemonic' + p), 2048, 64);
+      const mnemonicBytes = await textToBytes(m);
+      const saltBytes = await textToBytes('mnemonic' + p);
+      try {
+        return await pbkdf2Sha512(mnemonicBytes, saltBytes, 2048, 64);
+      } finally {
+        zeroBytes(mnemonicBytes, saltBytes);
+      }
     }
 
     async function masterFromSeed(seed) {
-      const I = await hmacSha512(await textToBytes('Bitcoin seed'), seed);
-      const IL = I.slice(0, 32), IR = I.slice(32);
-      const k = bytesToBigInt(IL);
-      if (k === 0n || k >= N) throw new Error('Invalid master key');
-      return { k, c: IR, depth: 0, parentFp: new Uint8Array([0,0,0,0]), childNum: 0 };
+      const labelBytes = await textToBytes('Bitcoin seed');
+      const I = await hmacSha512(labelBytes, seed);
+      try {
+        const k = bytesToBigInt(I.subarray(0, 32));
+        if (k === 0n || k >= N) throw new Error('Invalid master key');
+        return { k, c: I.slice(32), depth: 0, parentFp: new Uint8Array([0,0,0,0]), childNum: 0 };
+      } finally {
+        zeroBytes(labelBytes, I);
+      }
     }
 
     async function ckdPriv(node, index) {
       const idx = index >>> 0;
       const parentPub = pointMul(node.k, G);
+      const indexBytes = ser32(idx);
+      const privateBytes = (idx & HARDENED) ? ser256(node.k) : null;
       const data = (idx & HARDENED)
-        ? concatBytes(Uint8Array.of(0), ser256(node.k), ser32(idx))
-        : concatBytes(serPub(parentPub), ser32(idx));
+        ? concatBytes(Uint8Array.of(0), privateBytes, indexBytes)
+        : concatBytes(serPub(parentPub), indexBytes);
       const I = await hmacSha512(node.c, data);
-      const IL = bytesToBigInt(I.slice(0, 32));
-      const IR = I.slice(32);
-      const childK = mod(IL + node.k, N);
-      if (IL >= N || childK === 0n) throw new Error('Invalid child key');
-      const fp = (await hash160(serPub(parentPub))).slice(0, 4);
-      return { k: childK, c: IR, depth: node.depth + 1, parentFp: fp, childNum: idx };
+      try {
+        const IL = bytesToBigInt(I.subarray(0, 32));
+        const childK = mod(IL + node.k, N);
+        if (IL >= N || childK === 0n) throw new Error('Invalid child key');
+        const fp = (await hash160(serPub(parentPub))).slice(0, 4);
+        return { k: childK, c: I.slice(32), depth: node.depth + 1, parentFp: fp, childNum: idx };
+      } finally {
+        zeroBytes(indexBytes, privateBytes, data, I);
+      }
     }
 
     async function derive(node, path) {
       let cur = node;
-      for (const i of parsePath(path)) cur = await ckdPriv(cur, i);
+      for (const i of parsePath(path)) {
+        const next = await ckdPriv(cur, i);
+        if (cur !== node) zeroBytes(cur.c, cur.parentFp);
+        cur = next;
+      }
       return cur;
     }
 
     async function masterFromSeedEd25519(seed) {
-      const I = await hmacSha512(await textToBytes('ed25519 seed'), seed);
-      return { k: I.slice(0, 32), c: I.slice(32) };
+      const labelBytes = await textToBytes('ed25519 seed');
+      const I = await hmacSha512(labelBytes, seed);
+      try {
+        return { k: I.slice(0, 32), c: I.slice(32) };
+      } finally {
+        zeroBytes(labelBytes, I);
+      }
     }
 
     async function ckdPrivEd25519(node, index) {
       if (!(index & HARDENED)) throw new Error('Ed25519 derivation requires hardened path indexes.');
-      const I = await hmacSha512(node.c, concatBytes(Uint8Array.of(0), node.k, ser32(index)));
-      return { k: I.slice(0, 32), c: I.slice(32) };
+      const data = concatBytes(Uint8Array.of(0), node.k, ser32(index));
+      const I = await hmacSha512(node.c, data);
+      try {
+        return { k: I.slice(0, 32), c: I.slice(32) };
+      } finally {
+        zeroBytes(data, I);
+      }
     }
 
     async function deriveEd25519(node, path) {
       let cur = node;
-      for (const i of parsePath(path)) cur = await ckdPrivEd25519(cur, i);
+      for (const i of parsePath(path)) {
+        const next = await ckdPrivEd25519(cur, i);
+        if (cur !== node) zeroBytes(cur.k, cur.c);
+        cur = next;
+      }
       return cur;
     }
 
@@ -3429,7 +3689,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
           private_key_hex: bytesToHex(child.k),
           solana_note: 'Solana address derived with SLIP-0010 Ed25519 hardened derivation.'
         });
+        zeroBytes(child.k, child.c, publicKey);
       }
+      zeroBytes(root.k, root.c, rootPublicKey, firstAccountNode.k, firstAccountNode.c, firstAccountPublicKey);
       return {
         coin: 'solana',
         network: networkName,
@@ -3472,7 +3734,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
           stellar_secret_seed: stellarSecretSeed(child.k),
           stellar_note: 'Stellar account derived with SLIP-0010 Ed25519 hardened derivation.'
         });
+        zeroBytes(child.k, child.c, publicKey);
       }
+      zeroBytes(root.k, root.c, rootPublicKey, firstAccountNode.k, firstAccountNode.c, firstAccountPublicKey);
       return {
         coin: 'stellar',
         network: networkName,
@@ -3481,9 +3745,16 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       };
     }
 
-    async function deriveCardanoOutput(mnemonic, derivation, count, startIdx, wordCount, net) {
+    async function deriveCardanoOutput(mnemonic, passphrase, derivation, count, startIdx, wordCount, net) {
       const entropy = mnemonicEntropyBytes(mnemonic);
-      const root = await cardanoIcarusMasterFromEntropy(entropy);
+      const passphraseBytes = await textToBytes(normalizeNFKD(passphrase || ''));
+      let root;
+      try {
+        root = await cardanoIcarusMasterFromEntropy(entropy, passphraseBytes);
+      } finally {
+        zeroBytes(entropy);
+        zeroBytes(passphraseBytes);
+      }
       const rootPublicKey = cardanoPublicKeyFromPrivate(root.k);
       const firstPaths = cardanoPathsForIndex(derivation, startIdx);
       const firstAccountNode = await deriveCardano(root, firstPaths.paymentPath);
@@ -3520,7 +3791,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
           stake_private_key_hex: bytesToHex(staking.k),
           cardano_note: `Cardano Shelley ${net.networkName} base address using CIP-1852/Icarus Ed25519-BIP32 derivation.`
         });
+        zeroBytes(payment.k, payment.c, staking.k, staking.c, paymentPub, stakingPub);
       }
+      zeroBytes(root.k, root.c, rootPublicKey, firstAccountNode.k, firstAccountNode.c, firstAccountPublicKey);
       return {
         coin: 'cardano',
         network: net.networkName,
@@ -3530,6 +3803,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     }
 
     async function xprv(node, version) {
+      const privateBytes = ser256(node.k);
       const payload = concatBytes(
         intToBytes(BigInt(version), 4),
         Uint8Array.of(node.depth),
@@ -3537,9 +3811,13 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         ser32(node.childNum),
         node.c,
         Uint8Array.of(0),
-        ser256(node.k)
+        privateBytes
       );
-      return base58check(payload);
+      try {
+        return await base58check(payload);
+      } finally {
+        zeroBytes(privateBytes, payload);
+      }
     }
 
     async function xpub(node, version) {
@@ -3556,7 +3834,13 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
     async function toWif(k, net) {
       if (net.wif === undefined || net.wif === null) throw new Error('WIF is not defined for this coin/network');
-      return base58check(concatBytes(Uint8Array.of(net.wif), ser256(k), Uint8Array.of(1)));
+      const privateBytes = ser256(k);
+      const payload = concatBytes(Uint8Array.of(net.wif), privateBytes, Uint8Array.of(1));
+      try {
+        return await base58check(payload);
+      } finally {
+        zeroBytes(privateBytes, payload);
+      }
     }
 
     function serPubUncompressed(p) {
@@ -3637,17 +3921,30 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       if (!(check.wordsOk && check.checksumOk)) throw new Error(check.message);
 
       const wordCount = normalizeMnemonicWords(mnemonic).length;
+      if (net.addressFamily === 'cardano') {
+        return deriveCardanoOutput(mnemonic, passphrase, derivation, count, startIdx, wordCount, net);
+      }
       const seed = await bip39Seed(mnemonic, passphrase);
       if (net.addressFamily === 'solana') {
-        return deriveSolanaOutput(seed, derivation, count, startIdx, wordCount, net.networkName);
+        try {
+          return await deriveSolanaOutput(seed, derivation, count, startIdx, wordCount, net.networkName);
+        } finally {
+          zeroBytes(seed);
+        }
       }
       if (net.addressFamily === 'stellar') {
-        return deriveStellarOutput(seed, derivation, count, startIdx, wordCount, net.networkName);
+        try {
+          return await deriveStellarOutput(seed, derivation, count, startIdx, wordCount, net.networkName);
+        } finally {
+          zeroBytes(seed);
+        }
       }
-      if (net.addressFamily === 'cardano') {
-        return deriveCardanoOutput(mnemonic, derivation, count, startIdx, wordCount, net);
+      let root;
+      try {
+        root = await masterFromSeed(seed);
+      } finally {
+        zeroBytes(seed);
       }
-      const root = await masterFromSeed(seed);
       const account = await derive(root, derivation);
       const isEthereum = net.addressFamily === 'ethereum';
       const isEvm = isEthereum || net.addressFamily === 'evm';
@@ -3708,12 +4005,16 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
           setProgress(10 + Math.round((addressesDerived / totalAddresses) * 80));
           if (addressesDerived % 3 === 0) await new Promise(r => setTimeout(r, 0));
           const pub = serPub(pointMul(child.k, G));
+          const childPrivateBytes = ser256(child.k);
+          let taprootInternalPrivateBytes = null;
+          let taprootOutputPrivateBytes = null;
+          let taproot = null;
           const useLegacy = els.legacyAddrToggle && els.legacyAddrToggle.checked;
           const item = {
             path: `${derivation}/${branch}/${startIdx + i}`,
             address: st === 'p2tr' || isEvm || isTron || isCosmos || isXrp ? null : await pubToAddress(pub, st, net, useLegacy),
             public_key_hex: bytesToHex(pub),
-            private_key_hex: bytesToHex(ser256(child.k))
+            private_key_hex: bytesToHex(childPrivateBytes)
           };
           if (isEvm) {
             item.address = await ethereumAddressFromPrivateKey(child.k);
@@ -3740,22 +4041,83 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
             item.private_key_wif = await toWif(child.k, net);
           }
           if (st === 'p2tr') {
-            const taproot = await taprootKeyData(child.k);
+            taproot = await taprootKeyData(child.k);
+            taprootInternalPrivateBytes = ser256(taproot.internalPrivateKey);
+            taprootOutputPrivateBytes = ser256(taproot.outputPrivateKey);
             item.address = segwitAddress(net.hrp, 1, taproot.outputPublicKey);
             item.taproot_internal_public_key_hex = bytesToHex(taproot.internalPublicKey);
-            item.taproot_internal_private_key_hex = bytesToHex(ser256(taproot.internalPrivateKey));
+            item.taproot_internal_private_key_hex = bytesToHex(taprootInternalPrivateBytes);
             item.taproot_internal_private_key_wif = await toWif(taproot.internalPrivateKey, net);
             item.taproot_tweak_hex = bytesToHex(taproot.tweak);
             item.taproot_output_public_key_hex = bytesToHex(taproot.outputPublicKey);
-            item.taproot_output_private_key_hex = bytesToHex(ser256(taproot.outputPrivateKey));
+            item.taproot_output_private_key_hex = bytesToHex(taprootOutputPrivateBytes);
             item.taproot_output_private_key_wif = await toWif(taproot.outputPrivateKey, net);
             item.taproot_output_key_parity = taproot.outputParity;
           }
           result.accounts[0][key].push(item);
+          zeroBytes(
+            child.c,
+            child.parentFp,
+            pub,
+            childPrivateBytes,
+            taprootInternalPrivateBytes,
+            taprootOutputPrivateBytes,
+            taproot?.internalPublicKey,
+            taproot?.outputPublicKey,
+            taproot?.tweak
+          );
         }
+        zeroBytes(branchNode.c, branchNode.parentFp);
       }
 
+      zeroBytes(root.c, root.parentFp, account.c, account.parentFp);
       return result;
+    }
+
+    function requestDerivation(manual = false) {
+      const token = ++derivationRequestToken;
+      pendingDerivationRequest = { token, manual };
+      void runDerivationQueue();
+    }
+
+    async function runDerivationQueue() {
+      if (derivationRunning || rootFingerprintRefreshRunning) return;
+      derivationRunning = true;
+      els.deriveBtn.disabled = true;
+      try {
+        while (pendingDerivationRequest) {
+          const request = pendingDerivationRequest;
+          pendingDerivationRequest = null;
+          try {
+            uiStatus(request.manual ? 'Deriving...' : 'Re-deriving\u2026');
+            setProgress(5);
+            const data = await deriveOutput();
+
+            // A newer request or Clear All supersedes this result. Do not
+            // stringify or display stale private material.
+            if (request.token !== derivationRequestToken || pendingDerivationRequest) continue;
+
+            setProgress(95);
+            lastDerivedOutput = data;
+            els.output.value = JSON.stringify(data, null, 2);
+            setProgress(100);
+            setTimeout(hideProgress, 400);
+            showDerivedTable(data);
+            maskManuallyEnteredSeed();
+            uiStatus('Derivation complete. Seed phrase hidden \u2014 hold \u201cShow Seed\u201d to reveal.', 'valid');
+          } catch (error) {
+            if (request.token !== derivationRequestToken || pendingDerivationRequest) continue;
+            hideProgress();
+            uiStatus(`Error: ${error.message}`, 'invalid');
+            if (request.manual) els.output.value = JSON.stringify({ error: error.message }, null, 2);
+          }
+        }
+      } finally {
+        derivationRunning = false;
+        els.deriveBtn.disabled = false;
+        if (pendingDerivationRequest) void runDerivationQueue();
+        else if (rootFingerprintRefreshPending) void runRootFingerprintRefreshQueue();
+      }
     }
 
     function flattenDerivedRows(data) {
@@ -4106,6 +4468,158 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       uiStatus(`Exported derived keys/addresses as ${format.toUpperCase()}.`);
     }
 
+    async function hkdfKey(credential, salt) {
+      const credentialBytes = await textToBytes(credential);
+      const info = await textToBytes('Arculus ARC v3 AES-256-GCM key');
+      try {
+        const material = await crypto.subtle.importKey('raw', credentialBytes, 'HKDF', false, ['deriveKey']);
+        return await crypto.subtle.deriveKey(
+          { name: 'HKDF', hash: 'SHA-512', salt, info },
+          material,
+          { name: 'AES-GCM', length: 256 },
+          false,
+          ['encrypt', 'decrypt']
+        );
+      } finally {
+        credentialBytes.fill(0);
+        info.fill(0);
+      }
+    }
+
+    async function pbkdf2AesKey(password, salt) {
+      const passwordBytes = await textToBytes(normalizeNFKD(password));
+      const passwordHash = new Uint8Array(await crypto.subtle.digest('SHA-512', passwordBytes));
+      try {
+        const material = await crypto.subtle.importKey('raw', passwordHash, 'PBKDF2', false, ['deriveKey']);
+        return await crypto.subtle.deriveKey(
+          { name: 'PBKDF2', hash: 'SHA-512', salt, iterations: 1000000 },
+          material,
+          { name: 'AES-GCM', length: 256 },
+          false,
+          ['encrypt', 'decrypt']
+        );
+      } finally {
+        passwordBytes.fill(0);
+        passwordHash.fill(0);
+      }
+    }
+
+    async function deriveV3Key(credential, salt, useHkdf) {
+      if (useHkdf) {
+        return hkdfKey(credential, salt);
+      }
+      return pbkdf2AesKey(credential, salt);
+    }
+
+    async function encrypt_v3(mnemonic, password, requestedMode = '') {
+      const words = normalizeMnemonicWords(mnemonic);
+      if (![12, 24].includes(words.length)) throw new Error('Only 12-word and 24-word mnemonics can be encrypted.');
+      const salt = crypto.getRandomValues(new Uint8Array(32));
+      const nonce = crypto.getRandomValues(new Uint8Array(12));
+      const createdAt = new Date().toISOString();
+      const combined = password && password.credentialMode === 'both';
+      const credential = combined
+        ? await combinedArcSecret(password.password, password.keyfileSecret, salt)
+        : password;
+      const explicitMode = normalizeArcCredentialMode(requestedMode);
+      const inferredKeyfile = typeof credential === 'string' && credential.startsWith('arc-keyfile-v1:');
+      const credentialMode = combined ? 'both' : explicitMode || (inferredKeyfile ? 'keyfile' : 'password');
+      const useHkdf = credentialMode !== 'password';
+      const bundle = {
+        magic: ARC_MAGIC,
+        format: 'arculus-encrypted-seed-v3',
+        version: 3,
+        created_at: createdAt,
+        credential_mode: credentialMode,
+        kdf: useHkdf
+          ? { name: 'HKDF', hash: 'SHA-512', salt_b64: bytesToBase64(salt) }
+          : { name: 'PBKDF2', hash: 'SHA-512', iterations: 1000000, salt_b64: bytesToBase64(salt) },
+        cipher: { name: 'AES-256-GCM', nonce_b64: bytesToBase64(nonce) },
+        padding: { name: 'ZERO', length: 512 }
+      };
+      const payload = await textToBytes(JSON.stringify({
+        mnemonic: words.join(' '),
+        word_count: words.length,
+        created_at: createdAt
+      }));
+      if (payload.length > 512) throw new Error('Encrypted seed file contents are too large.');
+      const plaintext = new Uint8Array(512);
+      plaintext.set(payload);
+      const aad = await textToBytes(JSON.stringify(bundle));
+      try {
+        const key = await deriveV3Key(credential, salt, useHkdf);
+        const ciphertext = await crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv: nonce, additionalData: aad, tagLength: 128 },
+          key,
+          plaintext
+        );
+        bundle.ciphertext_b64 = bytesToBase64(new Uint8Array(ciphertext));
+        return bundle;
+      } finally {
+        payload.fill(0);
+        plaintext.fill(0);
+        salt.fill(0);
+      }
+    }
+
+    async function decryptV3(bundle, password) {
+      if (bundle.magic !== ARC_MAGIC || bundle.version !== 3 || bundle.format !== 'arculus-encrypted-seed-v3') {
+        throw new Error('Unsupported encrypted seed file format.');
+      }
+      if (!bundle.kdf || !bundle.cipher || !bundle.padding) throw new Error('Encrypted seed file is malformed.');
+      if (!['password', 'keyfile', 'both'].includes(bundle.credential_mode)) {
+        throw new Error('Encrypted seed file has an invalid credential mode.');
+      }
+      const salt = b64DecodeRequired(bundle.kdf.salt_b64, 'salt_b64', 32);
+      const combined = password && password.credentialMode === 'both';
+      const credential = combined
+        ? await combinedArcSecret(password.password, password.keyfileSecret, salt)
+        : password;
+      const useHkdf = bundle.credential_mode !== 'password';
+      if (bundle.kdf.hash !== 'SHA-512' || bundle.kdf.name !== (useHkdf ? 'HKDF' : 'PBKDF2')) {
+        throw new Error('Unsupported encrypted seed file KDF.');
+      }
+      if (!useHkdf && Number(bundle.kdf.iterations) !== 1000000) throw new Error('Unsupported encrypted seed file KDF.');
+      if (bundle.cipher.name !== 'AES-256-GCM') throw new Error('Unsupported encrypted seed file cipher.');
+      if (bundle.padding.name !== 'ZERO' || Number(bundle.padding.length) !== 512) {
+        throw new Error('Unsupported encrypted seed file padding.');
+      }
+      const nonce = b64DecodeRequired(bundle.cipher.nonce_b64, 'nonce_b64', 12);
+      const ciphertext = b64DecodeRequired(bundle.ciphertext_b64, 'ciphertext_b64');
+      const metadata = {};
+      for (const name of Object.keys(bundle)) {
+        if (name !== 'ciphertext_b64') metadata[name] = bundle[name];
+      }
+      const aad = await textToBytes(JSON.stringify(metadata));
+      let decrypted;
+      try {
+        const key = await deriveV3Key(credential, salt, useHkdf);
+        decrypted = new Uint8Array(await crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: nonce, additionalData: aad, tagLength: 128 },
+          key,
+          ciphertext
+        ));
+      } catch {
+        throw new Error('Unable to decrypt seed file. The password may be incorrect or the file may be corrupted.');
+      } finally {
+        salt.fill(0);
+      }
+      try {
+        if (decrypted.length !== 512) throw new Error('Encrypted seed file contents are invalid.');
+        let end = decrypted.length;
+        while (end > 0 && decrypted[end - 1] === 0) end -= 1;
+        let payload;
+        try {
+          payload = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(decrypted.slice(0, end)));
+        } catch {
+          throw new Error('Encrypted seed file contents are invalid.');
+        }
+        return normalizeDecryptedMnemonic(payload);
+      } finally {
+        decrypted.fill(0);
+      }
+    }
+
     async function encrypt_v2(mnemonic, password) {
       const words = normalizeMnemonicWords(mnemonic);
       if (![12, 24].includes(words.length)) throw new Error('Only 12-word and 24-word mnemonics can be encrypted.');
@@ -4146,7 +4660,10 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       const nonce = b64DecodeRequired(bundle.cipher.nonce_b64, 'nonce_b64', ARC_V2_NONCE_BYTES);
       const ciphertext = b64DecodeRequired(bundle.ciphertext_b64, 'ciphertext_b64');
       const expectedMac = b64DecodeRequired(bundle.mac_b64, 'mac_b64', 64);
-      const { encKey, macKey } = await arcV2Keys(password, salt, iterations);
+      const legacyPassword = password && password.credentialMode === 'both'
+        ? await combinedArcSecret_legacy(password.password, password.keyfileSecret)
+        : password;
+      const { encKey, macKey } = await arcV2Keys(legacyPassword, salt, iterations);
       const actualMac = await hmacSha512(macKey, await arcV2MacData(bundle, salt, nonce, ciphertext));
       if (!equalBytes(actualMac, expectedMac)) {
         throw new Error('Unable to decrypt seed file. The password may be incorrect or the file may be corrupted.');
@@ -4203,6 +4720,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
     async function decrypt(bundle, password) {
       if (!bundle || typeof bundle !== 'object') throw new Error('Unsupported encrypted seed file format.');
+      if (bundle.version === 3 || bundle.format === 'arculus-encrypted-seed-v3') return decryptV3(bundle, password);
       if (bundle.magic === ARC_MAGIC && bundle.format === ARC_PLAIN_FORMAT) {
         return normalizeDecryptedMnemonic(bundle);
       }
@@ -4210,8 +4728,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       return decryptV1(bundle, password);
     }
 
-    async function encryptSeedBundle(mnemonic, password) {
-      return encrypt_v2(mnemonic, password);
+    async function encryptSeedBundle(mnemonic, password, credentialMode = '') {
+      return encrypt_v3(mnemonic, password, credentialMode);
     }
 
     async function decryptSeedBundle(bundle, password) {
@@ -4261,6 +4779,89 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       return 'arc-keyfile-v1:' + bytesToBase64(bytes);
     }
 
+    async function encryptArcKeyfileBytes_v2(keyBytes, password) {
+      if (!password) throw new Error('Password cannot be empty when using Keyfile + Password.');
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const nonce = crypto.getRandomValues(new Uint8Array(12));
+      const passwordBytes = await textToBytes(normalizeNFKD(password));
+      const passwordHash = new Uint8Array(await crypto.subtle.digest('SHA-512', passwordBytes));
+      const keyfileBytes = new Uint8Array(keyBytes);
+      const aad = await textToBytes(JSON.stringify({ magic: ARC_KEYFILE_ENC_MAGIC, format: ARC_KEYFILE_ENC_FORMAT }));
+      const obj = {
+        magic: ARC_KEYFILE_ENC_MAGIC,
+        format: ARC_KEYFILE_ENC_FORMAT,
+        version: 2,
+        created_at: new Date().toISOString(),
+        kdf: { algo: 'PBKDF2-SHA512', iterations: ARC_KEYFILE_KDF_ITERATIONS, salt_b64: bytesToBase64(salt), prehash: 'SHA-512' },
+        cipher: { name: 'AES-256-GCM', nonce_b64: bytesToBase64(nonce) }
+      };
+      try {
+        const material = await crypto.subtle.importKey('raw', passwordHash, 'PBKDF2', false, ['deriveKey']);
+        const key = await crypto.subtle.deriveKey(
+          { name: 'PBKDF2', hash: 'SHA-512', salt, iterations: ARC_KEYFILE_KDF_ITERATIONS },
+          material,
+          { name: 'AES-GCM', length: 256 },
+          false,
+          ['encrypt']
+        );
+        const ciphertext = await crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv: nonce, additionalData: aad, tagLength: 128 },
+          key,
+          keyfileBytes
+        );
+        obj.ciphertext_b64 = bytesToBase64(new Uint8Array(ciphertext));
+        return obj;
+      } finally {
+        passwordBytes.fill(0);
+        passwordHash.fill(0);
+        keyfileBytes.fill(0);
+        salt.fill(0);
+      }
+    }
+
+    async function decryptArcKeyfileObject_v2(obj, password) {
+      if (!password) throw new Error('Enter the same password used with Keyfile + Password before loading this encrypted keyfile.');
+      if (obj.magic !== ARC_KEYFILE_ENC_MAGIC || obj.format !== ARC_KEYFILE_ENC_FORMAT || obj.version !== 2) {
+        throw new Error('Unsupported encrypted keyfile format.');
+      }
+      const iterations = Number(obj.kdf?.iterations);
+      if (obj.kdf?.algo !== 'PBKDF2-SHA512'
+          || ![ARC_KEYFILE_LEGACY_KDF_ITERATIONS, ARC_KEYFILE_KDF_ITERATIONS].includes(iterations)
+          || obj.kdf?.prehash !== 'SHA-512') {
+        throw new Error('Unsupported encrypted keyfile KDF.');
+      }
+      if (obj.cipher?.name !== 'AES-256-GCM') throw new Error('Unsupported encrypted keyfile cipher.');
+      const salt = b64DecodeRequired(obj.kdf.salt_b64, 'keyfile salt_b64', 16);
+      const nonce = b64DecodeRequired(obj.cipher.nonce_b64, 'keyfile nonce_b64', 12);
+      const ciphertext = b64DecodeRequired(obj.ciphertext_b64, 'keyfile ciphertext_b64');
+      const passwordBytes = await textToBytes(normalizeNFKD(password));
+      const passwordHash = new Uint8Array(await crypto.subtle.digest('SHA-512', passwordBytes));
+      const aad = await textToBytes(JSON.stringify({ magic: obj.magic, format: obj.format }));
+      try {
+        const material = await crypto.subtle.importKey('raw', passwordHash, 'PBKDF2', false, ['deriveKey']);
+        const key = await crypto.subtle.deriveKey(
+          { name: 'PBKDF2', hash: 'SHA-512', salt, iterations },
+          material,
+          { name: 'AES-GCM', length: 256 },
+          false,
+          ['decrypt']
+        );
+        try {
+          return new Uint8Array(await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: nonce, additionalData: aad, tagLength: 128 },
+            key,
+            ciphertext
+          ));
+        } catch {
+          throw new Error('Unable to decrypt keyfile. The password may be incorrect or the keyfile may be corrupted.');
+        }
+      } finally {
+        passwordBytes.fill(0);
+        passwordHash.fill(0);
+        salt.fill(0);
+      }
+    }
+
     async function encryptArcKeyfileBytes(keyBytes, password) {
       if (!password) throw new Error('Password cannot be empty when using Keyfile + Password.');
       const salt = crypto.getRandomValues(new Uint8Array(16));
@@ -4286,6 +4887,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     }
 
     async function decryptArcKeyfileObject(obj, password) {
+      if (obj?.version === 2 || obj?.cipher?.name === 'AES-256-GCM') {
+        return decryptArcKeyfileObject_v2(obj, password);
+      }
       if (!password) throw new Error('Enter the same password used with Keyfile + Password before loading this encrypted keyfile.');
       const salt = base64ToBytes(obj.kdf?.salt_b64 || obj.kdf?.s || '');
       const nonce = base64ToBytes(obj.cipher?.nonce_b64 || obj.n || '');
@@ -4308,7 +4912,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
     async function makeArcKeyfile(password = '') {
       const key = crypto.getRandomValues(new Uint8Array(ARC_KEYFILE_BYTES));
-      const obj = password ? await encryptArcKeyfileBytes(key, password) : {
+      const obj = password ? await encryptArcKeyfileBytes_v2(key, password) : {
         magic: ARC_KEYFILE_MAGIC,
         format: ARC_KEYFILE_FORMAT,
         version: 1,
@@ -4361,9 +4965,36 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       return parseArcKeyfileText(await file.text(), password);
     }
 
-    async function combinedArcSecret(password, keyfileSecret) {
+    async function combinedArcSecret_legacy(password, keyfileSecret) {
       const material = await textToBytes('arc-combined-v1\n' + normalizeNFKD(password) + '\n' + keyfileSecret);
       return 'arc-combined-v1:' + bytesToBase64(await sha256(material));
+    }
+
+    async function combinedArcSecret(password, keyfileSecret, salt = null) {
+      if (!salt) return { credentialMode: 'both', password, keyfileSecret };
+      if (typeof keyfileSecret !== 'string' || !keyfileSecret.startsWith('arc-keyfile-v1:')) {
+        throw new Error('Combined mode requires a valid Arculus keyfile secret.');
+      }
+      const keyfileBytes = base64ToBytes(keyfileSecret.slice('arc-keyfile-v1:'.length));
+      const passwordBytes = await textToBytes(normalizeNFKD(password));
+      const input = concatBytes(keyfileBytes, passwordBytes);
+      const info = await textToBytes('arculus-arc-v3-combined-key');
+      let derived;
+      try {
+        const material = await crypto.subtle.importKey('raw', input, 'HKDF', false, ['deriveBits']);
+        derived = new Uint8Array(await crypto.subtle.deriveBits(
+          { name: 'HKDF', hash: 'SHA-512', salt, info },
+          material,
+          512
+        ));
+        return 'arc-combined-v1:' + bytesToBase64(derived);
+      } finally {
+        keyfileBytes.fill(0);
+        passwordBytes.fill(0);
+        input.fill(0);
+        info.fill(0);
+        if (derived) derived.fill(0);
+      }
     }
 
     function normalizeArcCredentialMode(mode) {
@@ -4384,11 +5015,24 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       syncArcAdvancedKeyfileChoice();
     }
 
+    function estimatePasswordDiversityBits(password) {
+      if (!password) return 0;
+      const unique = new Set(password).size || 1;
+      let effectiveLength = password.length;
+      for (let period = 1; period <= Math.floor(password.length / 2); period++) {
+        if (password.length % period === 0
+            && password === password.slice(0, period).repeat(password.length / period)) {
+          effectiveLength = period + Math.log2(password.length / period);
+          break;
+        }
+      }
+      return Math.floor(effectiveLength * Math.log2(Math.max(unique, 2)));
+    }
+
     function updateArcPasswordMeter() {
       const pw = els.arcPasswordInput.value;
       const confirm = els.arcPasswordConfirmInput.value;
-      const unique = new Set(pw).size || 1;
-      const bits = pw ? Math.floor(pw.length * Math.log2(Math.max(unique, 2))) : 0;
+      const bits = estimatePasswordDiversityBits(pw);
       const pct = Math.min(100, Math.max(0, bits));
       els.arcPasswordMeterFill.style.width = pct + '%';
       els.arcPasswordMeterFill.style.background = bits < 50 ? 'var(--bad)' : bits < 100 ? '#BA7517' : 'var(--ok)';
@@ -4398,7 +5042,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         els.arcPasswordStatus.textContent = 'Passwords do not match.';
         els.arcPasswordStatus.className = 'arc-credential-status invalid';
       } else {
-        els.arcPasswordStatus.textContent = bits ? `Estimated password entropy: ${bits} bits` : '';
+        els.arcPasswordStatus.textContent = bits ? `Rough character-diversity score: ${bits} bits (not an entropy guarantee)` : '';
         els.arcPasswordStatus.className = 'arc-credential-status';
       }
     }
@@ -4459,12 +5103,22 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       }
     }
 
+    function clearArcCredentialSecrets() {
+      els.arcPasswordInput.value = '';
+      els.arcPasswordConfirmInput.value = '';
+      els.arcPasswordInput.type = 'password';
+      els.arcPasswordConfirmInput.type = 'password';
+      els.arcPasswordShowToggle.checked = false;
+      els.arcKeyfileInput.value = '';
+      arcCredentialKeyfileSecret = '';
+    }
+
     function closeArcCredentialDialog(result) {
       if (els.arcCredentialDialog.open) els.arcCredentialDialog.close();
-      if (arcCredentialResolve) {
-        arcCredentialResolve(result);
-        arcCredentialResolve = null;
-      }
+      const resolve = arcCredentialResolve;
+      arcCredentialResolve = null;
+      clearArcCredentialSecrets();
+      if (resolve) resolve(result);
     }
 
     function requestArcCredential(context, preferredMode = '', lockMode = false) {
@@ -4518,7 +5172,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       if (!(check.wordsOk && check.checksumOk)) throw new Error('Load a valid mnemonic before exporting an encrypted seed file.');
       const credential = await requestArcCredential('export');
       if (!credential) return;
-      const bundle = credential.unprotected ? makePlainSeedBundle(mnemonic) : await encryptSeedBundle(mnemonic, credential.secret);
+      const bundle = credential.unprotected
+        ? makePlainSeedBundle(mnemonic)
+        : await encryptSeedBundle(mnemonic, credential.secret, credential.mode);
       if (!credential.unprotected) bundle.credential_mode = credential.mode || '';
       const blob = new Blob([await serializeSeedBundle(bundle)], { type: 'text/plain;charset=utf-8' });
       await saveBlob(blob, 'Arculus_Encrypted_Seed.arc');
@@ -4594,6 +5250,12 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     }
 
     function handleClearAll() {
+      cancelVisibilitySecurityClear();
+      if (els.arcCredentialDialog.open || arcCredentialResolve) closeArcCredentialDialog(null);
+      else clearArcCredentialSecrets();
+      derivationRequestToken += 1;
+      pendingDerivationRequest = null;
+      hideProgress();
       clearImportedSeed({ silent: true });
       syncBusy = true;
       try {
@@ -4667,6 +5329,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         els.derivation.value = defaultDerivationForSelection(key);
         syncTestnetSettingState();
       });
+	      els.derivation.addEventListener('input', refreshDerivationInfoIcon);
+	      els.coin.addEventListener('change', refreshDerivationInfoIcon);
 	      els.passphrase.addEventListener('input', scheduleRootFingerprintRefresh);
       // Passphrase visibility toggle
       document.getElementById('passphraseToggle').addEventListener('click', function() {
@@ -4694,6 +5358,25 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 	        if (event.target === els.settingsDialog) els.settingsDialog.close();
 	      });
 	      document.querySelectorAll('input[name="themeMode"]').forEach(r => r.addEventListener('change', () => applyTheme(r.value)));
+      els.visibilityGraceToggle?.addEventListener('change', () => {
+        try {
+          localStorage.setItem('arculusVisibilityGrace', els.visibilityGraceToggle.checked ? '1' : '0');
+        } catch {
+          // Local files may be opened in privacy-restricted contexts.
+        }
+      });
+      els.sessionTimeoutSelect?.addEventListener('change', () => {
+        const value = ALLOWED_IDLE_TIMEOUTS.has(els.sessionTimeoutSelect.value)
+          ? els.sessionTimeoutSelect.value
+          : String(DEFAULT_IDLE_TIMEOUT_MINUTES);
+        els.sessionTimeoutSelect.value = value;
+        try {
+          localStorage.setItem('arculusSessionTimeout', value);
+        } catch {
+          // Local files may be opened in privacy-restricted contexts.
+        }
+        resetIdleTimer();
+      });
       document.querySelectorAll('input[name="arcCredentialMode"]').forEach(r => {
         r.addEventListener('change', () => setArcCredentialMode(r.value));
       });
@@ -4846,47 +5529,14 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       // address count, or range AFTER a successful derive has already run, re-run
       // automatically after a short debounce so the output stays in sync with the
       // settings without requiring a manual button press.
-      // After a successful derivation of a manually-typed seed, promote it into
-      // importedSeedState and mask it exactly like a generated/imported seed.
-      function maskManuallyEnteredSeed() {
-        if (importedSeedState) return; // already managed; nothing to do
-        const raw = els.mnemonic.value.trim();
-        if (!raw) return;
-        const words = normalizeMnemonicWords(raw);
-        if (words.length !== 12 && words.length !== 24) return;
-        importedSeedState = {
-          mnemonic: words.join(' '),
-          sourceName: 'manually entered seed',
-          kind: 'entered'
-        };
-        showingImportedSeed = false;
-        setObfuscatedSeedInputs(words);
-        els.mnemonic.placeholder = 'Seed hidden. Hold \u201cShow Seed\u201d to reveal.';
-        scheduleRootFingerprintRefresh();
-      }
-
       let _autoderiveTimer = null;
       function scheduleAutoderive() {
         if (!lastDerivedOutput) return; // nothing derived yet; do not fire
         if (!document.getElementById('autoderiveToggle').checked) return; // disabled in settings
         clearTimeout(_autoderiveTimer);
-        _autoderiveTimer = setTimeout(async () => {
-          try {
-            uiStatus('Re-deriving\u2026');
-            setProgress(5);
-            const data = await deriveOutput();
-            setProgress(95);
-            lastDerivedOutput = data;
-            els.output.value = JSON.stringify(data, null, 2);
-            setProgress(100);
-            setTimeout(hideProgress, 400);
-            showDerivedTable(data);
-            maskManuallyEnteredSeed();
-            uiStatus('Derivation complete. Seed phrase hidden \u2014 hold \u201cShow Seed\u201d to reveal.', 'valid');
-          } catch (e) {
-            hideProgress();
-            uiStatus(`Error: ${e.message}`, 'invalid');
-          }
+        _autoderiveTimer = setTimeout(() => {
+          _autoderiveTimer = null;
+          requestDerivation(false);
         }, 600);
       }
       els.coin.addEventListener('change', scheduleAutoderive);
@@ -4922,24 +5572,10 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         btn.setAttribute('aria-expanded', String(!expanded));
       });
 
-      els.deriveBtn.addEventListener('click', async () => {
-        try {
-          uiStatus('Deriving...');
-          setProgress(5);
-          const data = await deriveOutput();
-          setProgress(95);
-          lastDerivedOutput = data;
-          els.output.value = JSON.stringify(data, null, 2);
-          setProgress(100);
-          setTimeout(hideProgress, 400);
-          showDerivedTable(data);
-          maskManuallyEnteredSeed();
-          uiStatus('Derivation complete. Seed phrase hidden \u2014 hold \u201cShow Seed\u201d to reveal.', 'valid');
-        } catch (e) {
-          hideProgress();
-          uiStatus(`Error: ${e.message}`, 'invalid');
-          els.output.value = JSON.stringify({ error: e.message }, null, 2);
-        }
+      els.deriveBtn.addEventListener('click', () => {
+        clearTimeout(_autoderiveTimer);
+        _autoderiveTimer = null;
+        requestDerivation(true);
       });
 
       els.exportBtn.addEventListener('click', async () => {
@@ -5043,15 +5679,27 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 	      } catch {
 	        applyTheme('light');
 	      }
+      try {
+        const savedVisibilityGrace = localStorage.getItem('arculusVisibilityGrace');
+        els.visibilityGraceToggle.checked = savedVisibilityGrace !== '0';
+      } catch {
+        els.visibilityGraceToggle.checked = true;
+      }
+      try {
+        const savedSessionTimeout = localStorage.getItem('arculusSessionTimeout');
+        els.sessionTimeoutSelect.value = ALLOWED_IDLE_TIMEOUTS.has(savedSessionTimeout)
+          ? savedSessionTimeout
+          : String(DEFAULT_IDLE_TIMEOUT_MINUTES);
+      } catch {
+        els.sessionTimeoutSelect.value = String(DEFAULT_IDLE_TIMEOUT_MINUTES);
+      }
 	      refreshWordEnabled();
 	      refreshNetworkStatus();
       syncTestnetSettingState();
       styleMnemonicBox();
       uiStatus('Ready');
       startIdleWatcher();
-      // Ensure derivation info icon reflects default state after full init
-      const _icon = document.getElementById('derivationInfoIcon');
-      if (_icon) _icon.style.display = (document.getElementById('derivation').value.trim() === "m/0'") ? '' : 'none';
+      refreshDerivationInfoIcon();
     })();
 
         // Self-contained QR Code generator (no external dependencies)
