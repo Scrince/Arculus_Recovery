@@ -1,16 +1,65 @@
 Arculus Recovery v1.6.4 - Build Reproducibility Specification
 =============================================================
 
-Release-candidate boundary (2026-06-19)
----------------------------------------
+v1.6.4 Python release boundary (2026-06-19)
+-------------------------------------------
 
-Arculus_Beta.html v1.6.4 is the source awaiting production promotion. No
-v1.6.4 native artifacts or final release hashes are claimed by this document
-until they are built and measured. The v1.6.2 and v1.6.0 artifact sections
-below remain immutable historical reproduction records.
+The v1.6.4 Python release was built with Python 3.14.0 using the PEP 517
+setuptools backend in an isolated environment. The source tree was staged on a
+native macOS volume with AppleDouble files excluded before building.
 
-For v1.6.4 promotion, follow docs/Release_v1.6.4.txt. Do not substitute the
-v1.6.2 hashes below for new artifacts.
+The measured Python release artifacts are:
+
+  4e72ccd1baeb87ce0858251b342699ee8a3d0b198001251cb7cdbe684dbad0ee  releases/python/arculus_recovery-1.6.4-py3-none-any.whl
+  67420641c5ee2cbcf11fbb7dbe60592aedc4495188a073f9af3b05d2f29a6311  releases/python/arculus_recovery-1.6.4.tar.gz
+
+Their byte sizes are 339,344 (wheel) and 345,268 (source archive). The wheel
+metadata reports arculus-recovery 1.6.4 with Python >=3.10 and includes the
+v1.6.4 offline HTML GUI asset. The wheel was installed without dependencies in
+a clean virtual environment; its console entry point reported 1.6.4. All 11
+Python tests passed. Neither archive contains AppleDouble entries.
+
+v1.6.4 macOS release boundary (2026-06-19)
+------------------------------------------
+
+The v1.6.4 macOS release was built from the promoted Arculus_Recovery.html
+source on macOS 15.7.7 (Build 24G720), arm64, using rustc 1.96.0 and
+tauri-cli 2.11.2. The app bundles are ad-hoc signed and are not Apple-notarized.
+
+The measured macOS release artifacts are:
+
+  f2e6b3eddc7c07e3b85b4b508e59de5f5ed254b5c5803caf3c3f18acfc17e4f4  releases/tauri/macos/Arculus Recovery_1.6.4_x64.dmg
+  1abe22796badb58bc367ec99dcd7f0b01f3cba81281c66952665b261c585b16c  releases/tauri/macos/Arculus Recovery_1.6.4_aarch64.dmg
+  021c57d56145212c29553236ece95c16e4877f4c341469a5225d46494ee98805  releases/tauri/macos/Arculus Recovery_1.6.4_universal.dmg
+
+Their byte sizes are 4,010,962 (x64), 3,852,018 (aarch64), and 6,913,634
+(universal). Each app reports CFBundleShortVersionString and CFBundleVersion
+1.6.4. The binaries report x86_64, arm64, and x86_64/arm64 respectively.
+All three app signatures pass codesign --verify --deep --strict, and all three
+DMGs pass hdiutil verify.
+
+The v1.6.2 and v1.6.0 artifact sections below remain immutable historical
+reproduction records. Do not substitute their hashes for v1.6.4 artifacts.
+
+
+v1.6.4 Linux release boundary (2026-06-19)
+------------------------------------------
+
+The v1.6.4 Linux amd64 release was built in the documented Ubuntu 22.04
+linux/amd64 Docker builder on a macOS arm64 host. The builder used rustc
+1.96.0 and tauri-cli 2.11.2. Rust unit tests passed before the release build.
+
+The measured Linux release artifacts are:
+
+  9f847f0ee83bee76fc197fb28116dc48ebb6482eddb85d9a56ef621bf26616ea  releases/tauri/linux/arculus-recovery
+  25feb4f563350259a9bd5d4149b74e7d241bea9096c2c7d980a3d6224b4267b7  releases/tauri/linux/Arculus Recovery_1.6.4_amd64.deb
+  61ea1426bcf4b08c02db005a9c5f22a0a2555006d93bbe1754fe7a9358f9d9d5  releases/tauri/linux/Arculus Recovery-1.6.4-1.x86_64.rpm
+
+Their byte sizes are 13,680,488 (raw ELF), 4,395,528 (Debian), and 4,396,158
+(RPM). The raw binary is an x86-64 ELF64 position-independent executable. The
+Debian package reports Package arculus-recovery, Version 1.6.4, Architecture
+amd64. The RPM reports Name arculus-recovery, Version 1.6.4, Release 1,
+Architecture x86_64, and is unsigned.
 
 
 Archived v1.6.2 release boundary (2026-06-18)
@@ -63,7 +112,7 @@ Older v1.5.0 artifacts may exist under releases/tauri/macos. They are not part
 of the v1.6.0 reproducibility target.
 
 The shared raw Linux binary path releases/tauri/linux/arculus-recovery now
-contains the current v1.6.2 build and is covered in the v1.6.2 section below.
+contains the current v1.6.4 build and is covered in the v1.6.4 section above.
 
 
 Current v1.6.2 Native Release Set
@@ -297,8 +346,42 @@ The intermediate compiler dependency file arculus-recovery.d is not a release
 artifact and must not be copied into the release set.
 
 
+Automated release harnesses
+---------------------------
+
+Run host-platform Tauri configuration, asset, icon, and Rust preflight checks:
+
+  npm run test:tauri
+
+Build and validate fresh native packages on their matching hosts:
+
+  npm run test:tauri:windows
+  npm run test:tauri:macos
+  npm run test:tauri:linux
+
+Validate the published artifacts and their docs/SHA256SUMS entries without a
+new build:
+
+  npm run test:tauri:windows:validate
+  npm run test:tauri:macos:validate
+  npm run test:tauri:linux:validate
+
+The macOS validator checks CFBundleShortVersionString, x86_64/arm64/universal
+architectures, codesign integrity, hdiutil integrity, filenames, sizes, and
+manifest hashes. Pass --require-notarization directly to the shell harness when
+notarization is release policy.
+
+The Linux validator checks the raw x86-64 ELF, Debian package name/version/
+architecture and payload, RPM name/version/release/architecture and payload,
+artifact sizes, and manifest hashes. Pass --require-rpm-signature directly to
+the shell harness when RPM signing is release policy. On macOS, the Linux
+harness automatically runs in arculus-tauri-linux-builder:22.04 under
+linux/amd64 emulation.
+
+
 Linux Artifact Verification
 ---------------------------
+
 
 Verify the raw Linux binary type:
 
