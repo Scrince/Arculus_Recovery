@@ -1,13 +1,13 @@
-Arculus v1.6.4 - Release Candidate Notes
-========================================
+Arculus v1.6.4 - Release Notes
+==============================
 
-Release boundary (documentation preparation 2026-06-19)
--------------------------------------------------------
+Release boundary (2026-06-19)
+-----------------------------
 
-Arculus_Beta.html reports APP_VERSION 1.6.4 and displays "Arculus v1.6.4".
-It is the normative source being prepared for promotion to
-Arculus_Recovery.html. Until promotion is completed and hashes are published,
-the existing v1.6.2 production artifacts remain historical release artifacts.
+Arculus_Recovery.html reports APP_VERSION 1.6.4 and displays "Arculus v1.6.4".
+It is the promoted normative production source. The packaged Python HTML and
+Tauri frontend assets are synchronized to it. Historical v1.6.2 artifacts
+remain preserved under their versioned filenames.
 
 Do not rename old installers or reuse old hashes as v1.6.4. Build each native
 artifact from the promoted v1.6.4 source, inspect its embedded version, and add
@@ -82,7 +82,7 @@ Security and runtime changes
 Compatibility and verification
 ------------------------------
 
-The Playwright browser harness targets Arculus_Beta.html and covers smoke,
+The Playwright browser harness targets Arculus_Recovery.html and covers smoke,
 ARC V3 Password/Keyfile/combined modes, independent Web Crypto conformance,
 metadata/ciphertext tampering, encrypted-keyfile v2, reserved-prefix password
 handling, credential cleanup, password-meter repetition handling, and legacy
@@ -94,16 +94,29 @@ Run from the repository root:
   npx playwright install chromium
   npm run test:html
 
+Host-platform Tauri preflight and published-artifact validation commands are:
+
+  npm run test:tauri
+  npm run test:tauri:windows:validate
+  npm run test:tauri:macos:validate
+  npm run test:tauri:linux:validate
+
+The macOS harness verifies embedded versions, x86_64/arm64/universal binary
+architectures, code signatures, DMG integrity, and SHA-256 manifest entries.
+The Linux harness verifies the x86-64 ELF, Debian/RPM metadata and payloads,
+and SHA-256 manifest entries. From macOS, Linux validation runs inside the
+documented Ubuntu 22.04 amd64 Docker builder.
+
 Cross-platform instructions are in tests/fixtures/TESTING_INSTRUCTIONS.txt.
 The deterministic byte-level ARC V3 and encrypted-keyfile v2 vectors are in
 docs/TestVectors.txt. Exact constructions are normative in docs/Encryption.txt
 and serialized layouts are normative in docs/FileFormat.txt.
 
 
-Promotion checklist
--------------------
+Completed promotion checklist
+-----------------------------
 
-  1. Copy the reviewed Arculus_Beta.html bytes to Arculus_Recovery.html.
+  1. Confirm the reviewed Arculus_Recovery.html production bytes.
   2. Synchronize packaged HTML assets and APP_VERSION values.
   3. Synchronize package.json, Python, Cargo, and Tauri version metadata.
   4. Recompute CSP hashes only if promoted HTML bytes are changed.
