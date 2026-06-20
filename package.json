@@ -1,6 +1,6 @@
 {
   "name": "arculus-recovery-tauri",
-  "version": "1.6.2",
+  "version": "1.6.4",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,8 +14,13 @@
     "test:crypto": "playwright test tests/arculus-encryption.spec.js",
     "test:html": "playwright test tests/arculus-beta.smoke.spec.js tests/arculus-encryption.spec.js",
     "test:python": "python tests/python/run_tests.py",
-    "test:tauri": "powershell -NoProfile -ExecutionPolicy Bypass -File tests/tauri/windows-release-harness.ps1",
+    "test:tauri": "python tests/tauri/run-release-harness.py",
     "test:tauri:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File tests/tauri/windows-release-harness.ps1 -BuildInstallers",
+    "test:tauri:windows:validate": "powershell -NoProfile -ExecutionPolicy Bypass -File tests/tauri/windows-release-harness.ps1 -ValidateArtifacts",
+    "test:tauri:macos": "bash tests/tauri/macos-release-harness.sh --build-installers",
+    "test:tauri:macos:validate": "bash tests/tauri/macos-release-harness.sh --validate-artifacts",
+    "test:tauri:linux": "bash tests/tauri/linux-release-harness.sh --build-packages",
+    "test:tauri:linux:validate": "bash tests/tauri/linux-release-harness.sh --validate-artifacts",
     "test:release": "npm run test:python && npm run test:html && npm run test:tauri"
   },
   "devDependencies": {
