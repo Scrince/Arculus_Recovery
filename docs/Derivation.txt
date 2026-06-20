@@ -5,7 +5,7 @@ Release Boundary
 ----------------
 
 This is the normative derivation specification for the production root file
-Arculus_Beta.html v1.6.4. Production supports Bitcoin, Bitcoin Cash,
+Arculus_Recovery.html v1.6.4. Production supports Bitcoin, Bitcoin Cash,
 Litecoin, Dogecoin, Ethereum / ERC-20, Tron / TRC-20, BNB Chain, Avalanche
 C-Chain, Polygon, Cosmos / ATOM, Solana, Stellar, Cardano, and XRP. Polkadot
 and Monero are not production v1.6.4 browser currencies.
@@ -36,13 +36,13 @@ encoding, not the deterministic account path.
 Any Monero derivation text or vectors retained later in this document describe
 the archived lts/Arculus_Recovery_v1.6.0_LTS.html or a separate Python
 compatibility surface. They are not reachable from the v1.6.4 browser selector.
-Arculus_Beta.html v1.6.4 is normative for the byte output specified here.
+Arculus_Recovery.html v1.6.4 is normative for the byte output specified here.
 
 Scope
 -----
 
 This document is the authoritative byte-level specification of the deterministic
-derivation engine implemented by the canonical Arculus_Beta.html v1.6.4
+derivation engine implemented by the canonical Arculus_Recovery.html v1.6.4
 application. It defines the complete computational pipeline from CSPRNG entropy
 through BIP39 mnemonic generation, BIP39 validation, Unicode normalization,
 PBKDF2 seed stretching, secp256k1 BIP32 derivation, SLIP-0010 Ed25519
