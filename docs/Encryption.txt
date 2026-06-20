@@ -4,8 +4,8 @@ Arculus Recovery v1.6.4 - Encryption Subsystem Internals
 Release Boundary
 ----------------
 
-This is the normative encryption specification for Arculus_Beta.html v1.6.4,
-the browser source being prepared for production promotion. New protected
+This is the normative encryption specification for the promoted production
+Arculus_Recovery.html v1.6.4. New protected
 .arc exports use internal ARC V3. New password-protected keyfiles use
 encrypted-keyfile version 2. ARC V2 and encrypted-keyfile version 1 remain
 import-only compatibility formats and are specified later in this document.
@@ -188,7 +188,7 @@ Scope
 -----
 
 This document is the byte-level specification of the seed-file and keyfile
-encryption subsystem implemented by Arculus_Beta.html v1.6.4. It specifies
+encryption subsystem implemented by Arculus_Recovery.html v1.6.4. It specifies
 the protected .arc envelope, the unprotected .arc envelope, raw keyfiles,
 encrypted keyfiles, the Keyfile + Password combined-secret mode, legacy import
 formats, key derivation, stream generation, authentication transcripts, import
@@ -201,7 +201,7 @@ export/import. Those topics are specified in the other files in this directory.
 
 The current v1.6.4 implementation is the single-file browser build:
 
-  Arculus_Beta.html
+  Arculus_Recovery.html
 
 Normative references to function names in this document refer to that file.
 
@@ -1937,7 +1937,7 @@ Treat these as non-secret but integrity-relevant:
 Compliance Checklist
 --------------------
 
-An implementation is compatible with Arculus_Beta.html v1.6.4 protected
+An implementation is compatible with Arculus_Recovery.html v1.6.4 protected
 .arc exports if it satisfies all of the following:
 
   - Parses ARCULUS-ARC-V2 armor exactly enough to recover JSON bundle bytes.
