@@ -4,7 +4,7 @@ Arculus Recovery v1.6.4 - QR Payload and Encoder Specification
 Release Boundary
 ----------------
 
-This is the normative QR specification for Arculus_Beta.html v1.6.4. The
+This is the normative QR specification for Arculus_Recovery.html v1.6.4. The
 production context routes are solana:, web+stellar:pay, raw Cardano, tron:,
 bnb:, avalanche:, polygon:, and cosmos:, followed by syntax-based Bitcoin,
 Bitcoin Cash, Litecoin, Dogecoin, Ethereum, XRP, and raw fallback rules.
@@ -13,13 +13,13 @@ is an archived v1.6.0 LTS compatibility note.
 
 The QR encoder, capacity table, error-correction behavior, mask scoring, canvas
 rendering, and PNG serialization remain byte-compatible with the retained
-v1.6.0 encoder. Arculus_Beta.html does not change QR payload bytes.
+v1.6.0 encoder. Arculus_Recovery.html does not change QR payload bytes.
 
 Scope
 -----
 
 This document specifies the QR Export subsystem implemented inside
-Arculus_Beta.html v1.6.4. It covers the modal workflow, address
+Arculus_Recovery.html v1.6.4. It covers the modal workflow, address
 normalization, URI payload construction, XRP destination-tag handling, QR byte
 encoding, version/capacity selection, Reed-Solomon generation, matrix
 construction, masking, rendering, PNG export, clipboard behavior, and security
