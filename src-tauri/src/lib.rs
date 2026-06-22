@@ -145,7 +145,7 @@ mod tests {
             "Arculus_Recovery_export_test_{}.txt",
             std::process::id()
         );
-        let path = downloads_dir().join(&filename);
+        let path = std::env::temp_dir().join(&filename);
         if path.exists() {
             std::fs::remove_file(&path).expect("remove stale export test file");
         }
