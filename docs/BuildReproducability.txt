@@ -1,36 +1,36 @@
-Arculus Recovery v1.6.4 - Build Reproducibility Specification
-=============================================================
+﻿YellowSphere - Build Reproducibility Specification
+======================================================
 
-v1.6.4 Python release boundary (2026-06-19)
+v1.6.6 Python release boundary (2026-06-26)
 -------------------------------------------
 
-The v1.6.4 Python release was built with Python 3.14.0 using the PEP 517
+The v1.6.6 Python release was built with Python 3.14.0 using the PEP 517
 setuptools backend in an isolated environment. The source tree was staged on a
-native macOS volume with AppleDouble files excluded before building.
+Windows workspace with AppleDouble sidecar files excluded before building.
 
 The measured Python release artifacts are:
 
-  4e72ccd1baeb87ce0858251b342699ee8a3d0b198001251cb7cdbe684dbad0ee  releases/python/arculus_recovery-1.6.4-py3-none-any.whl
-  67420641c5ee2cbcf11fbb7dbe60592aedc4495188a073f9af3b05d2f29a6311  releases/python/arculus_recovery-1.6.4.tar.gz
+  ef5f226ea60d84779d0bcfa64ffd87efce9db55b9fd864e8edc38c45d8dde5ae  releases/python/yellowsphere-1.6.6-py3-none-any.whl
+  2b2717534eeed2a917ca08e4e80987c452a2dd89f12cae90432772a260e9db03  releases/python/yellowsphere-1.6.6.tar.gz
 
-Their byte sizes are 339,344 (wheel) and 345,268 (source archive). The wheel
-metadata reports arculus-recovery 1.6.4 with Python >=3.10 and includes the
-v1.6.4 offline HTML GUI asset. The wheel was installed without dependencies in
-a clean virtual environment; its console entry point reported 1.6.4. All 11
-Python tests passed. Neither archive contains AppleDouble entries.
+Their byte sizes are 345,493 (wheel) and 348,982 (source archive). The wheel
+metadata reports yellowsphere 1.6.6 with Python >=3.10 and includes the
+v1.6.6 offline HTML GUI asset. The console entry point reported 1.6.6 from the
+source tree. All 14 Python tests passed with `PYTHONPATH=src`. Neither archive
+contains AppleDouble entries.
 
 v1.6.4 macOS release boundary (2026-06-19)
 ------------------------------------------
 
-The v1.6.4 macOS release was built from the promoted Arculus_Recovery.html
+The v1.6.4 macOS release was built from the promoted YellowSphere.html
 source on macOS 15.7.7 (Build 24G720), arm64, using rustc 1.96.0 and
 tauri-cli 2.11.2. The app bundles are ad-hoc signed and are not Apple-notarized.
 
 The measured macOS release artifacts are:
 
-  f2e6b3eddc7c07e3b85b4b508e59de5f5ed254b5c5803caf3c3f18acfc17e4f4  releases/tauri/macos/Arculus Recovery_1.6.4_x64.dmg
-  1abe22796badb58bc367ec99dcd7f0b01f3cba81281c66952665b261c585b16c  releases/tauri/macos/Arculus Recovery_1.6.4_aarch64.dmg
-  021c57d56145212c29553236ece95c16e4877f4c341469a5225d46494ee98805  releases/tauri/macos/Arculus Recovery_1.6.4_universal.dmg
+  f2e6b3eddc7c07e3b85b4b508e59de5f5ed254b5c5803caf3c3f18acfc17e4f4  releases/tauri/macos/YellowSphere_1.6.4_x64.dmg
+  1abe22796badb58bc367ec99dcd7f0b01f3cba81281c66952665b261c585b16c  releases/tauri/macos/YellowSphere_1.6.4_aarch64.dmg
+  021c57d56145212c29553236ece95c16e4877f4c341469a5225d46494ee98805  releases/tauri/macos/YellowSphere_1.6.4_universal.dmg
 
 Their byte sizes are 4,010,962 (x64), 3,852,018 (aarch64), and 6,913,634
 (universal). Each app reports CFBundleShortVersionString and CFBundleVersion
@@ -51,14 +51,14 @@ linux/amd64 Docker builder on a macOS arm64 host. The builder used rustc
 
 The measured Linux release artifacts are:
 
-  9f847f0ee83bee76fc197fb28116dc48ebb6482eddb85d9a56ef621bf26616ea  releases/tauri/linux/arculus-recovery
-  25feb4f563350259a9bd5d4149b74e7d241bea9096c2c7d980a3d6224b4267b7  releases/tauri/linux/Arculus Recovery_1.6.4_amd64.deb
-  61ea1426bcf4b08c02db005a9c5f22a0a2555006d93bbe1754fe7a9358f9d9d5  releases/tauri/linux/Arculus Recovery-1.6.4-1.x86_64.rpm
+  9f847f0ee83bee76fc197fb28116dc48ebb6482eddb85d9a56ef621bf26616ea  releases/tauri/linux/yellowsphere
+  25feb4f563350259a9bd5d4149b74e7d241bea9096c2c7d980a3d6224b4267b7  releases/tauri/linux/YellowSphere_1.6.4_amd64.deb
+  61ea1426bcf4b08c02db005a9c5f22a0a2555006d93bbe1754fe7a9358f9d9d5  releases/tauri/linux/YellowSphere-1.6.4-1.x86_64.rpm
 
 Their byte sizes are 13,680,488 (raw ELF), 4,395,528 (Debian), and 4,396,158
 (RPM). The raw binary is an x86-64 ELF64 position-independent executable. The
-Debian package reports Package arculus-recovery, Version 1.6.4, Architecture
-amd64. The RPM reports Name arculus-recovery, Version 1.6.4, Release 1,
+Debian package reports Package yellowsphere, Version 1.6.4, Architecture
+amd64. The RPM reports Name yellowsphere, Version 1.6.4, Release 1,
 Architecture x86_64, and is unsigned.
 
 
@@ -67,7 +67,7 @@ Archived v1.6.2 release boundary (2026-06-18)
 
 This specification defines the current v1.6.2 release set and preserves the
 host records required to reproduce archived v1.6.0 artifacts. The production
-standalone browser file is Arculus_Recovery.html v1.6.2. Archived browser builds
+standalone browser file is YellowSphere.html v1.6.2. Archived browser builds
 reside under lts/. See Release_v1.6.2.txt and SHA256SUMS for authoritative
 artifact identities.
 
@@ -84,7 +84,7 @@ The filename preserves the project-local spelling:
 
 The canonical source of truth for current application behavior is:
 
-  Arculus_Recovery.html
+  YellowSphere.html
 
 The release hash manifest for official current and archived release surfaces is:
 
@@ -100,18 +100,18 @@ Release Surfaces
 
 The v1.6.0 release set covered by docs/SHA256SUMS is:
 
-  lts/Arculus_Recovery_v1.6.0_LTS.html
-  Arculus_Recovery.py
-  releases/tauri/linux/Arculus Recovery_1.6.0_amd64.deb
-  releases/tauri/linux/Arculus Recovery-1.6.0-1.x86_64.rpm
-  releases/tauri/macos/Arculus Recovery_1.6.0_aarch64.dmg
-  releases/tauri/macos/Arculus Recovery_1.6.0_universal.dmg
-  releases/tauri/macos/Arculus Recovery_1.6.0_x64.dmg
+  lts/YellowSphere_v1.6.0_LTS.html
+  YellowSphere.py
+  releases/tauri/linux/YellowSphere_1.6.0_amd64.deb
+  releases/tauri/linux/YellowSphere-1.6.0-1.x86_64.rpm
+  releases/tauri/macos/YellowSphere_1.6.0_aarch64.dmg
+  releases/tauri/macos/YellowSphere_1.6.0_universal.dmg
+  releases/tauri/macos/YellowSphere_1.6.0_x64.dmg
 
 Older v1.5.0 artifacts may exist under releases/tauri/macos. They are not part
 of the v1.6.0 reproducibility target.
 
-The shared raw Linux binary path releases/tauri/linux/arculus-recovery now
+The shared raw Linux binary path releases/tauri/linux/yellowsphere now
 contains the current v1.6.4 build and is covered in the v1.6.4 section above.
 
 
@@ -121,27 +121,27 @@ Current v1.6.2 Native Release Set
 The current v1.6.2 native release set adds these artifacts to the archived
 v1.6.0 baseline:
 
-  releases/tauri/windows/arculus-recovery.exe
-  releases/tauri/windows/Arculus Recovery_1.6.2_x64-setup.exe
-  releases/tauri/windows/Arculus Recovery_1.6.2_x64_en-US.msi
-  releases/tauri/macos/Arculus Recovery_1.6.2_x64.dmg
-  releases/tauri/macos/Arculus Recovery_1.6.2_aarch64.dmg
-  releases/tauri/macos/Arculus Recovery_1.6.2_universal.dmg
-  releases/tauri/linux/arculus-recovery
-  releases/tauri/linux/Arculus Recovery_1.6.2_amd64.deb
-  releases/tauri/linux/Arculus Recovery-1.6.2-1.x86_64.rpm
+  releases/tauri/windows/yellowsphere.exe
+  releases/tauri/windows/YellowSphere_1.6.2_x64-setup.exe
+  releases/tauri/windows/YellowSphere_1.6.2_x64_en-US.msi
+  releases/tauri/macos/YellowSphere_1.6.2_x64.dmg
+  releases/tauri/macos/YellowSphere_1.6.2_aarch64.dmg
+  releases/tauri/macos/YellowSphere_1.6.2_universal.dmg
+  releases/tauri/linux/yellowsphere
+  releases/tauri/linux/YellowSphere_1.6.2_amd64.deb
+  releases/tauri/linux/YellowSphere-1.6.2-1.x86_64.rpm
 
 The v1.6.2 release hashes are:
 
-  61317f534d80d39504f296c48be3ed45b256dc05162ac851fb035d6dfb8aa0cf  releases/tauri/windows/arculus-recovery.exe
-  8f461fe50df109a74cfe7b24873f218394c95b7b6356cd494684876e180a58f6  releases/tauri/windows/Arculus Recovery_1.6.2_x64-setup.exe
-  e11f404e2a1db85edcd42d534c6cd5c73cf286275e6b9e99d6d976752963a472  releases/tauri/windows/Arculus Recovery_1.6.2_x64_en-US.msi
-  1c1f3c55911a3baaa3f84d1537f33c92703a88d5baea5009e12d5ce5402a975c  releases/tauri/macos/Arculus Recovery_1.6.2_x64.dmg
-  eb996da31823d16d47472496d24f19a63709dd7c2166185c6fd28ed51b097718  releases/tauri/macos/Arculus Recovery_1.6.2_aarch64.dmg
-  50a575cadd4a6fce213923041b6a5bb3124f77727f51e9bf78f04f3b401ae1af  releases/tauri/macos/Arculus Recovery_1.6.2_universal.dmg
-  5ecca80fbcae77fb209d3f14fdd193009920c1031990fdbcd74246bcebc0a352  releases/tauri/linux/arculus-recovery
-  609d4b66b7b1ac1b11021390b330b2a207601dccd1de41dd8959e1568e45c01a  releases/tauri/linux/Arculus Recovery_1.6.2_amd64.deb
-  a334d2aaac79ce8049e42061d0ba471f9c9466cac1fbeddba83d206c74a3e447  releases/tauri/linux/Arculus Recovery-1.6.2-1.x86_64.rpm
+  61317f534d80d39504f296c48be3ed45b256dc05162ac851fb035d6dfb8aa0cf  releases/tauri/windows/yellowsphere.exe
+  8f461fe50df109a74cfe7b24873f218394c95b7b6356cd494684876e180a58f6  releases/tauri/windows/YellowSphere_1.6.2_x64-setup.exe
+  e11f404e2a1db85edcd42d534c6cd5c73cf286275e6b9e99d6d976752963a472  releases/tauri/windows/YellowSphere_1.6.2_x64_en-US.msi
+  1c1f3c55911a3baaa3f84d1537f33c92703a88d5baea5009e12d5ce5402a975c  releases/tauri/macos/YellowSphere_1.6.2_x64.dmg
+  eb996da31823d16d47472496d24f19a63709dd7c2166185c6fd28ed51b097718  releases/tauri/macos/YellowSphere_1.6.2_aarch64.dmg
+  50a575cadd4a6fce213923041b6a5bb3124f77727f51e9bf78f04f3b401ae1af  releases/tauri/macos/YellowSphere_1.6.2_universal.dmg
+  5ecca80fbcae77fb209d3f14fdd193009920c1031990fdbcd74246bcebc0a352  releases/tauri/linux/yellowsphere
+  609d4b66b7b1ac1b11021390b330b2a207601dccd1de41dd8959e1568e45c01a  releases/tauri/linux/YellowSphere_1.6.2_amd64.deb
+  a334d2aaac79ce8049e42061d0ba471f9c9466cac1fbeddba83d206c74a3e447  releases/tauri/linux/YellowSphere-1.6.2-1.x86_64.rpm
 
 The v1.6.2 macOS app bundles were ad-hoc signed and the DMGs were generated
 from the signed bundles. They were not Apple-notarized. The v1.6.2 Linux RPM is
@@ -156,10 +156,10 @@ The current repository files must agree on v1.6.2:
   package.json version: 1.6.2
   src-tauri/Cargo.toml package.version: 1.6.2
   src-tauri/tauri.conf.json version: 1.6.2
-  Arculus_Recovery.html visible/browser version: v1.6.2
+  YellowSphere.html visible/browser version: v1.6.2
   Python package/app version: 1.6.2
 
-The archived lts/Arculus_Recovery_v1.6.0_LTS.html file intentionally reports
+The archived lts/YellowSphere_v1.6.0_LTS.html file intentionally reports
 v1.6.0 LTS and is verified by its own SHA-256 entry. It is not a current source
 version requirement.
 
@@ -173,12 +173,12 @@ Canonical Hashes
 The v1.6.0 release hashes are:
 
   See docs/SHA256SUMS for the current archived LTS HTML hash.
-  a976e8903e13ab4b8d119178a7e66a41492e96d9c47df141afc081ee0601ae00  Arculus_Recovery.py
-  0d1f05b6658e33417de4692b40aa7c5bb44a9f80a92b6ec7ec5010dfebe9d273  releases/tauri/linux/Arculus Recovery-1.6.0-1.x86_64.rpm
-  992e2e436fff0af98f84598499f43c3b7fe194e7109de8e94747a72b3ac24a8d  releases/tauri/linux/Arculus Recovery_1.6.0_amd64.deb
-  d0329d6f92a42b787b8528fe78aab23afbfcca7c95d94769b08c37dc5a22c24e  releases/tauri/macos/Arculus Recovery_1.6.0_aarch64.dmg
-  948f42808397b13d34450e579869cdd20d23b94d2bb71ee6056c256dbddb6f2b  releases/tauri/macos/Arculus Recovery_1.6.0_universal.dmg
-  14b577387ceca7db62c9551f890dcfb87e900d97ddb8fdc9ab6e9ef7ba11eed6  releases/tauri/macos/Arculus Recovery_1.6.0_x64.dmg
+  a976e8903e13ab4b8d119178a7e66a41492e96d9c47df141afc081ee0601ae00  YellowSphere.py
+  0d1f05b6658e33417de4692b40aa7c5bb44a9f80a92b6ec7ec5010dfebe9d273  releases/tauri/linux/YellowSphere-1.6.0-1.x86_64.rpm
+  992e2e436fff0af98f84598499f43c3b7fe194e7109de8e94747a72b3ac24a8d  releases/tauri/linux/YellowSphere_1.6.0_amd64.deb
+  d0329d6f92a42b787b8528fe78aab23afbfcca7c95d94769b08c37dc5a22c24e  releases/tauri/macos/YellowSphere_1.6.0_aarch64.dmg
+  948f42808397b13d34450e579869cdd20d23b94d2bb71ee6056c256dbddb6f2b  releases/tauri/macos/YellowSphere_1.6.0_universal.dmg
+  14b577387ceca7db62c9551f890dcfb87e900d97ddb8fdc9ab6e9ef7ba11eed6  releases/tauri/macos/YellowSphere_1.6.0_x64.dmg
 
 Verify them from the repository root with:
 
@@ -265,7 +265,7 @@ On Windows hosts the equivalent command is:
 
 These preparation scripts copy the packaged HTML asset into tauri-dist and
 rewrite local asset paths for the Tauri bundle. They are build-preparation
-steps, not source-of-truth edits to Arculus_Recovery.html.
+steps, not source-of-truth edits to YellowSphere.html.
 
 When reproducing the exact v1.6.0 artifacts in this repository, do not edit any
 HTML files manually. If tauri-dist is already prepared and known-good, the
@@ -289,9 +289,9 @@ Build commands:
 
 Expected v1.6.0 DMG outputs:
 
-  Arculus Recovery_1.6.0_x64.dmg
-  Arculus Recovery_1.6.0_aarch64.dmg
-  Arculus Recovery_1.6.0_universal.dmg
+  YellowSphere_1.6.0_x64.dmg
+  YellowSphere_1.6.0_aarch64.dmg
+  YellowSphere_1.6.0_universal.dmg
 
 The v1.6.0 macOS .app bundles were ad-hoc signed. The DMGs were generated from
 the signed app bundles. They were not Apple-notarized.
@@ -302,7 +302,7 @@ Ad-hoc signing command pattern:
 
 Architecture verification command pattern:
 
-  lipo -info "<app bundle path>/Contents/MacOS/arculus-recovery"
+  lipo -info "<app bundle path>/Contents/MacOS/yellowsphere"
 
 Signature verification command pattern:
 
@@ -332,17 +332,17 @@ Package build command:
 
 Expected v1.6.2 Linux outputs:
 
-  /target/release/arculus-recovery
-  /target/release/bundle/deb/Arculus Recovery_1.6.2_amd64.deb
-  /target/release/bundle/rpm/Arculus Recovery-1.6.2-1.x86_64.rpm
+  /target/release/yellowsphere
+  /target/release/bundle/deb/YellowSphere_1.6.2_amd64.deb
+  /target/release/bundle/rpm/YellowSphere-1.6.2-1.x86_64.rpm
 
 Release-copy command pattern:
 
-  cp /target/release/arculus-recovery releases/tauri/linux/
-  cp "/target/release/bundle/deb/Arculus Recovery_1.6.2_amd64.deb" releases/tauri/linux/
-  cp "/target/release/bundle/rpm/Arculus Recovery-1.6.2-1.x86_64.rpm" releases/tauri/linux/
+  cp /target/release/yellowsphere releases/tauri/linux/
+  cp "/target/release/bundle/deb/YellowSphere_1.6.2_amd64.deb" releases/tauri/linux/
+  cp "/target/release/bundle/rpm/YellowSphere-1.6.2-1.x86_64.rpm" releases/tauri/linux/
 
-The intermediate compiler dependency file arculus-recovery.d is not a release
+The intermediate compiler dependency file yellowsphere.d is not a release
 artifact and must not be copied into the release set.
 
 
@@ -375,7 +375,7 @@ The Linux validator checks the raw x86-64 ELF, Debian package name/version/
 architecture and payload, RPM name/version/release/architecture and payload,
 artifact sizes, and manifest hashes. Pass --require-rpm-signature directly to
 the shell harness when RPM signing is release policy. On macOS, the Linux
-harness automatically runs in arculus-tauri-linux-builder:22.04 under
+harness automatically runs in yellowsphere-tauri-linux-builder:22.04 under
 linux/amd64 emulation.
 
 
@@ -385,7 +385,7 @@ Linux Artifact Verification
 
 Verify the raw Linux binary type:
 
-  file releases/tauri/linux/arculus-recovery
+  file releases/tauri/linux/yellowsphere
 
 Expected class:
 
@@ -393,22 +393,22 @@ Expected class:
 
 Verify Debian package metadata:
 
-  dpkg-deb --info "releases/tauri/linux/Arculus Recovery_1.6.2_amd64.deb"
+  dpkg-deb --info "releases/tauri/linux/YellowSphere_1.6.2_amd64.deb"
 
 Required fields:
 
-  Package: arculus-recovery
+  Package: yellowsphere
   Version: 1.6.2
   Architecture: amd64
   Depends: libwebkit2gtk-4.1-0, libgtk-3-0
 
 Verify RPM package metadata:
 
-  rpm -qip "releases/tauri/linux/Arculus Recovery-1.6.2-1.x86_64.rpm"
+  rpm -qip "releases/tauri/linux/YellowSphere-1.6.2-1.x86_64.rpm"
 
 Required fields:
 
-  Name: arculus-recovery
+  Name: yellowsphere
   Version: 1.6.2
   Release: 1
   Architecture: x86_64
@@ -422,8 +422,8 @@ Byte-for-Byte Constraints
 
 Byte-for-byte reproducibility depends on these inputs remaining unchanged:
 
-  - Arculus_Recovery.html bytes
-  - Arculus_Recovery.py bytes
+  - YellowSphere.html bytes
+  - YellowSphere.py bytes
   - tauri-dist prepared asset bytes
   - src-tauri Rust source bytes
   - src-tauri/Cargo.lock dependency resolution
@@ -491,15 +491,15 @@ Post-Build Verification Checklist
 After building v1.6.0, verify:
 
   1. No HTML source file was manually edited during packaging.
-  2. Arculus_Recovery.html hash matches docs/SHA256SUMS.
-  3. Arculus_Recovery.py hash matches docs/SHA256SUMS.
+  2. YellowSphere.html hash matches docs/SHA256SUMS.
+  3. YellowSphere.py hash matches docs/SHA256SUMS.
   4. Linux raw binary hash matches docs/SHA256SUMS.
   5. Linux .deb hash matches docs/SHA256SUMS.
   6. Linux .rpm hash matches docs/SHA256SUMS.
   7. macOS x64 DMG hash matches docs/SHA256SUMS.
   8. macOS aarch64 DMG hash matches docs/SHA256SUMS.
   9. macOS universal DMG hash matches docs/SHA256SUMS.
-  10. Linux file command reports x86-64 ELF for arculus-recovery.
+  10. Linux file command reports x86-64 ELF for yellowsphere.
   11. Debian metadata reports version 1.6.0 and architecture amd64.
   12. RPM metadata reports version 1.6.0 and architecture x86_64.
   13. macOS binaries report the expected architecture for each build.
