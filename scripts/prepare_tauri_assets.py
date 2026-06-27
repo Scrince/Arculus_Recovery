@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 import base64
@@ -62,9 +62,9 @@ def main() -> None:
         shutil.rmtree(DIST, ignore_errors=True)
     DIST.mkdir(parents=True, exist_ok=True)
 
-    html = (ROOT / "Arculus_Recovery.html").read_text(encoding="utf-8")
-    html = html.replace("src/arculus_recovery/assets/favicon.png", "favicon.png")
-    html = html.replace("src/arculus_recovery/assets/settings-icon.png", "settings-icon.png")
+    html = (ROOT / "YellowSphere.html").read_text(encoding="utf-8")
+    html = html.replace("src/yellowsphere/assets/favicon.png", "favicon.png")
+    html = html.replace("src/yellowsphere/assets/settings-icon.png", "settings-icon.png")
     if EXPORT_FALLBACK_OLD not in html:
         raise RuntimeError("Could not apply Tauri export fallback patch to generated index.html")
     html = html.replace(EXPORT_FALLBACK_OLD, EXPORT_FALLBACK_NEW)
@@ -72,7 +72,7 @@ def main() -> None:
     (DIST / "index.html").write_text(html, encoding="utf-8", newline="\n")
 
     for asset_name in ("favicon.png", "settings-icon.png"):
-        source = ROOT / "src" / "arculus_recovery" / "assets" / asset_name
+        source = ROOT / "src" / "yellowsphere" / "assets" / asset_name
         if not source.exists():
             raise FileNotFoundError(f"Could not find required Tauri asset: {source}")
         (DIST / asset_name).write_bytes(source.read_bytes())
