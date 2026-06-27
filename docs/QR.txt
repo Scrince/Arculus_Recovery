@@ -1,25 +1,25 @@
-Arculus Recovery v1.6.4 - QR Payload and Encoder Specification
+﻿YellowSphere v1.6.6 - QR Payload and Encoder Specification
 ==============================================================
 
 Release Boundary
 ----------------
 
-This is the normative QR specification for Arculus_Recovery.html v1.6.4. The
+This is the normative QR specification for YellowSphere.html v1.6.6. The
 production context routes are solana:, web+stellar:pay, raw Cardano, tron:,
 bnb:, avalanche:, polygon:, and cosmos:, followed by syntax-based Bitcoin,
 Bitcoin Cash, Litecoin, Dogecoin, Ethereum, XRP, and raw fallback rules.
-Monero is not a production v1.6.4 context route. Any Monero rule retained later
+Monero is not a production v1.6.6 context route. Any Monero rule retained later
 is an archived v1.6.0 LTS compatibility note.
 
 The QR encoder, capacity table, error-correction behavior, mask scoring, canvas
 rendering, and PNG serialization remain byte-compatible with the retained
-v1.6.0 encoder. Arculus_Recovery.html does not change QR payload bytes.
+v1.6.0 encoder. YellowSphere.html does not change QR payload bytes.
 
 Scope
 -----
 
 This document specifies the QR Export subsystem implemented inside
-Arculus_Recovery.html v1.6.4. It covers the modal workflow, address
+YellowSphere.html v1.6.6. It covers the modal workflow, address
 normalization, URI payload construction, XRP destination-tag handling, QR byte
 encoding, version/capacity selection, Reed-Solomon generation, matrix
 construction, masking, rendering, PNG export, clipboard behavior, and security
@@ -286,7 +286,7 @@ tag_component:
   else:
       "00000"
 
-XRP payload intentionally does not include an "xrp:" URI scheme in v1.6.4.
+XRP payload intentionally does not include an "xrp:" URI scheme in v1.6.6.
 
 Label shown under QR:
 
@@ -350,7 +350,7 @@ Supported error-correction levels:
   ecLevel 0 = M
   ecLevel 1 = Q
 
-Important v1.6.4 behavior:
+Important v1.6.6 behavior:
 
   The implementation tests level M first, then level Q, for each version.
 
@@ -651,7 +651,7 @@ writeFormat(m, ecLevel, mask):
 Penalty Scoring
 ---------------
 
-v1.6.4 penaltyScore implements two penalty families:
+v1.6.6 penaltyScore implements two penalty families:
 
   1. Runs of five or more equal modules in rows and columns:
 
@@ -695,7 +695,7 @@ Defaults:
   dark = opts.dark ?? "#000000"
   light = opts.light ?? "#ffffff"
 
-v1.6.4 modal rendering:
+v1.6.6 modal rendering:
 
   Non-XRP:
       size: 256
@@ -799,7 +799,7 @@ Before using a QR code:
 
   - Confirm the displayed label matches the intended address or URI.
   - For XRP, confirm the destination tag with the receiving service.
-  - For Stellar, confirm memo requirements separately; v1.6.4 encodes only the
+  - For Stellar, confirm memo requirements separately; v1.6.6 encodes only the
     destination in the Stellar URI rule.
   - For Ethereum, confirm the chain/network in the receiving wallet.
   - For Bitcoin Cash, confirm whether the receiving wallet expects CashAddr.
@@ -812,7 +812,7 @@ requirements just because it accepts the QR code.
 Compatibility Checklist
 -----------------------
 
-A compatible v1.6.4 QR implementation should:
+A compatible v1.6.6 QR implementation should:
 
   - Trim address and memo/tag inputs.
   - Detect XRP with /^r[1-9A-HJ-NP-Za-km-z]{24,}/.
@@ -822,7 +822,7 @@ A compatible v1.6.4 QR implementation should:
   - Encode QR data in byte mode using UTF-8.
   - Support versions 1 through 10.
   - Test M before Q for each version.
-  - Use the v1.6.4 CAP table.
+  - Use the v1.6.6 CAP table.
   - Use GF(256) polynomial 0x11d.
   - Interleave data and ECC blocks as implemented.
   - Mask only boolean data/ECC modules.
@@ -889,7 +889,7 @@ Example: Stellar address
       web+stellar:pay?destination=<encoded-address>
 
   Memo:
-      v1.6.4 does not include memo in the Stellar URI rule.
+      v1.6.6 does not include memo in the Stellar URI rule.
 
 
 Known Limitations
@@ -925,7 +925,7 @@ Most wallet scanners are strict about:
   - correct URI scheme
   - expected memo/tag syntax
 
-v1.6.4 uses black modules on a white background and a four-module quiet zone in
+v1.6.6 uses black modules on a white background and a four-module quiet zone in
 the modal render paths. Do not crop the PNG to the QR edges; cropping can remove
 the quiet zone and break scanning.
 
