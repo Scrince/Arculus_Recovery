@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Allow the main Arculus Recovery window to invoke the bundled export save command.",
+  "description": "Allow the main YellowSphere window to invoke the bundled export save command.",
   "windows": ["main"],
   "permissions": ["core:default", "allow-save-export"]
 }
