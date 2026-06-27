@@ -1,6 +1,6 @@
-# Contributing to Arculus Recovery
+﻿# Contributing to YellowSphere
 
-Arculus Recovery handles funds-controlling secrets. Contributions are welcome,
+YellowSphere handles funds-controlling secrets. Contributions are welcome,
 but changes must preserve offline execution, deterministic derivation, explicit
 secret boundaries, and compatibility with the canonical v1.6.4 HTML behavior.
 
@@ -24,7 +24,7 @@ network-required recovery feature.
 
 ## Source of Truth
 
-The canonical v1.6.4 production implementation is `Arculus_Recovery.html`.
+The canonical v1.6.4 production implementation is `YellowSphere.html`.
 The docs in `docs/` specify v1.6.4 byte-level behavior. The Python CLI is
 a compatibility superset and may retain explicitly documented currencies that
 the browser selector does not expose.
@@ -34,14 +34,14 @@ or document the compatibility boundary explicitly.
 
 ## Development Rules
 
-- Keep `Arculus_Recovery.html` usable as a direct local file.
+- Keep `YellowSphere.html` usable as a direct local file.
 - Keep runtime recovery independent of internet access.
 - Treat `.arc`, keyfile, BIP39, BIP32, Ed25519, address encoding, QR payload,
   and export schema changes as security-sensitive.
 - Use deterministic output for identical inputs except where randomness is part
   of the specification.
 - Update `docs/` and `TestVectors.txt` when byte behavior changes.
-- Rebuild `docs/Arculus_Recovery_Manual.pdf` only after text docs are updated.
+- Rebuild `docs/YellowSphere_Manual.pdf` only after text docs are updated.
 - Avoid unrelated refactors in secret-handling code.
 - Do not log seed words, passphrases, private keys, keyfiles, or decrypted
   payloads.
@@ -52,14 +52,14 @@ Python package and CLI:
 
 ```bash
 python -m pip install .
-python Arculus_Recovery.py --help
+python YellowSphere.py --help
 ```
 
 Python GUI:
 
 ```bash
 python -m pip install -r requirements.txt
-python Arculus_Recovery.py --gui
+python YellowSphere.py --gui
 ```
 
 Tauri:
@@ -83,7 +83,7 @@ the bundled workspace runtime when available.
 
 Run the checks that match the touched surface:
 
-- Run `npm run test:html` for changes to `Arculus_Recovery.html` or its browser
+- Run `npm run test:html` for changes to `YellowSphere.html` or its browser
   harness. Use `test:smoke` or `test:crypto` for a focused iteration.
 - Run `npm run test:python` for Python core, CLI, launcher, packaging, or GUI
   asset-discovery changes.
@@ -91,7 +91,7 @@ Run the checks that match the touched surface:
   publishing, run `npm run test:tauri:windows`, `npm run test:tauri:macos`, or
   `npm run test:tauri:linux` on the matching build host. Use the corresponding
   `:validate` command to verify published artifacts without rebuilding.
-- Open `Arculus_Recovery.html` locally with networking disabled.
+- Open `YellowSphere.html` locally with networking disabled.
 - Validate the standard `abandon ... about` mnemonic.
 - Generate and validate both 12-word and 24-word mnemonics when BIP39 changed.
 - Derive at least one known Bitcoin address vector.
@@ -99,7 +99,7 @@ Run the checks that match the touched surface:
 - Export and import protected `.arc` files for password, keyfile, and combined modes when seed protection changed.
 - Test unprotected `.arc` import/export if that path changed.
 - Export JSON, CSV, TXT, PDF, and QR PNG when export or Tauri code changed.
-- Run `python Arculus_Recovery.py --help` when Python code changed.
+- Run `python YellowSphere.py --help` when Python code changed.
 - Test Tauri native save behavior when `src-tauri/`, asset preparation, or packaged HTML changes.
 - Rebuild and inspect the manual PDF when root docs or `docs/` change.
 
