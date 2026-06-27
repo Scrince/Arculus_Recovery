@@ -1,33 +1,66 @@
-# Changelog - Arculus Recovery
+﻿# Changelog - YellowSphere
 
 All notable user-facing and compatibility-relevant changes are documented here.
-The v1.6.4 release-candidate source of truth is `Arculus_Beta.html` plus the
-byte-level references in `docs/`. Previously published v1.6.2 artifacts remain
-historical until v1.6.4 promotion and rebuild are complete.
+The v1.6.6 source of truth is `YellowSphere.html` plus the byte-level
+references in `docs/`. The previous v1.6.4 standalone build is archived under
+`lts/`.
 
-The project originally used a rolling `Arculus_Recovery` release tag, then
+The project originally used a rolling `YellowSphere` release tag, then
 `-production` suffixes, and now uses plain semantic versions for promoted
 releases. Older entries below preserve that history while normalizing the
 format.
 
 ## [Unreleased]
 
+## [1.6.6] - 2026-06-26
+
 ### Added
 
-- Added a reusable Playwright test harness for `Arculus_Beta.html` with a
+- Promoted the beta standalone HTML to the canonical `YellowSphere.html`
+  filename and archived the previous production build as
+  `lts/YellowSphere_v1.6.4_LTS.html`.
+- Added Playwright coverage for keyfile file-picker import, keyfile drag-and-drop
+  import, encrypted keyfile import, wrong-password handling, and CSP hash
+  enforcement. The interaction tests build temporary `.arc` and keyfile contents
+  in memory, avoiding external fixtures or dependencies.
+- Added drag-and-drop support to keyfile import rows. Dropped keyfiles use the
+  same validation, password handling, status messages, and credential-mode
+  behavior as keyfiles selected with the file picker.
+- Made the keyfile drop area more apparent with a persistent dashed outline,
+  drop icon, clearer helper text, and a drag-over highlight.
+
+### Changed
+
+- Promoted the browser build to `1.6.6`.
+- Updated the Python package metadata for YellowSphere v1.6.6. Rebuild the wheel
+  and source archive before publishing package artifacts under `releases/python/`.
+- Kept drag-and-drop limited to keyfile loading; encrypted seed imports continue
+  to use the `Import Seed` file picker.
+- Deferred browser object-URL revocation for 10 seconds after initiating a
+  download, improving reliability in Safari, Firefox, and other browsers while
+  leaving the Tauri native export path unchanged.
+- Consolidated output-panel and QR-modal `Escape` handling into one global
+  keydown dispatcher.
+- `handleClearAll` now cancels and resets pending idle-warning state, dismisses
+  any visible idle countdown banner, and prevents stale countdown warnings after
+  manual clears, visibility-security clears, or idle-timeout clears.
+
+### Added
+
+- Added a reusable Playwright test harness for `YellowSphere.html` with a
   worker-scoped local HTTP server, application-page fixture, browser console and
   page-error enforcement, and shared independent Web Crypto reference helpers.
-- Added browser conformance tests for ARC V3 Password, Keyfile, and Keyfile +
+- Added browser conformance tests for YellowSphere ARC V3 Password, Keyfile, and Keyfile +
   Password modes; fixed padding and field sizes; authenticated metadata and
   ciphertext tampering; wrong credentials; encrypted-keyfile v2; and legacy
-  ARC V2/encrypted-keyfile v1 compatibility.
+  YellowSphere ARC V2/encrypted-keyfile v1 compatibility.
 - Added `test`, `test:crypto`, and `test:html` npm commands alongside the focused
   `test:smoke` command.
 - Added an optional `PLAYWRIGHT_EXECUTABLE_PATH` override for environments that
   provide a system Chromium-family browser instead of Playwright-managed
   Chromium.
 - Added a dependency-free Python `unittest` harness covering BIP39 vectors,
-  mnemonic generation, BIP84 derivation, ARC V2 encryption/armor/tamper
+  mnemonic generation, BIP84 derivation, YellowSphere ARC V2 encryption/armor/tamper
   rejection, CLI JSON output, launcher versioning, and packaged GUI assets.
 - Added a Windows Tauri release harness that validates synchronized release
   identity, prepared frontend assets, bundle icons, Rust unit tests, and,
@@ -36,13 +69,13 @@ format.
 - Added `test:python`, `test:tauri`, `test:tauri:windows`, and `test:release` npm
   commands for focused and combined release validation.
 
-- Added protected `.arc` format v3 to `Arculus_Beta.html`. V3 uses
+- Added protected `.arc` format v3 to `YellowSphere.html`. V3 uses
   AES-256-GCM, a 32-byte random salt, a 12-byte nonce, a 128-bit tag, and a
   fixed 512-byte padded plaintext payload.
 - Added AES-256-GCM encrypted keyfile version 2 with authenticated keyfile magic
   and format metadata. Existing encrypted keyfile version 1 import remains
   supported.
-- Added an authenticated `credential_mode` field to ARC V3 bundles with
+- Added an authenticated `credential_mode` field to YellowSphere ARC V3 bundles with
   `password`, `keyfile`, or `both` values.
 
 - Added a Settings -> Advanced `Tab-Switch Grace Period` toggle. The default
@@ -59,17 +92,17 @@ format.
 
 ### Changed
 
-- Changed new beta Password-mode ARC V3 key derivation to SHA-512 pre-hashing
+- Changed new v1.6.6 Password-mode YellowSphere ARC V3 key derivation to SHA-512 pre-hashing
   followed by PBKDF2-HMAC-SHA512 at 1,000,000 iterations.
-- Changed new beta Keyfile-mode ARC V3 derivation to HKDF-SHA512. Combined mode
+- Changed new v1.6.6 Keyfile-mode YellowSphere ARC V3 derivation to HKDF-SHA512. Combined mode
   now mixes raw keyfile bytes and NFKD-normalized password bytes with
-  HKDF-SHA512 using the ARC salt and the fixed info string
-  `arculus-arc-v3-combined-key`.
+  HKDF-SHA512 using the YellowSphere ARC salt and the fixed info string
+  `yellowsphere-arc-v3-combined-key`.
 - Changed newly generated password-protected keyfiles to SHA-512 password
   pre-hashing, PBKDF2-HMAC-SHA512 at 1,000,000 iterations, and AES-256-GCM with
   a 12-byte nonce. Existing 200,000-iteration version 2 keyfiles remain readable.
-- ARC V3 authenticates all bundle metadata as AES-GCM additional authenticated
-  data and no longer emits the ARC V2 separate MAC field.
+- YellowSphere ARC V3 authenticates all bundle metadata as AES-GCM additional authenticated
+  data and no longer emits the YellowSphere ARC V2 separate MAC field.
 
 - Debounced live root-fingerprint refreshes and serialized fingerprint and
   address-derivation work through latest-request-wins queues. Manual and
@@ -93,9 +126,9 @@ format.
 ### Security
 
 - Added best-effort zeroing of temporary password, keyfile, salt, padded
-  plaintext, and decrypted-plaintext byte arrays in the new ARC V3 and
+  plaintext, and decrypted-plaintext byte arrays in the new YellowSphere ARC V3 and
   encrypted-keyfile v2 paths.
-- Preserved the legacy combined-secret construction exclusively for ARC V2
+- Preserved the legacy combined-secret construction exclusively for YellowSphere ARC V2
   decryption so existing Password, Keyfile, and Keyfile + Password backups
   remain recoverable.
 
@@ -109,14 +142,14 @@ format.
 
 ### Fixed
 
-- Made ARC V3 credential mode explicit so Password-mode strings beginning with
+- Made YellowSphere ARC V3 credential mode explicit so Password-mode strings beginning with
   reserved keyfile prefixes cannot be misclassified or locked to the wrong
   import workflow.
 - Cleared credential-dialog password, confirmation, file-input, and keyfile
   secret state on completion, cancellation, timeout, and visibility clearing.
 - Made the password meter penalize exact repeated patterns and label its output
   as a rough character-diversity score rather than an entropy guarantee.
-- Synchronized the Playwright fixture title expectation with v1.6.4.
+- Synchronized the Playwright fixture title expectation with v1.6.6.
 
 - Fixed stale smoke-test assumptions for the document title and ambiguous
   Generate/Export button locators, and hardened local test-server teardown so
@@ -130,26 +163,26 @@ format.
 
 ### Verified
 
-- Verified ARC V3 Password, Keyfile, and Keyfile + Password modes against
+- Verified YellowSphere ARC V3 Password, Keyfile, and Keyfile + Password modes against
   independent Web Crypto PBKDF2, HKDF, and AES-GCM derivations.
-- Verified ARC V3 fixed-size padding, salt and nonce lengths, wrong-credential
+- Verified YellowSphere ARC V3 fixed-size padding, salt and nonce lengths, wrong-credential
   rejection, and rejection of modified metadata or ciphertext.
 - Verified encrypted-keyfile v2 independently and confirmed encrypted-keyfile
-  v1 plus ARC V2 Password, Keyfile, and combined-mode compatibility.
+  v1 plus YellowSphere ARC V2 Password, Keyfile, and combined-mode compatibility.
 
 - Verified both inline scripts parse successfully and match the SHA-256 hashes
   authorized by the Content Security Policy.
 - Verified the embedded favicon decodes to the exact original 3,976-byte PNG
   and that no external favicon path remains.
-- Verified the beta HTML introduces no new whitespace errors.
+- Verified the promoted HTML introduces no new whitespace errors.
 
 ## [1.6.2] - 2026-06-17
 
 ### Release Identity
 
-- Promoted the tested `Arculus_Beta.html` changes into the production
-  `Arculus_Recovery.html` file and updated the visible/browser version to
-  Arculus v1.6.2.
+- Promoted the tested `YellowSphere_Beta.html` changes into the production
+  `YellowSphere.html` file and updated the visible/browser version to
+  YellowSphere v1.6.2.
 - Removed the temporary beta HTML and beta changelog after promotion.
 - Updated the Python package and CLI version to v1.6.2 and synchronized the
   Python GUI's packaged WebView asset with the production HTML.
@@ -173,7 +206,7 @@ format.
 
 - Verified partial address and private-key searches, search clearing,
   no-results behavior, and filtering while the output panel is expanded.
-- Verified the promoted production HTML reports Arculus v1.6.2.
+- Verified the promoted production HTML reports YellowSphere v1.6.2.
 - Verified the Python CLI reports v1.6.2 and completes deterministic Bitcoin
   derivation successfully.
 - Verified the v1.6.2 Windows Tauri executable launches, the MSI reports
@@ -190,15 +223,15 @@ format.
 
 ### Release Identity
 
-- Promoted the former `Arculus_Beta.html` build to the production
-  `Arculus_Recovery.html` filename and updated its visible/browser version to
-  Arculus v1.6.1.
-- Archived v1.6.0 as `lts/Arculus_Recovery_v1.6.0_LTS.html`; its application title
-  now identifies it as Arculus Recovery v1.6.0 LTS.
+- Promoted the former `YellowSphere_Beta.html` build to the production
+  `YellowSphere.html` filename and updated its visible/browser version to
+  YellowSphere v1.6.1.
+- Archived v1.6.0 as `lts/YellowSphere_v1.6.0_LTS.html`; its application title
+  now identifies it as YellowSphere v1.6.0 LTS.
 - Renamed the previous v1.5.0 LTS build to
-  `lts/Arculus Recovery_v1.5.0_LTS.html`.
+  `lts/YellowSphere_v1.5.0_LTS.html`.
 - Updated the Python GUI package to v1.6.1 and synchronized its packaged HTML
-  asset with the production `Arculus_Recovery.html` build.
+  asset with the production `YellowSphere.html` build.
 
 ### Added
 
@@ -231,7 +264,7 @@ format.
 
 ### Compatibility Notes
 
-- ARC V2 seed-backup encryption and import behavior are unchanged from v1.6.0.
+- YellowSphere ARC V2 seed-backup encryption and import behavior are unchanged from v1.6.0.
 - The Python GUI now embeds the v1.6.1 production browser application. The
   Python CLI derivation engine remains a separate compatibility surface.
 - Promoted Tauri package, application, and Rust crate metadata to v1.6.1 and
@@ -256,9 +289,9 @@ format.
 - Clipboard-copy failures in derived tables and extended-key views now surface
   a visible status message.
 - Relocated inline jsPDF third-party attribution and license comments from
-  `Arculus_Beta.html` into `docs/ThirdPartyNotices.txt` without changing
+  `YellowSphere_Beta.html` into `docs/ThirdPartyNotices.txt` without changing
   executable HTML behavior.
-- Cleaned garbled non-license comments in `Arculus_Beta.html` while leaving
+- Cleaned garbled non-license comments in `YellowSphere_Beta.html` while leaving
   functional code unchanged.
 
 ### Verified
@@ -268,8 +301,8 @@ format.
   export during the beta-to-production promotion.
 - Verified mainnet/testnet derivation behavior for the currencies retained in
   the v1.6.1 production selector.
-- Verified the promoted production build reports Arculus v1.6.1 and the
-  archived v1.6.0 build reports Arculus Recovery v1.6.0 LTS.
+- Verified the promoted production build reports YellowSphere v1.6.1 and the
+  archived v1.6.0 build reports YellowSphere v1.6.0 LTS.
 - Verified the v1.6.1 Windows Tauri executable launches, embeds the v1.6.1
   prepared HTML asset, and produces versioned MSI and NSIS packages.
 
@@ -277,15 +310,15 @@ format.
 
 ### Release Identity
 
-- Promoted the repaired beta line to the canonical `Arculus_Recovery.html`
+- Promoted the repaired beta line to the canonical `YellowSphere.html`
   v1.6.0 release.
 - Kept the previous canonical HTML build as an LTS copy (now named
-  `lts/Arculus Recovery_v1.5.0_LTS.html`).
+  `lts/YellowSphere_v1.5.0_LTS.html`).
 - Updated Python package metadata, Tauri package metadata, Tauri app metadata,
   packaged HTML assets, and manual generation metadata for v1.6.0.
 - Rewrote the root documentation and `docs/` technical references around the
   current byte-level behavior.
-- Rebuilt `docs/Arculus_Recovery_Manual.pdf` from the updated text sources.
+- Rebuilt `docs/YellowSphere_Manual.pdf` from the updated text sources.
 - Built v1.6.0 macOS Tauri release artifacts for Intel, Apple Silicon, and
   universal macOS distribution.
 - Built v1.6.0 Linux Tauri release artifacts for amd64 distribution.
@@ -302,8 +335,8 @@ format.
   spend/view keys, public spend/view keys, and standard mainnet address output.
 - Cardano Icarus/CIP-1852 Shelley base address derivation.
 - `.arc` Password, Keyfile, and Keyfile + Password protection modes.
-- Raw keyfile format `arculus-recovery-keyfile-v1`.
-- Encrypted keyfile format `arculus-recovery-keyfile-enc-v1`.
+- Raw keyfile format `yellowsphere-keyfile-v1`.
+- Encrypted keyfile format `yellowsphere-keyfile-enc-v1`.
 - Unprotected armored `.arc` export mode for controlled offline/test handling.
 - Manual-entry seed auto-mask after successful derivation, using the same hidden
   seed workflow as generated and imported seeds.
@@ -314,7 +347,7 @@ format.
   exports.
 - GitHub Actions workflow for native Tauri builds.
 - PySide6 WebEngine GUI shell around the packaged HTML app.
-- Python package layout under `src/arculus_recovery/`, optional GUI dependency,
+- Python package layout under `src/yellowsphere/`, optional GUI dependency,
   and package entry point.
 - Terminal theme.
 - Cross-platform Tauri asset preparation scripts for Windows, macOS, and Linux
@@ -325,10 +358,10 @@ format.
 
 ### Changed
 
-- Current protected `.arc` export uses armored `ARCULUS-ARC-V2` text with
+- Current protected `.arc` export uses armored `YELLOWSPHERE-ARC-V2` text with
   PBKDF2-HMAC-SHA512, 1,000,000 iterations, 32-byte salt, 24-byte nonce,
   HMAC-SHA512 stream encryption, and HMAC-SHA512 authentication.
-- ARC V2 import rejects iteration counts below 600,000.
+- YellowSphere ARC V2 import rejects iteration counts below 600,000.
 - The v1.6.0 docs distinguish the full canonical HTML feature set from the
   narrower Python CLI compatibility surface.
 - Tauri asset preparation byte-copies the canonical HTML to preserve Unicode
@@ -363,7 +396,7 @@ format.
   Dogecoin, Ethereum / ERC-20, Solana, Stellar, Monero, Cardano, and XRP.
 - The Python CLI remains a compatibility/scripted surface for Bitcoin,
   Litecoin, Dogecoin, Ethereum, and XRP.
-- Current `.arc` exports are armored ARC V2. Legacy JSON V2, Python V1,
+- Current `.arc` exports are armored YellowSphere ARC V2. Legacy JSON V2, Python V1,
   browser AES-GCM V1, and older PBKDF2-SHA256/XOR-HMAC import paths remain
   supported where implemented.
 
@@ -374,7 +407,7 @@ documentation cleanup.
 
 ### Added
 
-- `Arculus_Recovery_Beta.html` as the validation target before promotion to the
+- `YellowSphere_Beta.html` as the validation target before promotion to the
   main HTML.
 - Manual-entry seed masking after successful derivation.
 - Dedicated XRP QR renderer with larger canvas and `xrp-mode` modal sizing.
@@ -384,7 +417,7 @@ documentation cleanup.
   and HTML assets.
 - Vendored and packaged jsPDF assets for offline PDF export.
 - Tauri desktop build structure, native export command, capability entry, and
-  injected `window.arculusTauriSaveExport` bridge.
+  injected `window.yellowsphereTauriSaveExport` bridge.
 - Windows Tauri executable, MSI, and NSIS setup artifacts.
 - macOS Tauri `.app` and DMG build outputs for Apple Silicon, Intel, and
   universal packaging.
@@ -419,7 +452,7 @@ documentation cleanup.
 - BIP21/URI scheme auto-detection for QR payloads.
 - Forced black-on-white QR rendering for scanner reliability.
 - Four-module QR quiet zone.
-- PDF key export through jsPDF, saved as `Arculus_Key_Export_<coin>.pdf`.
+- PDF key export through jsPDF, saved as `YellowSphere_Key_Export_<coin>.pdf`.
 - PDF title block with coin, app version, UTC timestamp, and root fingerprint.
 - PDF Extended Keys section and address table.
 - Extended Keys output tab.
@@ -478,14 +511,14 @@ documentation cleanup.
 - Dark+ theme.
 - Three-way Light / Dark / Dark+ theme selector.
 - Clear All button.
-- Derivation path tooltip for the Arculus-native `m/0'` default.
+- Derivation path tooltip for the YellowSphere-native `m/0'` default.
 
 ### Changed
 
 - Show Seed moved into the seed row near other seed-state controls.
 - Copy Seed and Clear All buttons were restyled to use the default button style.
-- Theme preference moved to `localStorage` key `arculusTheme` with migration
-  from the older `arculusDarkMode` setting.
+- Theme preference moved to `localStorage` key `yellowsphereTheme` with migration
+  from the older `yellowsphereDarkMode` setting.
 
 ## [1.2.0] - 2026-06-02
 
@@ -525,7 +558,7 @@ documentation cleanup.
 - Documentation and security guidance were updated for generation and word-grid
   entry.
 
-## [Arculus_Recovery] - 2026-04-24
+## [YellowSphere] - 2026-04-24
 
 First formal GitHub release, tagged at commit `e7cc84e`.
 
