@@ -1,14 +1,14 @@
-Arculus Recovery v1.6.4 - Derivation Engine Internals
+﻿YellowSphere v1.6.6 - Derivation Engine Internals
 =====================================================
 
 Release Boundary
 ----------------
 
 This is the normative derivation specification for the production root file
-Arculus_Recovery.html v1.6.4. Production supports Bitcoin, Bitcoin Cash,
+YellowSphere.html v1.6.6. Production supports Bitcoin, Bitcoin Cash,
 Litecoin, Dogecoin, Ethereum / ERC-20, Tron / TRC-20, BNB Chain, Avalanche
 C-Chain, Polygon, Cosmos / ATOM, Solana, Stellar, Cardano, and XRP. Polkadot
-and Monero are not production v1.6.4 browser currencies.
+and Monero are not production v1.6.6 browser currencies.
 
 The production default account paths are:
 
@@ -34,15 +34,15 @@ retain their mainnet path because network selection changes metadata or address
 encoding, not the deterministic account path.
 
 Any Monero derivation text or vectors retained later in this document describe
-the archived lts/Arculus_Recovery_v1.6.0_LTS.html or a separate Python
-compatibility surface. They are not reachable from the v1.6.4 browser selector.
-Arculus_Recovery.html v1.6.4 is normative for the byte output specified here.
+the archived lts/YellowSphere_v1.6.0_LTS.html or a separate Python
+compatibility surface. They are not reachable from the v1.6.6 browser selector.
+YellowSphere.html v1.6.6 is normative for the byte output specified here.
 
 Scope
 -----
 
 This document is the authoritative byte-level specification of the deterministic
-derivation engine implemented by the canonical Arculus_Recovery.html v1.6.4
+derivation engine implemented by the canonical YellowSphere.html v1.6.6
 application. It defines the complete computational pipeline from CSPRNG entropy
 through BIP39 mnemonic generation, BIP39 validation, Unicode normalization,
 PBKDF2 seed stretching, secp256k1 BIP32 derivation, SLIP-0010 Ed25519
@@ -50,7 +50,7 @@ derivation, Cardano Icarus Ed25519-BIP32 derivation, script-type resolution,
 per-coin address construction, Taproot key material, extended key
 serialization, output-object construction, and export flattening.
 
-The root HTML file is the source of truth for v1.6.4 browser behavior. The
+The root HTML file is the source of truth for v1.6.6 browser behavior. The
 Python CLI is a compatibility superset: it supports the production browser
 currencies and retains Monero automation. This document marks surface
 differences between the canonical HTML workflow and Python automation where
@@ -132,7 +132,7 @@ The HTML app accepts mnemonic material through four user-facing paths:
 
 All four paths feed the same downstream validator. A generated or imported seed
 is held in importedSeedState and displayed as masked bullet groups until the
-user holds Show Seed. Since v1.6.4, a manually entered seed is promoted into the
+user holds Show Seed. Since v1.6.6, a manually entered seed is promoted into the
 same hidden-seed state after a successful derivation, so subsequent derivations,
 exports, and reveal behavior use the same state model as generated and imported
 seeds.
@@ -148,7 +148,7 @@ The canonical normalized word sequence is:
   mnemonic = words.join(" ")
 
 The implementation accepts only 12-word and 24-word English BIP39 mnemonics.
-No 15, 18, or 21 word BIP39 mnemonics are supported in v1.6.4.
+No 15, 18, or 21 word BIP39 mnemonics are supported in v1.6.6.
 
 
 CSPRNG-Based Mnemonic Generation
@@ -278,7 +278,7 @@ produces a different seed than any non-empty passphrase. The derivation engine
 cannot know whether the correct passphrase was used. Verification must be done
 by root fingerprint or known addresses.
 
-Cardano is different in v1.6.4: the canonical HTML uses the BIP39 entropy bytes
+Cardano is different in v1.6.6: the canonical HTML uses the BIP39 entropy bytes
 for the Icarus master-key derivation rather than the 64-byte BIP39 PBKDF2 seed.
 Cardano behavior is specified in its own section.
 
@@ -370,7 +370,7 @@ then:
   endIdx   = max(startIdx, parseInt(second, 10))
   count    = endIdx - startIdx + 1
 
-If rangeRaw is non-empty but does not match this pattern, v1.6.4 silently falls
+If rangeRaw is non-empty but does not match this pattern, v1.6.6 silently falls
 back to the count field. Address indexes are always non-negative.
 
 
@@ -505,7 +505,7 @@ For Bitcoin, Bitcoin Cash, Litecoin, and Dogecoin, rows are derived under both:
   receiving branch: account / 0 / address_index
   change branch:    account / 1 / address_index
 
-For Ethereum and XRP, v1.6.4 still uses the same branch/index layout:
+For Ethereum and XRP, v1.6.6 still uses the same branch/index layout:
 
   receiving branch: account / 0 / address_index
   change branch:    account / 1 / address_index
@@ -682,7 +682,7 @@ For Bitcoin, Bitcoin Cash, Litecoin, and Dogecoin:
 
 If the selected network object does not have parameters for the resolved script
 type, the engine throws "Unsupported script type". This prevents constructing
-addresses for unsupported combinations such as Bitcoin Cash P2WPKH in v1.6.4.
+addresses for unsupported combinations such as Bitcoin Cash P2WPKH in v1.6.6.
 
 
 Hash and Encoding Primitives
@@ -763,7 +763,7 @@ The trailing 0x01 is the compressed-public-key flag. Every public key emitted by
 this engine is compressed for UTXO address construction, so the WIF compression
 flag is mandatory.
 
-Ethereum and XRP do not use WIF in v1.6.4. Solana, Stellar, Monero, and Cardano
+Ethereum and XRP do not use WIF in v1.6.6. Solana, Stellar, Monero, and Cardano
 also do not use WIF.
 
 
@@ -803,7 +803,7 @@ segwitAddress(hrp, version, witnessProgram):
   else:
       use Bech32m
 
-v1.6.4 therefore uses:
+v1.6.6 therefore uses:
 
   P2WPKH version 0 -> Bech32
   P2TR version 1  -> Bech32m
@@ -851,7 +851,7 @@ P2SH CashAddr:
   version = 8
   payload = convertBits([version] || script_hash, 8, 5, true)
 
-In v1.6.4, Bitcoin Cash network configuration exposes only p2pkh as supported,
+In v1.6.6, Bitcoin Cash network configuration exposes only p2pkh as supported,
 so the default UI path emits P2PKH CashAddr. The generic pubToAddress function
 also contains the P2SH CashAddr branch for p2wpkh-p2sh if a network ever enables
 that script slot.
@@ -1316,7 +1316,7 @@ Row fields:
 Cardano Icarus Ed25519-BIP32
 ----------------------------
 
-Cardano in v1.6.4 does not use the 64-byte BIP39 seed. It reconstructs the
+Cardano in v1.6.6 does not use the 64-byte BIP39 seed. It reconstructs the
 BIP39 entropy bytes from the mnemonic word indexes:
 
   entropy = mnemonicEntropyBytes(mnemonic)
@@ -1395,7 +1395,7 @@ Path selection per address index:
   stakingPath = m/1852'/1815'/account/2/0
 
 If the default base path is used, account is 0'. The final /0/0 in the base
-path is not used directly as an index template; v1.6.4 reconstructs payment and
+path is not used directly as an index template; v1.6.6 reconstructs payment and
 staking paths from purpose, coin type, and account.
 
 BLAKE2b-224:
@@ -1535,7 +1535,7 @@ Cardano account object:
   receiving
   change = []
 
-These families do not emit BIP32 xprv/xpub strings in v1.6.4.
+These families do not emit BIP32 xprv/xpub strings in v1.6.6.
 
 
 Flattened Table and CSV Row Model
@@ -1583,7 +1583,7 @@ TXT Export Field Model
 
 TXT export emits:
 
-  Arculus Derived Keys and Addresses
+  YellowSphere Derived Keys and Addresses
 
   coin: <coin>
   network: <network>
@@ -1696,7 +1696,7 @@ For XRP:
 
 For Solana/Stellar/Monero:
 
-  account index changes are hardened account path changes in v1.6.4
+  account index changes are hardened account path changes in v1.6.6
 
 For Cardano:
 
@@ -1706,7 +1706,7 @@ For Cardano:
 Compatibility Reference
 -----------------------
 
-Canonical HTML v1.6.4:
+Canonical HTML v1.6.6:
 
   Full behavior described by this document.
 
@@ -1741,7 +1741,7 @@ Python CLI in the current repository:
 PySide6 GUI:
 
   Renders packaged HTML. Its behavior follows the packaged asset that was copied
-  into src/arculus_recovery/assets.
+  into src/yellowsphere/assets.
 
 Tauri wrapper:
 
@@ -1783,7 +1783,7 @@ Canonical HTML functions:
   derivedToText(data)
 
 Python compatibility functions are now useful for cross-checking both the
-secp256k1 subset and the expanded v1.6.4 Ed25519-family coin set. Conformance
+secp256k1 subset and the expanded v1.6.6 Ed25519-family coin set. Conformance
 for either implementation must still be measured against the byte-level rules in
 this document and the vectors in TestVectors.txt; if Python and HTML disagree,
 the canonical HTML behavior and documented test vectors control until the
