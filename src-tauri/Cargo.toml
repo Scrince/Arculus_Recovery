@@ -1,15 +1,15 @@
 [package]
-name = "arculus-recovery-tauri"
-version = "1.6.4"
-description = "Offline Arculus Recovery desktop app"
+name = "yellowsphere-tauri"
+version = "1.6.6"
+description = "Offline YellowSphere desktop app"
 edition = "2021"
 
 [lib]
-name = "arculus_recovery_tauri_lib"
+name = "yellowsphere_tauri_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [[bin]]
-name = "arculus-recovery"
+name = "yellowsphere"
 path = "src/main.rs"
 
 [build-dependencies]
