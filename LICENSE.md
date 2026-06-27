@@ -1,6 +1,6 @@
-MIT License
+﻿MIT License
 
-Copyright (c) 2026 Arculus Recovery contributors
+Copyright (c) 2026 YellowSphere contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +23,7 @@ SOFTWARE.
 Project Notice
 --------------
 
-Arculus Recovery is security-sensitive recovery software. The license above
+YellowSphere is security-sensitive recovery software. The license above
 permits use, copying, modification, and redistribution, but it does not provide
 any warranty that derived addresses, encrypted backups, exports, or recovery
 procedures are suitable for any specific wallet, custody workflow, blockchain,
