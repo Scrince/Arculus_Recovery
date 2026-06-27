@@ -1,24 +1,24 @@
-Arculus Recovery v1.6.4 - Encryption Subsystem Internals
+﻿YellowSphere v1.6.6 - Encryption Subsystem Internals
 ========================================================
 
 Release Boundary
 ----------------
 
 This is the normative encryption specification for the promoted production
-Arculus_Recovery.html v1.6.4. New protected
-.arc exports use internal ARC V3. New password-protected keyfiles use
-encrypted-keyfile version 2. ARC V2 and encrypted-keyfile version 1 remain
+YellowSphere.html v1.6.6. New protected
+.arc exports use internal YellowSphere ARC V3. New password-protected keyfiles use
+encrypted-keyfile version 2. YellowSphere ARC V2 and encrypted-keyfile version 1 remain
 import-only compatibility formats and are specified later in this document.
 
 
-ARC V3 Protected Seed Format
+YellowSphere ARC V3 Protected Seed Format
 ----------------------------
 
 New protected .arc exports use:
 
-  outer armor             = "ARCULUS-ARC-V2"
-  magic                   = "ARCULUS-ARC"
-  format                  = "arculus-encrypted-seed-v3"
+  outer armor             = "YELLOWSPHERE-ARC-V2"
+  magic                   = "YELLOWSPHERE-ARC"
+  format                  = "yellowsphere-encrypted-seed-v3"
   version                 = 3
   cipher                  = "AES-256-GCM"
   salt length             = 32 bytes
@@ -31,7 +31,7 @@ The unchanged armor name is an outer transport marker, not the internal
 cryptographic version. Importers must inspect the decoded JSON version and
 format fields.
 
-ARC V3 bundle insertion order before ciphertext_b64 is:
+YellowSphere ARC V3 bundle insertion order before ciphertext_b64 is:
 
   magic
   format
@@ -45,7 +45,7 @@ ARC V3 bundle insertion order before ciphertext_b64 is:
 credential_mode is one of "password", "keyfile", or "both". The complete JSON
 serialization of these metadata fields is supplied to AES-GCM as additional
 authenticated data. ciphertext_b64 is appended after encryption and is not
-part of the additional-data serialization. ARC V3 has no mac_b64 field.
+part of the additional-data serialization. YellowSphere ARC V3 has no mac_b64 field.
 
 The plaintext payload before padding is compact JSON in this insertion order:
 
@@ -61,43 +61,43 @@ authenticated plaintext bytes, removes trailing 0x00 bytes, decodes fatal
 UTF-8, parses JSON, normalizes the mnemonic, and verifies word_count when
 present.
 
-ARC V3 Password mode derives its AES key as follows:
+YellowSphere ARC V3 Password mode derives its AES key as follows:
 
   password_bytes = UTF8(NFKD(password))
   password_hash  = SHA-512(password_bytes)
   aes_key = PBKDF2-HMAC-SHA512(
       password   = password_hash,
-      salt       = 32-byte ARC salt,
+      salt       = 32-byte YellowSphere ARC salt,
       iterations = 1000000,
       output      = AES-256-GCM key
   )
 
-ARC V3 Keyfile mode uses the complete ASCII credential string
+YellowSphere ARC V3 Keyfile mode uses the complete ASCII credential string
 "arc-keyfile-v1:" || base64(keyfile_bytes) as HKDF input key material:
 
   aes_key = HKDF-SHA512(
       ikm  = UTF8(keyfile_secret),
-      salt = 32-byte ARC salt,
-      info = UTF8("Arculus ARC v3 AES-256-GCM key"),
+      salt = 32-byte YellowSphere ARC salt,
+      info = UTF8("YellowSphere ARC v3 AES-256-GCM key"),
       len  = 32 bytes
   )
 
-ARC V3 Keyfile + Password mode first computes:
+YellowSphere ARC V3 Keyfile + Password mode first computes:
 
   combined_ikm = keyfile_bytes || UTF8(NFKD(password))
   combined_bits = HKDF-SHA512(
       ikm  = combined_ikm,
-      salt = 32-byte ARC salt,
-      info = UTF8("arculus-arc-v3-combined-key"),
+      salt = 32-byte YellowSphere ARC salt,
+      info = UTF8("yellowsphere-arc-v3-combined-key"),
       len  = 64 bytes
   )
   combined_secret = "arc-combined-v1:" || base64(combined_bits)
 
-The combined_secret then follows the ARC V3 HKDF AES-key derivation above.
-ARC V2 combined-mode import explicitly retains the legacy SHA-256 construction;
-the new combined transcript applies only to newly written ARC V3 bundles.
+The combined_secret then follows the YellowSphere ARC V3 HKDF AES-key derivation above.
+YellowSphere ARC V2 combined-mode import explicitly retains the legacy SHA-256 construction;
+the new combined transcript applies only to newly written YellowSphere ARC V3 bundles.
 
-AES-GCM invocation for every ARC V3 mode is:
+AES-GCM invocation for every YellowSphere ARC V3 mode is:
 
   ciphertext_and_tag = AES-256-GCM-ENCRYPT(
       key             = derived 32-byte AES key,
@@ -118,8 +118,8 @@ Encrypted-Keyfile Version 2
 
 New password-protected keyfiles use encrypted-keyfile version 2 while retaining:
 
-  magic  = "ARCULUS-KEYFILE-ENC"
-  format = "arculus-recovery-keyfile-enc-v1"
+  magic  = "YELLOWSPHERE-KEYFILE-ENC"
+  format = "yellowsphere-keyfile-enc-v1"
 
 Their cryptographic parameters are:
 
@@ -136,8 +136,8 @@ Their cryptographic parameters are:
 The stored object insertion order is:
 
   {
-    "magic": "ARCULUS-KEYFILE-ENC",
-    "format": "arculus-recovery-keyfile-enc-v1",
+    "magic": "YELLOWSPHERE-KEYFILE-ENC",
+    "format": "yellowsphere-keyfile-enc-v1",
     "version": 2,
     "created_at": "<Date.toISOString string>",
     "kdf": {
@@ -165,12 +165,12 @@ Password and key derivation are:
   )
 
 New exports write 1000000 iterations. Import accepts exactly 1000000 for
-v1.6.4 files and exactly 200000 for encrypted-keyfile v2 files created by the
+v1.6.6 files and exactly 200000 for encrypted-keyfile v2 files created by the
 earlier beta. Other values are rejected.
 
 The exact AES-GCM additional-data bytes are:
 
-  UTF8("{\"magic\":\"ARCULUS-KEYFILE-ENC\",\"format\":\"arculus-recovery-keyfile-enc-v1\"}")
+  UTF8("{\"magic\":\"YELLOWSPHERE-KEYFILE-ENC\",\"format\":\"yellowsphere-keyfile-enc-v1\"}")
 
 Encryption uses the 12-byte nonce, raw keyfile bytes as plaintext, and a
 128-bit tag. A generated 64-byte keyfile therefore produces 80 decoded
@@ -188,7 +188,7 @@ Scope
 -----
 
 This document is the byte-level specification of the seed-file and keyfile
-encryption subsystem implemented by Arculus_Recovery.html v1.6.4. It specifies
+encryption subsystem implemented by YellowSphere.html v1.6.6. It specifies
 the protected .arc envelope, the unprotected .arc envelope, raw keyfiles,
 encrypted keyfiles, the Keyfile + Password combined-secret mode, legacy import
 formats, key derivation, stream generation, authentication transcripts, import
@@ -199,9 +199,9 @@ address derivation, BIP32 trees, Ed25519 trees, QR payloads, derived-output
 exports, or wallet passphrase semantics except where those concepts touch seed
 export/import. Those topics are specified in the other files in this directory.
 
-The current v1.6.4 implementation is the single-file browser build:
+The current v1.6.6 implementation is the single-file browser build:
 
-  Arculus_Recovery.html
+  YellowSphere.html
 
 Normative references to function names in this document refer to that file.
 
@@ -212,7 +212,7 @@ Design Constraints
 The encryption subsystem is built under these constraints:
 
   1. Browser-native cryptography only.
-     The canonical v1.6.4 HTML build uses WebCrypto primitives exposed through
+     The canonical v1.6.6 HTML build uses WebCrypto primitives exposed through
      crypto.subtle and random bytes from crypto.getRandomValues. It does not
      require an external cryptographic package or network access.
 
@@ -224,18 +224,18 @@ The encryption subsystem is built under these constraints:
      byte-array operations.
 
   3. New protected seed exports use authenticated encryption.
-     v1.6.4 protected .arc exports derive an AES-256 key through the mode-
+     v1.6.6 protected .arc exports derive an AES-256 key through the mode-
      appropriate PBKDF2 or HKDF path and authenticate ciphertext plus complete
      compact JSON metadata with AES-256-GCM.
 
   4. The current format must reject downgrade attempts.
-     ARC V3 additional data commits to KDF fields, cipher fields, padding,
+     YellowSphere ARC V3 additional data commits to KDF fields, cipher fields, padding,
      credential mode, magic, format, version, and creation timestamp. Password
      mode accepts exactly 1000000 iterations.
 
   5. Credential modes are operational wrappers around the same .arc envelope.
      Password, Keyfile, and Keyfile + Password all ultimately produce a secret
-     string. Explicit credential mode selects the ARC V3 PBKDF2 or HKDF path.
+     string. Explicit credential mode selects the YellowSphere ARC V3 PBKDF2 or HKDF path.
 
   6. The wallet passphrase is separate.
      The BIP39 passphrase field changes wallet derivation. It is not the .arc
@@ -256,24 +256,24 @@ The following terms are used exactly:
       derivation parameter, not an .arc encryption password.
 
   .arc password:
-      The secret passed into ARC V3 seed-file encryption. Depending on
+      The secret passed into YellowSphere ARC V3 seed-file encryption. Depending on
       UI mode, this may be a human password, a keyfile-derived secret string,
       or a combined keyfile+password secret string.
 
   raw keyfile:
-      A JSON or base64 file containing random bytes. v1.6.4-generated raw
+      A JSON or base64 file containing random bytes. v1.6.6-generated raw
       keyfiles contain 64 bytes.
 
   encrypted keyfile:
       A JSON file containing a password-encrypted raw keyfile payload. It is
       protected independently from the .arc file.
 
-  ARC v2:
-      The current protected seed-file format with magic "ARCULUS-ARC", format
-      "arculus-encrypted-seed-v2", and armor header "ARCULUS-ARC-V2".
+  YellowSphere ARC v2:
+      The current protected seed-file format with magic "YELLOWSPHERE-ARC", format
+      "yellowsphere-encrypted-seed-v2", and armor header "YELLOWSPHERE-ARC-V2".
 
   plain .arc:
-      The unprotected seed-file format with format "arculus-plain-seed-v1".
+      The unprotected seed-file format with format "yellowsphere-plain-seed-v1".
       It uses the same outer armor but has no encryption and no MAC.
 
 
@@ -309,57 +309,57 @@ Unless a section states otherwise:
 
         password_bytes = UTF-8(NFKD(password_string))
 
-  Separator byte in ARC v2 MAC transcript:
+  Separator byte in YellowSphere ARC v2 MAC transcript:
       0x00.
 
 
 Implementation Constants
 ------------------------
 
-The v1.6.4 HTML implementation defines these constants:
+The v1.6.6 HTML implementation defines these constants:
 
-  ARC_MAGIC                    = "ARCULUS-ARC"
-  ARC_ARMOR_HEADER             = "ARCULUS-ARC-V2"
-  ARC_V2_FORMAT                = "arculus-encrypted-seed-v2"
-  ARC_PLAIN_FORMAT             = "arculus-plain-seed-v1"
+  ARC_MAGIC                    = "YELLOWSPHERE-ARC"
+  ARC_ARMOR_HEADER             = "YELLOWSPHERE-ARC-V2"
+  ARC_V2_FORMAT                = "yellowsphere-encrypted-seed-v2"
+  ARC_PLAIN_FORMAT             = "yellowsphere-plain-seed-v1"
   ARC_V2_KDF_ITERATIONS        = 1000000
   ARC_V2_MIN_KDF_ITERATIONS    = 600000
   ARC_V2_SALT_BYTES            = 32
   ARC_V2_NONCE_BYTES           = 24
 
-  ARC_KEYFILE_MAGIC            = "ARCULUS-KEYFILE"
-  ARC_KEYFILE_ENC_MAGIC        = "ARCULUS-KEYFILE-ENC"
-  ARC_KEYFILE_FORMAT           = "arculus-recovery-keyfile-v1"
-  ARC_KEYFILE_ENC_FORMAT       = "arculus-recovery-keyfile-enc-v1"
+  ARC_KEYFILE_MAGIC            = "YELLOWSPHERE-KEYFILE"
+  ARC_KEYFILE_ENC_MAGIC        = "YELLOWSPHERE-KEYFILE-ENC"
+  ARC_KEYFILE_FORMAT           = "yellowsphere-keyfile-v1"
+  ARC_KEYFILE_ENC_FORMAT       = "yellowsphere-keyfile-enc-v1"
   ARC_KEYFILE_BYTES            = 64
   ARC_KEYFILE_KDF_ITERATIONS   = 1000000
   ARC_KEYFILE_LEGACY_KDF_ITERATIONS = 200000
 
-ARC V3 fixed values:
+YellowSphere ARC V3 fixed values:
 
-  protected format             = "arculus-encrypted-seed-v3"
+  protected format             = "yellowsphere-encrypted-seed-v3"
   protected version            = 3
   password KDF iterations      = 1000000
   password pre-hash            = "SHA-512"
-  ARC salt bytes               = 32
+  YellowSphere ARC salt bytes               = 32
   AES-GCM nonce bytes          = 12
   AES-GCM tag bits             = 128
   padded plaintext bytes       = 512
   decoded ciphertext bytes     = 528
   cipher name                  = "AES-256-GCM"
   padding name                 = "ZERO"
-  ARC HKDF info                = "Arculus ARC v3 AES-256-GCM key"
-  combined HKDF info           = "arculus-arc-v3-combined-key"
+  YellowSphere ARC HKDF info                = "YellowSphere ARC v3 AES-256-GCM key"
+  combined HKDF info           = "yellowsphere-arc-v3-combined-key"
 
 Derived string constants:
 
-  ARC v2 KDF name              = "PBKDF2"
-  ARC v2 KDF hash              = "SHA-512"
-  ARC v2 cipher name           = "HMAC-SHA512-CTR"
-  ARC v2 encryption label      = "Arculus ARC v2 encryption key"
-  ARC v2 authentication label  = "Arculus ARC v2 authentication key"
-  ARC v2 stream label          = "Arculus ARC v2 stream\0"
-  ARC v2 MAC prefix            = "Arculus ARC v2 MAC"
+  YellowSphere ARC v2 KDF name              = "PBKDF2"
+  YellowSphere ARC v2 KDF hash              = "SHA-512"
+  YellowSphere ARC v2 cipher name           = "HMAC-SHA512-CTR"
+  YellowSphere ARC v2 encryption label      = "YellowSphere ARC v2 encryption key"
+  YellowSphere ARC v2 authentication label  = "YellowSphere ARC v2 authentication key"
+  YellowSphere ARC v2 stream label          = "YellowSphere ARC v2 stream\0"
+  YellowSphere ARC v2 MAC prefix            = "YellowSphere ARC v2 MAC"
 
 Encrypted-keyfile v2 constants:
 
@@ -370,8 +370,8 @@ Encrypted-keyfile v2 constants:
   keyfile nonce bytes          = 12
   keyfile tag bits             = 128
 
-The ARC V2 labels and HMAC-SHA512-CTR keyfile cipher documented below are
-legacy import compatibility constants. They are not used for new v1.6.4
+The YellowSphere ARC V2 labels and HMAC-SHA512-CTR keyfile cipher documented below are
+legacy import compatibility constants. They are not used for new v1.6.6
 exports.
 
 Combined credential constants:
@@ -384,16 +384,16 @@ Combined credential constants:
 Outer .arc Armor
 ----------------
 
-Every v1.6.4 seed export, encrypted or unprotected, is serialized by
+Every v1.6.6 seed export, encrypted or unprotected, is serialized by
 serializeSeedBundle(bundle):
 
   json_bytes = UTF-8(JSON.stringify(bundle))
   body       = base64(json_bytes)
-  file_text  = "ARCULUS-ARC-V2" || LF || body || LF
+  file_text  = "YELLOWSPHERE-ARC-V2" || LF || body || LF
 
 Byte layout:
 
-  bytes 0..13:       ASCII "ARCULUS-ARC-V2"
+  bytes 0..13:       ASCII "YELLOWSPHERE-ARC-V2"
   byte 14:           0x0a
   bytes 15..N-2:     standard base64 of UTF-8 JSON bundle
   byte N-1:          0x0a
@@ -403,7 +403,7 @@ No byte-order mark is written. No line wrapping is inserted in the base64 body.
 The parser parseSeedBundle(text) performs:
 
   trimmed = text.trim()
-  if trimmed.startsWith("ARCULUS-ARC-V2"):
+  if trimmed.startsWith("YELLOWSPHERE-ARC-V2"):
       encoded = trimmed.split(/\r?\n/).slice(1).join("").trim()
       bundle = JSON.parse(bytesToText(base64ToBytes(encoded)))
   else:
@@ -420,15 +420,15 @@ Important parser consequences:
   - The same outer header is used for encrypted and unprotected .arc bundles.
 
 
-Legacy ARC V2 Protected Bundle Structure
+Legacy YellowSphere ARC V2 Protected Bundle Structure
 ----------------------------------------
 
 The legacy protected seed bundle produced by encrypt_v2(mnemonic, password) is
 a JSON object with this insertion order before credential_mode is appended:
 
   {
-    "magic": "ARCULUS-ARC",
-    "format": "arculus-encrypted-seed-v2",
+    "magic": "YELLOWSPHERE-ARC",
+    "format": "yellowsphere-encrypted-seed-v2",
     "version": 2,
     "created_at": "<Date.toISOString string>",
     "kdf": {
@@ -449,8 +449,8 @@ After encryptSeedBundle returns, handleEncryptExportSeed appends:
 
   "credential_mode": "password" | "keyfile" | "both"
 
-credential_mode is a UI hint. It is appended after MAC calculation in v1.6.4.
-Therefore, it is not part of the legacy ARC V2 MAC transcript.
+credential_mode is a UI hint. It is appended after MAC calculation in v1.6.6.
+Therefore, it is not part of the legacy YellowSphere ARC V2 MAC transcript.
 Import also accepts the aliases credentialMode and protection as UI hints:
 
   hintedMode = normalizeArcCredentialMode(
@@ -521,7 +521,7 @@ the current UI wallet passphrase field. A protected file can decrypt correctly
 and still be rejected by the UI if the recovered phrase is not valid BIP39.
 
 
-ARC v2 Key Schedule
+YellowSphere ARC v2 Key Schedule
 -------------------
 
 Function:
@@ -568,14 +568,14 @@ Step 3: derive encryption key:
 
   enc_key = HMAC-SHA512(
       key  = master_key,
-      data = UTF-8("Arculus ARC v2 encryption key")
+      data = UTF-8("YellowSphere ARC v2 encryption key")
   )
 
 Step 4: derive authentication key:
 
   mac_key = HMAC-SHA512(
       key  = master_key,
-      data = UTF-8("Arculus ARC v2 authentication key")
+      data = UTF-8("YellowSphere ARC v2 authentication key")
   )
 
 Outputs:
@@ -601,7 +601,7 @@ Cryptographic primitive:
 
 Output length:
 
-  dkLen bytes. ARC v2 uses 64. Encrypted keyfiles also use 64.
+  dkLen bytes. YellowSphere ARC v2 uses 64. Encrypted keyfiles also use 64.
 
 The effective PBKDF2 input for ordinary Password mode is:
 
@@ -618,7 +618,7 @@ The effective PBKDF2 input for Keyfile + Password mode is:
 where material is specified in the combined credential section.
 
 
-ARC v2 HMAC-SHA512 Counter Stream
+YellowSphere ARC v2 HMAC-SHA512 Counter Stream
 ---------------------------------
 
 Function:
@@ -634,7 +634,7 @@ Inputs:
       Bytes to XOR with the generated stream.
 
   keyBytes:
-      HMAC key. For ARC v2 seed files this is the 64-byte enc_key. For
+      HMAC key. For YellowSphere ARC v2 seed files this is the 64-byte enc_key. For
       encrypted keyfiles this is the 32-byte encKey slice from keyfile PBKDF2.
 
   nonceBytes:
@@ -643,7 +643,7 @@ Inputs:
 
 Internal constants:
 
-  label = UTF-8("Arculus ARC v2 stream\0")
+  label = UTF-8("YellowSphere ARC v2 stream\0")
   counter_initial = 0
   counter_width = 8 bytes
   counter_endian = big-endian
@@ -670,11 +670,11 @@ The final block is truncated to the remaining data length. No padding is
 applied. A zero-length input produces a zero-length output.
 
 
-Why Legacy ARC V2 Is Not AES-GCM
+Why Legacy YellowSphere ARC V2 Is Not AES-GCM
 --------------------------------
 
-Legacy ARC V2 protected .arc files use HMAC-SHA512-CTR plus HMAC-SHA512
-authentication, not AES-GCM. New v1.6.4 ARC V3 exports use AES-256-GCM.
+Legacy YellowSphere ARC V2 protected .arc files use HMAC-SHA512-CTR plus HMAC-SHA512
+authentication, not AES-GCM. New v1.6.6 YellowSphere ARC V3 exports use AES-256-GCM.
 
 The current construction is:
 
@@ -687,7 +687,7 @@ decrypting. It is not AEAD by API, but the MAC transcript authenticates the
 same material that an AEAD associated-data field would need to cover.
 
 
-ARC v2 MAC Transcript
+YellowSphere ARC v2 MAC Transcript
 ---------------------
 
 Function:
@@ -702,7 +702,7 @@ The function builds:
   sep = 0x00
 
   textParts = [
-    "Arculus ARC v2 MAC",
+    "YellowSphere ARC v2 MAC",
     String(bundle.magic || ""),
     String(bundle.format || ""),
     String(bundle.version || ""),
@@ -723,7 +723,7 @@ Then append:
 
 Full transcript:
 
-  UTF8("Arculus ARC v2 MAC")           || 00 ||
+  UTF8("YellowSphere ARC v2 MAC")           || 00 ||
   UTF8(bundle.magic)                   || 00 ||
   UTF8(bundle.format)                  || 00 ||
   UTF8(String(bundle.version))         || 00 ||
@@ -765,7 +765,7 @@ Authenticated fields:
   - nonce bytes
   - ciphertext bytes
 
-Not authenticated by v1.6.4 producer:
+Not authenticated by v1.6.6 producer:
 
   - credential_mode
 
@@ -805,16 +805,16 @@ Procedure:
   10. Build initial bundle containing magic, format, version, created_at, kdf,
       and cipher objects.
   11. Build plaintext payload JSON.
-  12. Derive enc_key and mac_key with ARC v2 key schedule and 1000000
+  12. Derive enc_key and mac_key with YellowSphere ARC v2 key schedule and 1000000
       iterations.
   13. Encrypt plaintext with arcV2StreamCrypt.
   14. Store ciphertext_b64.
-  15. Compute HMAC-SHA512 over ARC v2 MAC transcript.
+  15. Compute HMAC-SHA512 over YellowSphere ARC v2 MAC transcript.
   16. Store mac_b64.
   17. Append credential_mode as a UI hint.
-  18. Armor with ARCULUS-ARC-V2 header.
+  18. Armor with YELLOWSPHERE-ARC-V2 header.
   19. Save as:
-       Arculus_Encrypted_Seed.arc
+       YellowSphere_Encrypted_Seed.arc
 
 For the same mnemonic and same credential secret, repeated exports should
 produce different protected files because salt and nonce are freshly sampled.
@@ -840,18 +840,18 @@ Procedure:
   4. If bundle is plain .arc, skip credential dialog.
   5. Otherwise request credential secret.
   6. Dispatch:
-       if magic == "ARCULUS-ARC" and format == "arculus-plain-seed-v1":
+       if magic == "YELLOWSPHERE-ARC" and format == "yellowsphere-plain-seed-v1":
            normalize plain mnemonic
-       else if magic == "ARCULUS-ARC" or version == 2:
+       else if magic == "YELLOWSPHERE-ARC" or version == 2:
            decryptV2
        else:
            decryptV1 legacy path
 
 decryptV2 validation:
 
-  bundle.magic must equal "ARCULUS-ARC"
+  bundle.magic must equal "YELLOWSPHERE-ARC"
   bundle.version must equal 2
-  bundle.format must equal "arculus-encrypted-seed-v2"
+  bundle.format must equal "yellowsphere-encrypted-seed-v2"
   bundle.kdf must exist
   bundle.cipher must exist
   bundle.kdf.name must equal "PBKDF2"
@@ -905,7 +905,7 @@ Behavior:
 
 For equal-length arrays, every byte is read before returning. This prevents
 prefix-length timing leakage during MAC comparison. The length check occurs
-before the XOR loop. For ARC v2 MACs, the stored MAC length is validated to 64
+before the XOR loop. For YellowSphere ARC v2 MACs, the stored MAC length is validated to 64
 bytes before equalBytes is called.
 
 
@@ -945,7 +945,7 @@ Unprotected .arc Bundle
 -----------------------
 
 The unprotected .arc path exists for controlled offline handling and test data.
-It uses the same ARCULUS-ARC-V2 outer armor but a plaintext internal bundle.
+It uses the same YELLOWSPHERE-ARC-V2 outer armor but a plaintext internal bundle.
 
 Function:
 
@@ -954,8 +954,8 @@ Function:
 Structure:
 
   {
-    "magic": "ARCULUS-ARC",
-    "format": "arculus-plain-seed-v1",
+    "magic": "YELLOWSPHERE-ARC",
+    "format": "yellowsphere-plain-seed-v1",
     "version": 1,
     "created_at": "<Date.toISOString string>",
     "mnemonic": "<normalized 12 or 24 words>",
@@ -971,8 +971,8 @@ Import:
 
   decrypt(bundle, password) detects:
 
-    bundle.magic == "ARCULUS-ARC"
-    bundle.format == "arculus-plain-seed-v1"
+    bundle.magic == "YELLOWSPHERE-ARC"
+    bundle.format == "yellowsphere-plain-seed-v1"
 
   It then returns normalizeDecryptedMnemonic(bundle).
 
@@ -991,14 +991,14 @@ The credential dialog supports three protected modes:
 
   password:
       User-entered password is explicitly classified as Password mode, then
-      NFKD-normalized, SHA-512 pre-hashed, and passed to ARC V3 PBKDF2.
+      NFKD-normalized, SHA-512 pre-hashed, and passed to YellowSphere ARC V3 PBKDF2.
 
   keyfile:
       A raw or encrypted keyfile is converted to a secret string:
 
         "arc-keyfile-v1:" || base64(keyfile_bytes)
 
-      That secret string is passed to ARC V3 HKDF-SHA512.
+      That secret string is passed to YellowSphere ARC V3 HKDF-SHA512.
 
   both:
       Raw keyfile bytes and NFKD password bytes are combined with HKDF-SHA512
@@ -1006,7 +1006,7 @@ The credential dialog supports three protected modes:
 
         "arc-combined-v1:" || base64(64-byte HKDF output)
 
-      The combined secret string is passed to ARC V3 HKDF-SHA512.
+      The combined secret string is passed to YellowSphere ARC V3 HKDF-SHA512.
 
 The credential dialog also has an advanced unprotected export option:
 
@@ -1065,7 +1065,7 @@ Generated keyfile entropy:
   64 bytes = 512 bits.
 
 The keyfile_secret string is not itself stored inside the .arc file. It is
-reconstructed from the keyfile during export/import and used as the ARC v2
+reconstructed from the keyfile during export/import and used as the YellowSphere ARC v2
 password input.
 
 
@@ -1079,8 +1079,8 @@ Function:
 If password is empty, output object:
 
   {
-    "magic": "ARCULUS-KEYFILE",
-    "format": "arculus-recovery-keyfile-v1",
+    "magic": "YELLOWSPHERE-KEYFILE",
+    "format": "yellowsphere-keyfile-v1",
     "version": 1,
     "created_at": "<Date.toISOString string>",
     "key_b64": "<base64 64 bytes>"
@@ -1092,13 +1092,13 @@ Serialization:
 
 Filename:
 
-  Arculus_Recovery_Keyfile.key
+  YellowSphere_Keyfile.key
 
 Import accepts:
 
   - JSON object with:
-      magic == "ARCULUS-KEYFILE"
-      format == "arculus-recovery-keyfile-v1"
+      magic == "YELLOWSPHERE-KEYFILE"
+      format == "yellowsphere-keyfile-v1"
       key_b64 present
 
   - Base64-only file:
@@ -1157,7 +1157,7 @@ Although the function name is arcV2StreamCrypt, encrypted keyfiles use:
 
   keyBytes = 32-byte encKey slice
   nonceBytes = 16 bytes
-  stream label = "Arculus ARC v2 stream\0"
+  stream label = "YellowSphere ARC v2 stream\0"
   counter = uint64_be starting at 0
   HMAC-SHA512 block output = 64 bytes
 
@@ -1171,8 +1171,8 @@ Authentication:
 Stored object:
 
   {
-    "magic": "ARCULUS-KEYFILE-ENC",
-    "format": "arculus-recovery-keyfile-enc-v1",
+    "magic": "YELLOWSPHERE-KEYFILE-ENC",
+    "format": "yellowsphere-keyfile-enc-v1",
     "version": 1,
     "created_at": "<Date.toISOString string>",
     "kdf": {
@@ -1194,7 +1194,7 @@ Serialization:
 
 Filename:
 
-  Arculus_Recovery_Keyfile.enc.key
+  YellowSphere_Keyfile.enc.key
 
 Memory cleanup:
 
@@ -1271,8 +1271,8 @@ and zeroes the plain Uint8Array with fill(0).
 
 Accepted encrypted keyfile objects:
 
-  - magic == "ARCULUS-KEYFILE-ENC"
-    format == "arculus-recovery-keyfile-enc-v1"
+  - magic == "YELLOWSPHERE-KEYFILE-ENC"
+    format == "yellowsphere-keyfile-enc-v1"
 
   - legacy magic == "KEYFILE-ENC"
 
@@ -1301,16 +1301,16 @@ Material and derivation:
   input = keyfile_bytes || password_bytes
   bits = HKDF-SHA512(
       ikm = input,
-      salt = ARC V3 salt,
-      info = UTF8("arculus-arc-v3-combined-key"),
+      salt = YellowSphere ARC V3 salt,
+      info = UTF8("yellowsphere-arc-v3-combined-key"),
       len = 64 bytes)
 
 Combined secret:
 
   "arc-combined-v1:" || base64(bits)
 
-The combined secret is passed to the ARC V3 HKDF AES-key derivation. Legacy
-ARC V2 import calls combinedArcSecret_legacy, which retains the older SHA-256
+The combined secret is passed to the YellowSphere ARC V3 HKDF AES-key derivation. Legacy
+YellowSphere ARC V2 import calls combinedArcSecret_legacy, which retains the older SHA-256
 newline transcript exactly for compatibility.
 
 Security consequence:
@@ -1357,12 +1357,12 @@ Function:
 
 This branch accepts:
 
-  bundle.format == "arculus-encrypted-seed-v2"
+  bundle.format == "yellowsphere-encrypted-seed-v2"
   or
-  bundle.format == "arculus-encrypted-seed-python-v1"
+  bundle.format == "yellowsphere-encrypted-seed-python-v1"
 
 This is a legacy PBKDF2-SHA256 compatibility branch and is distinct from the
-PBKDF2-SHA512/HMAC legacy ARC V2 path as well as current ARC V3.
+PBKDF2-SHA512/HMAC legacy YellowSphere ARC V2 path as well as current YellowSphere ARC V3.
 
 Legacy inputs:
 
@@ -1414,7 +1414,7 @@ Plaintext:
   JSON.parse(TextDecoder().decode(decrypted))
   normalizeDecryptedMnemonic(payload)
 
-New v1.6.4 exports do not produce this format.
+New v1.6.6 exports do not produce this format.
 
 
 Legacy Seed Import Family: AES-GCM v1
@@ -1426,7 +1426,7 @@ Function:
 
 This branch accepts:
 
-  bundle.format == "arculus-encrypted-seed-v1"
+  bundle.format == "yellowsphere-encrypted-seed-v1"
 
 Legacy inputs:
 
@@ -1466,7 +1466,7 @@ Plaintext:
   JSON.parse(TextDecoder().decode(decrypted))
   normalizeDecryptedMnemonic(payload)
 
-New v1.6.4 exports do not produce this format.
+New v1.6.6 exports do not produce this format.
 
 
 Dispatch Matrix
@@ -1478,14 +1478,14 @@ decrypt(bundle, password) dispatches as follows:
       reject as unsupported encrypted seed file format
 
   if bundle.version == 3
-     or bundle.format == "arculus-encrypted-seed-v3":
+     or bundle.format == "yellowsphere-encrypted-seed-v3":
       return decryptV3(bundle, password)
 
-  if bundle.magic == "ARCULUS-ARC"
-     and bundle.format == "arculus-plain-seed-v1":
+  if bundle.magic == "YELLOWSPHERE-ARC"
+     and bundle.format == "yellowsphere-plain-seed-v1":
       return normalizeDecryptedMnemonic(bundle)
 
-  if bundle.magic == "ARCULUS-ARC"
+  if bundle.magic == "YELLOWSPHERE-ARC"
      or bundle.version == 2:
       return decryptV2(bundle, password)
 
@@ -1494,10 +1494,10 @@ decrypt(bundle, password) dispatches as follows:
 
 Compatibility notes:
 
-  - Current protected exports use magic "ARCULUS-ARC" and internal version 3.
-  - Legacy protected v2 imports use magic "ARCULUS-ARC" and version 2.
-  - Current plain exports use magic "ARCULUS-ARC" and format
-    "arculus-plain-seed-v1".
+  - Current protected exports use magic "YELLOWSPHERE-ARC" and internal version 3.
+  - Legacy protected v2 imports use magic "YELLOWSPHERE-ARC" and version 2.
+  - Current plain exports use magic "YELLOWSPHERE-ARC" and format
+    "yellowsphere-plain-seed-v1".
   - Legacy raw JSON files without the armor header are still parsed as JSON.
   - A malformed object with version 2 but without current v2 fields is routed
     to decryptV2 and rejected by v2 validation.
@@ -1508,17 +1508,17 @@ Format Compatibility Matrix
 
 Seed file formats:
 
-  ARCULUS-ARC-V2 armored protected v3
+  YELLOWSPHERE-ARC-V2 armored protected v3
       Export: yes
       Import: yes
       Protection: AES-256-GCM; Password PBKDF2-SHA512 or Keyfile HKDF-SHA512
 
-  ARCULUS-ARC-V2 armored protected v2
+  YELLOWSPHERE-ARC-V2 armored protected v2
       Export: no
       Import: yes
       Protection: PBKDF2-HMAC-SHA512, HMAC-SHA512-CTR, HMAC-SHA512 MAC
 
-  ARCULUS-ARC-V2 armored plain v1
+  YELLOWSPHERE-ARC-V2 armored plain v1
       Export: yes, advanced option
       Import: yes
       Protection: none
@@ -1540,7 +1540,7 @@ Seed file formats:
 
 Keyfile formats:
 
-  ARCULUS-KEYFILE raw JSON
+  YELLOWSPHERE-KEYFILE raw JSON
       Export: yes
       Import: yes
 
@@ -1548,12 +1548,12 @@ Keyfile formats:
       Export: no
       Import: yes
 
-  ARCULUS-KEYFILE-ENC encrypted JSON version 2
+  YELLOWSPHERE-KEYFILE-ENC encrypted JSON version 2
       Export: yes
       Import: yes
       Protection: SHA-512 pre-hash, PBKDF2-SHA512, AES-256-GCM
 
-  ARCULUS-KEYFILE-ENC encrypted JSON version 1
+  YELLOWSPHERE-KEYFILE-ENC encrypted JSON version 1
       Export: no
       Import: yes
       Protection: PBKDF2-SHA512, HMAC-SHA512-CTR and HMAC-SHA512
@@ -1570,7 +1570,7 @@ Keyfile formats:
 Protected Fields and Unprotected Fields
 ---------------------------------------
 
-Protected by current ARC V3 AES-GCM:
+Protected by current YellowSphere ARC V3 AES-GCM:
 
   - mnemonic plaintext confidentiality at rest
   - mnemonic plaintext integrity after MAC success and JSON parse
@@ -1586,7 +1586,7 @@ Protected by current ARC V3 AES-GCM:
   - nonce bytes
   - ciphertext bytes
 
-Not protected by current ARC V3 seed-file encryption:
+Not protected by current YellowSphere ARC V3 seed-file encryption:
 
   - outer armor header itself
   - filesystem filename
@@ -1620,7 +1620,7 @@ section. Version 2 has no separate MAC field.
 Failure Behavior
 ----------------
 
-ARC V3 protected .arc structural failures:
+YellowSphere ARC V3 protected .arc structural failures:
 
   - unsupported magic/version/format
   - missing kdf or cipher object
@@ -1663,14 +1663,14 @@ corruption for protected seed files and encrypted keyfiles.
 KDF Iteration Rationale
 -----------------------
 
-Current Password-mode ARC V3 exports use SHA-512 password pre-hashing followed
+Current Password-mode YellowSphere ARC V3 exports use SHA-512 password pre-hashing followed
 by PBKDF2-HMAC-SHA512 at exactly 1000000 iterations. The iteration value is
 included in authenticated metadata. Keyfile and combined modes start from
 high-entropy keyfile material and use HKDF-SHA512 rather than PBKDF2.
 
 Current encrypted-keyfile v2 exports use SHA-512 password pre-hashing followed
 by PBKDF2-HMAC-SHA512 at 1000000 iterations. Import also accepts exactly 200000
-for encrypted-keyfile v2 files written by the earlier beta. Legacy ARC V2 and
+for encrypted-keyfile v2 files written by the earlier beta. Legacy YellowSphere ARC V2 and
 encrypted-keyfile v1 imports retain their stored/legacy iteration rules.
 
 The keyfile KDF protects random 64-byte key material rather than a mnemonic
@@ -1693,7 +1693,7 @@ password, PIN, or personally meaningful phrase should be treated as weak even
 with 1000000 PBKDF2 iterations.
 
 The cryptographic strength of Keyfile mode is bounded by possession of the
-keyfile bytes. v1.6.4-generated keyfiles contain 64 random bytes. If the keyfile
+keyfile bytes. v1.6.6-generated keyfiles contain 64 random bytes. If the keyfile
 is copied to cloud storage, email, screenshots, or a compromised machine, the
 .arc file protected only by that keyfile should be considered compromised by
 anyone who obtains both files.
@@ -1795,7 +1795,7 @@ Core byte helpers:
   equalBytes(a, b)
       Equal-length XOR-accumulation comparison.
 
-ARC v2 protected seed functions:
+YellowSphere ARC v2 protected seed functions:
 
   arcV2Keys(password, saltBytes, iterations)
       PBKDF2-SHA512 master key plus HMAC-SHA512 domain-separated enc/mac keys.
@@ -1807,7 +1807,7 @@ ARC v2 protected seed functions:
       NUL-separated metadata transcript plus salt, nonce, and ciphertext.
 
   encrypt_v3(mnemonic, password, requestedMode)
-      Current protected seed export using ARC V3 AES-256-GCM.
+      Current protected seed export using YellowSphere ARC V3 AES-256-GCM.
 
   decryptV3(bundle, password)
       Current protected seed import with authenticated metadata.
@@ -1816,7 +1816,7 @@ ARC v2 protected seed functions:
       Selects Password PBKDF2 or Keyfile/combined HKDF AES-key derivation.
 
   encrypt_v2(mnemonic, password)
-      Legacy ARC V2 compatibility producer retained for tests.
+      Legacy YellowSphere ARC V2 compatibility producer retained for tests.
 
   decryptV2(bundle, password)
       Current protected seed import.
@@ -1828,7 +1828,7 @@ ARC v2 protected seed functions:
       Wrapper for decrypt.
 
   serializeSeedBundle(bundle)
-      ARCULUS-ARC-V2 armor writer.
+      YELLOWSPHERE-ARC-V2 armor writer.
 
   parseSeedBundle(text)
       Armor/raw JSON parser.
@@ -1836,7 +1836,7 @@ ARC v2 protected seed functions:
 Plain .arc functions:
 
   makePlainSeedBundle(mnemonic)
-      Creates unprotected arculus-plain-seed-v1 bundle.
+      Creates unprotected yellowsphere-plain-seed-v1 bundle.
 
 Legacy seed functions:
 
@@ -1926,7 +1926,7 @@ Treat these as plaintext secret-bearing artifacts:
 
 Treat these as non-secret but integrity-relevant:
 
-  - ARC V3 and legacy ARC V2 constants
+  - YellowSphere ARC V3 and legacy YellowSphere ARC V2 constants
   - KDF iteration counts
   - MAC transcript field order
   - stream labels
@@ -1937,12 +1937,12 @@ Treat these as non-secret but integrity-relevant:
 Compliance Checklist
 --------------------
 
-An implementation is compatible with Arculus_Recovery.html v1.6.4 protected
+An implementation is compatible with YellowSphere.html v1.6.6 protected
 .arc exports if it satisfies all of the following:
 
-  - Parses ARCULUS-ARC-V2 armor exactly enough to recover JSON bundle bytes.
+  - Parses YELLOWSPHERE-ARC-V2 armor exactly enough to recover JSON bundle bytes.
   - Uses UTF-8 for all text fields.
-  - Requires ARC magic, v3 format/version, credential_mode, KDF, cipher, and padding.
+  - Requires YellowSphere ARC magic, v3 format/version, credential_mode, KDF, cipher, and padding.
   - Requires salt length 32 bytes.
   - Requires nonce length 12 bytes and tag length 128 bits.
   - Requires ZERO padding length 512 and decoded ciphertext length 528 bytes.
@@ -1956,7 +1956,7 @@ An implementation is compatible with Arculus_Recovery.html v1.6.4 protected
   - Removes trailing zero padding and parses fatal UTF-8 JSON.
   - Normalizes mnemonic words and validates word_count if present.
 
-An implementation is compatible with v1.6.4 encrypted keyfiles if it:
+An implementation is compatible with v1.6.6 encrypted keyfiles if it:
 
   - Parses JSON keyfile objects.
   - Accepts current encrypted magic/format.
@@ -1972,7 +1972,7 @@ An implementation is compatible with v1.6.4 encrypted keyfiles if it:
 Non-Goals
 ---------
 
-The v1.6.4 encryption subsystem does not:
+The v1.6.6 encryption subsystem does not:
 
   - fetch network state
   - use remote key escrow
