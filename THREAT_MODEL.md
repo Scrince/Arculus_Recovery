@@ -1,10 +1,10 @@
-# Threat Model - Arculus Recovery v1.6.4
+﻿# Threat Model - YellowSphere v1.6.6
 
 ## Overview
 
-Arculus Recovery is a local offline recovery tool for BIP39/BIP32 wallet
+YellowSphere is a local offline recovery tool for BIP39/BIP32 wallet
 inspection, encrypted seed backup, deterministic address derivation, and local
-export. The canonical v1.6.4 release-candidate surface is `Arculus_Beta.html`. Python and
+export. The canonical v1.6.6 production surface is `YellowSphere.html`. Python and
 Tauri surfaces package or automate parts of that workflow.
 
 The central security objective is that the application does not transmit seed
@@ -37,7 +37,7 @@ machine.
 ```text
 User-controlled offline machine
   |
-  |-- Browser/WebView executing Arculus_Beta.html
+  |-- Browser/WebView executing YellowSphere.html
   |     |-- BIP39 validation and generation
   |     |-- BIP39 seed stretching
   |     |-- secp256k1 / Ed25519 derivation
@@ -73,7 +73,7 @@ No required application network dependency during normal recovery.
 - BIP39 checksum validation.
 - CSPRNG mnemonic generation.
 - Deterministic derivation for reproducible verification.
-- ARC V3 AES-GCM authentication before plaintext acceptance.
+- YellowSphere ARC V3 AES-GCM authentication before plaintext acceptance.
 - Keyfile and combined `.arc` protection modes.
 - Hidden-seed UI for generated/imported/manual seeds.
 - Local export with explicit user action.
@@ -97,20 +97,20 @@ No required application network dependency during normal recovery.
 
 | ID | Scenario | Impact | Mitigation |
 | --- | --- | --- | --- |
-| S-1 | User runs altered `Arculus_Beta.html`/promoted production HTML | Critical | Verify release hashes; compare known test vectors |
+| S-1 | User runs altered `YellowSphere.html`/promoted production HTML | Critical | Verify release hashes; compare known test vectors |
 | S-2 | User opens tool with malicious extension enabled | Critical | Use clean offline browser profile |
 | S-3 | Weak `.arc` password is guessed offline | Critical | Use high-entropy password or keyfile/combined mode |
 | S-4 | Keyfile is lost | Critical | Back up keyfile separately from `.arc` |
-| S-5 | Unprotected `.arc` is mistaken for encrypted backup | Critical | Treat `arculus-plain-seed-v1` as plaintext mnemonic |
+| S-5 | Unprotected `.arc` is mistaken for encrypted backup | Critical | Treat `yellowsphere-plain-seed-v1` as plaintext mnemonic |
 | S-6 | Wrong BIP39 passphrase is entered | High | Verify root fingerprint and multiple known addresses |
 | S-7 | Wrong derivation path/script is selected | High | Match original wallet path; test receive/change indexes |
 | S-8 | Derived JSON/PDF is left on disk | Critical | Store encrypted; delete or archive intentionally |
 | S-9 | Clipboard stores seed/private key | Critical | Avoid clipboard use; clear session; distrust clipboard managers |
 | S-10 | XRP destination tag omitted for custodian deposit | High | Obtain destination tag from custodian; tags are not derived |
 
-## Legacy ARC V2 Threat Notes
+## Legacy YellowSphere ARC V2 Threat Notes
 
-ARC V2 protects confidentiality and integrity of the mnemonic payload against
+YellowSphere ARC V2 protects confidentiality and integrity of the mnemonic payload against
 offline file attackers when a strong credential is used. The MAC transcript
 binds magic, format, version, created_at, KDF parameters, cipher name, salt,
 nonce, and ciphertext.
@@ -119,9 +119,9 @@ The credential-mode hint is UI metadata and must not be treated as a security
 policy boundary by external tools. The BIP39 passphrase is intentionally not
 inside `.arc` files.
 
-## ARC V3 Threat Notes
+## YellowSphere ARC V3 Threat Notes
 
-ARC V3 in v1.6.4 replaces the stream-cipher/MAC construction with
+YellowSphere ARC V3 in v1.6.6 replaces the stream-cipher/MAC construction with
 AES-256-GCM. Its additional authenticated data binds all bundle metadata,
 including `credential_mode`, to the ciphertext. The field remains informational
 and does not itself establish authorization, but an attacker cannot change it
