@@ -32,8 +32,8 @@ format.
 ### Changed
 
 - Promoted the browser build to `1.6.6`.
-- Updated the Python package metadata for YellowSphere v1.6.6. Rebuild the wheel
-  and source archive before publishing package artifacts under `releases/python/`.
+- Updated the Python package metadata for YellowSphere v1.6.6 and published the
+  rebuilt wheel and source archive under `releases/python/`.
 - Kept drag-and-drop limited to keyfile loading; encrypted seed imports continue
   to use the `Import Seed` file picker.
 - Deferred browser object-URL revocation for 10 seconds after initiating a

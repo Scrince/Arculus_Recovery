@@ -32,13 +32,17 @@ Highlights
 Artifact status
 ---------------
 
-This note documents the promoted source/browser build and the rebuilt Windows
-Tauri artifacts:
+This note documents the promoted source/browser build, rebuilt Python package
+artifacts, and rebuilt Windows Tauri artifacts:
+
+  releases/python/yellowsphere-1.6.6-py3-none-any.whl
+  releases/python/yellowsphere-1.6.6.tar.gz
 
   releases/tauri/windows/yellowsphere.exe
   releases/tauri/windows/YellowSphere_1.6.6_x64_en-US.msi
   releases/tauri/windows/YellowSphere_1.6.6_x64-setup.exe
 
-The Windows artifacts are unsigned. Rebuild Python, macOS, and Linux artifacts
-from the v1.6.6 source before publishing those package families. Existing older
-artifacts and hashes remain historical records.
+The Windows artifacts are unsigned. Python, Windows, macOS, and Linux release
+artifacts for v1.6.6 are checked in under `releases/` and hashed in
+`docs/SHA256SUMS`. Existing older artifacts and hashes remain historical
+records.
