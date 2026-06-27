@@ -1,4 +1,4 @@
-Arculus v1.6.1 - Release Notes
+﻿YellowSphere v1.6.1 - Release Notes
 ==============================
 
 Release date: 2026-06-17
@@ -6,20 +6,20 @@ Release date: 2026-06-17
 Production file
 ---------------
 
-  Arculus_Recovery.html
+  YellowSphere.html
 
-The production HTML reports APP_VERSION 1.6.1 and displays "Arculus v1.6.1".
-It supersedes the former Arculus_Beta.html filename.
+The production HTML reports APP_VERSION 1.6.1 and displays "YellowSphere v1.6.1".
+It supersedes the former YellowSphere_Beta.html filename.
 
 Archived browser builds
 -----------------------
 
-  lts/Arculus_Recovery_v1.6.0_LTS.html
-  lts/Arculus Recovery_v1.5.0_LTS.html
+  lts/YellowSphere_v1.6.0_LTS.html
+  lts/YellowSphere_v1.5.0_LTS.html
 
-The v1.6.0 archive displays "Arculus Recovery v1.6.0 LTS". The detailed
+The v1.6.0 archive displays "YellowSphere v1.6.0 LTS". The detailed
 v1.6.0 byte-level specifications elsewhere in docs/ remain the compatibility
-baseline for that archived build and for unchanged ARC V2 behavior.
+baseline for that archived build and for unchanged YellowSphere ARC V2 behavior.
 
 Supported production currencies
 -------------------------------
@@ -56,7 +56,7 @@ passphrase, and path.
 Compatibility boundary
 ----------------------
 
-ARCULUS-ARC-V2 seed import/export, keyfile modes, BIP39 handling, PDF/JSON/
+YELLOWSPHERE-ARC-V2 seed import/export, keyfile modes, BIP39 handling, PDF/JSON/
 CSV/TXT exports, and QR rendering retain the v1.6.0 format behavior unless a
 v1.6.1 release note explicitly states otherwise.
 
@@ -72,13 +72,13 @@ Windows Tauri release
 
 The v1.6.1 Windows x64 release set is:
 
-  releases/tauri/windows/arculus-recovery.exe
-  releases/tauri/windows/Arculus Recovery_1.6.1_x64_en-US.msi
-  releases/tauri/windows/Arculus Recovery_1.6.1_x64-setup.exe
+  releases/tauri/windows/yellowsphere.exe
+  releases/tauri/windows/YellowSphere_1.6.1_x64_en-US.msi
+  releases/tauri/windows/YellowSphere_1.6.1_x64-setup.exe
 
 The installers are locally built and are not Authenticode-signed. Verify their
 SHA-256 values against docs/SHA256SUMS before use. The raw executable and both
-installers embed the Tauri/WebView wrapper around Arculus_Recovery.html v1.6.1.
+installers embed the Tauri/WebView wrapper around YellowSphere.html v1.6.1.
 
 The recorded Windows build environment was:
 
@@ -93,11 +93,11 @@ The build commands were:
   cargo tauri build --bundles msi,nsis --ci
 
 Verification confirmed the prepared Tauri HTML reports APP_VERSION 1.6.1, the
-raw executable opens an "Arculus Recovery" window, the MSI ProductVersion is
+raw executable opens an "YellowSphere" window, the MSI ProductVersion is
 1.6.1, and all three published Windows artifacts are unsigned as documented.
 
 SHA-256:
 
-  6f3d89283b26207d5d8984380579d62799ac801852190c3065ee67bf21342f4a  releases/tauri/windows/arculus-recovery.exe
-  b07f3377fa4b86783b151609992d311daaaa486cf9dfe823490b554aaf8b675d  releases/tauri/windows/Arculus Recovery_1.6.1_x64-setup.exe
-  3307862d58f364889abd233b905ceaaa06e4a01c683c216381e565d4dd08ab4e  releases/tauri/windows/Arculus Recovery_1.6.1_x64_en-US.msi
+  6f3d89283b26207d5d8984380579d62799ac801852190c3065ee67bf21342f4a  releases/tauri/windows/yellowsphere.exe
+  b07f3377fa4b86783b151609992d311daaaa486cf9dfe823490b554aaf8b675d  releases/tauri/windows/YellowSphere_1.6.1_x64-setup.exe
+  3307862d58f364889abd233b905ceaaa06e4a01c683c216381e565d4dd08ab4e  releases/tauri/windows/YellowSphere_1.6.1_x64_en-US.msi
