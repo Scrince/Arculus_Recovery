@@ -1,6 +1,6 @@
 {
-  "name": "arculus-recovery-tauri",
-  "version": "1.6.4",
+  "name": "yellowsphere-tauri",
+  "version": "1.6.6",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,9 +10,9 @@
     "prepare:tauri:py": "python scripts/prepare_tauri_assets.py",
     "build:tauri": "npm run prepare:tauri && tauri build",
     "build:tauri:mac": "npm run prepare:tauri:py && tauri build --bundles app,dmg",
-    "test:smoke": "playwright test tests/arculus-beta.smoke.spec.js",
-    "test:crypto": "playwright test tests/arculus-encryption.spec.js",
-    "test:html": "playwright test tests/arculus-beta.smoke.spec.js tests/arculus-encryption.spec.js",
+    "test:smoke": "playwright test tests/yellowsphere-html.smoke.spec.js",
+    "test:crypto": "playwright test tests/yellowsphere-encryption.spec.js",
+    "test:html": "playwright test tests/yellowsphere-html.smoke.spec.js tests/yellowsphere-encryption.spec.js",
     "test:python": "python tests/python/run_tests.py",
     "test:tauri": "python tests/tauri/run-release-harness.py",
     "test:tauri:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File tests/tauri/windows-release-harness.ps1 -BuildInstallers",
