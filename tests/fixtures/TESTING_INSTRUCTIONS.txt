@@ -1,0 +1,75 @@
+﻿YellowSphere.html Cross-Platform Test Instructions
+=====================================================
+
+The yellowsphere-app.js Playwright fixture works on Windows, Linux, and macOS.
+Run all commands from the repository root (the directory containing package.json).
+
+Prerequisites
+-------------
+
+- Node.js and npm
+- A supported Playwright browser
+
+Install project dependencies:
+
+    npm install
+
+Install Playwright Chromium:
+
+    npx playwright install chromium
+
+Linux may also require browser system dependencies:
+
+    npx playwright install --with-deps chromium
+
+Run Tests
+---------
+
+Run the production HTML smoke and encryption tests:
+
+    npm run test:html
+
+Run only the critical browser smoke test:
+
+    npm run test:smoke
+
+Run only the encryption tests:
+
+    npm run test:crypto
+
+Optional System Browser Override
+--------------------------------
+
+PLAYWRIGHT_EXECUTABLE_PATH can select an existing Chromium-family browser
+instead of Playwright's downloaded Chromium.
+
+Windows PowerShell example using Microsoft Edge:
+
+    $env:PLAYWRIGHT_EXECUTABLE_PATH = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+    npm run test:html
+
+macOS example using Google Chrome:
+
+    PLAYWRIGHT_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" npm run test:html
+
+Linux example using Chromium:
+
+    PLAYWRIGHT_EXECUTABLE_PATH=/usr/bin/chromium npm run test:html
+
+Notes
+-----
+
+- tests/fixtures/yellowsphere-app.js starts a temporary local HTTP server and loads
+  YellowSphere.html into Playwright.
+- tests/yellowsphere-html.smoke.spec.js covers critical application flows.
+- tests/yellowsphere-encryption.spec.js covers ARC encryption, encrypted keyfiles,
+  tamper rejection, credential handling, and legacy compatibility.
+- tests/tauri/run-release-harness.py dispatches Tauri preflight checks to the
+  current host platform.
+- tests/tauri/windows-release-harness.ps1 builds or validates Windows MSI/NSIS
+  artifacts.
+- tests/tauri/macos-release-harness.sh builds or validates Intel, Apple Silicon,
+  and universal macOS app/DMG artifacts.
+- tests/tauri/linux-release-harness.sh builds or validates Linux amd64 ELF,
+  Debian, and RPM artifacts. On macOS it uses the documented Ubuntu 22.04
+  amd64 Docker builder.
