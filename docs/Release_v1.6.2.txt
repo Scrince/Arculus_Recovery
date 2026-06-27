@@ -1,4 +1,4 @@
-Arculus v1.6.2 - Release Notes
+﻿YellowSphere v1.6.2 - Release Notes
 ==============================
 
 Release date: 2026-06-17
@@ -6,13 +6,13 @@ Release date: 2026-06-17
 Release summary
 ---------------
 
-Arculus_Recovery.html v1.6.2 adds live, case-insensitive partial filtering of
+YellowSphere.html v1.6.2 adds live, case-insensitive partial filtering of
 derived table rows by address, private key, or other displayed row data. The
 filter remains available in the expanded output view and reports matching and
 total row counts.
 
 The Python package, CLI version, packaged Python GUI WebView asset, and Tauri
-wrappers are promoted to v1.6.2. ARC V2 backup formats and derivation behavior
+wrappers are promoted to v1.6.2. YellowSphere ARC V2 backup formats and derivation behavior
 are unchanged from v1.6.1.
 
 Release boundary
@@ -20,10 +20,10 @@ Release boundary
 
 The archived standalone browser builds are stored at:
 
-  lts/Arculus_Recovery_v1.6.0_LTS.html
-  lts/Arculus Recovery_v1.5.0_LTS.html
+  lts/YellowSphere_v1.6.0_LTS.html
+  lts/YellowSphere_v1.5.0_LTS.html
 
-Arculus_Beta.html is the tracked development candidate for a future v1.6.3.
+YellowSphere_Beta.html is the tracked development candidate for a future v1.6.3.
 Its unreleased security, settings, and lifecycle changes are not part of the
 v1.6.2 release artifacts or byte-level compatibility target.
 
@@ -32,9 +32,9 @@ Windows Tauri release
 
 The v1.6.2 Windows x64 release set is:
 
-  releases/tauri/windows/arculus-recovery.exe
-  releases/tauri/windows/Arculus Recovery_1.6.2_x64_en-US.msi
-  releases/tauri/windows/Arculus Recovery_1.6.2_x64-setup.exe
+  releases/tauri/windows/yellowsphere.exe
+  releases/tauri/windows/YellowSphere_1.6.2_x64_en-US.msi
+  releases/tauri/windows/YellowSphere_1.6.2_x64-setup.exe
 
 The recorded Windows build environment was:
 
@@ -49,7 +49,7 @@ The build commands were:
   cargo tauri build --bundles msi,nsis --ci
 
 Verification confirmed the packaged HTML reports APP_VERSION 1.6.2, the raw
-executable opens an "Arculus Recovery" window, and the MSI ProductVersion is
+executable opens an "YellowSphere" window, and the MSI ProductVersion is
 1.6.2. The executable and installers are locally built and are not
 Authenticode-signed.
 
@@ -59,15 +59,15 @@ macOS Tauri release
 
 The v1.6.2 macOS release set is:
 
-  releases/tauri/macos/Arculus Recovery_1.6.2_x64.dmg
-  releases/tauri/macos/Arculus Recovery_1.6.2_aarch64.dmg
-  releases/tauri/macos/Arculus Recovery_1.6.2_universal.dmg
+  releases/tauri/macos/YellowSphere_1.6.2_x64.dmg
+  releases/tauri/macos/YellowSphere_1.6.2_aarch64.dmg
+  releases/tauri/macos/YellowSphere_1.6.2_universal.dmg
 
 Direct-test app bundles are also stored under releases/tauri/macos:
 
-  releases/tauri/macos/Arculus Recovery x64.app
-  releases/tauri/macos/Arculus Recovery.app
-  releases/tauri/macos/Arculus Recovery Universal.app
+  releases/tauri/macos/YellowSphere x64.app
+  releases/tauri/macos/YellowSphere.app
+  releases/tauri/macos/YellowSphere Universal.app
 
 The recorded macOS build environment was:
 
@@ -80,9 +80,9 @@ The recorded macOS build environment was:
 The build commands were:
 
   python scripts/prepare_tauri_assets.py
-  CARGO_TARGET_DIR=/tmp/arculus-tauri-target cargo tauri build --target x86_64-apple-darwin --bundles app,dmg
-  CARGO_TARGET_DIR=/tmp/arculus-tauri-target cargo tauri build --target aarch64-apple-darwin --bundles app,dmg
-  CARGO_TARGET_DIR=/tmp/arculus-tauri-target cargo tauri build --target universal-apple-darwin --bundles app,dmg
+  CARGO_TARGET_DIR=/tmp/yellowsphere-tauri-target cargo tauri build --target x86_64-apple-darwin --bundles app,dmg
+  CARGO_TARGET_DIR=/tmp/yellowsphere-tauri-target cargo tauri build --target aarch64-apple-darwin --bundles app,dmg
+  CARGO_TARGET_DIR=/tmp/yellowsphere-tauri-target cargo tauri build --target universal-apple-darwin --bundles app,dmg
 
 The repository was on an exFAT volume during the macOS builds, so
 CARGO_TARGET_DIR was moved to /tmp to avoid macOS AppleDouble files named ._*
@@ -92,12 +92,12 @@ and verified with hdiutil verify. They are not Apple-notarized.
 
 Verification confirmed:
 
-  Arculus Recovery x64.app: x86_64
-  Arculus Recovery.app: arm64
-  Arculus Recovery Universal.app: x86_64 and arm64
+  YellowSphere x64.app: x86_64
+  YellowSphere.app: arm64
+  YellowSphere Universal.app: x86_64 and arm64
   CFBundleShortVersionString: 1.6.2
   CFBundleVersion: 1.6.2
-  CFBundleIdentifier: com.arculus.recovery
+  CFBundleIdentifier: com.yellowsphere.recovery
 
 
 Linux Tauri release
@@ -105,9 +105,9 @@ Linux Tauri release
 
 The v1.6.2 Linux amd64 release set is:
 
-  releases/tauri/linux/arculus-recovery
-  releases/tauri/linux/Arculus Recovery_1.6.2_amd64.deb
-  releases/tauri/linux/Arculus Recovery-1.6.2-1.x86_64.rpm
+  releases/tauri/linux/yellowsphere
+  releases/tauri/linux/YellowSphere_1.6.2_amd64.deb
+  releases/tauri/linux/YellowSphere-1.6.2-1.x86_64.rpm
 
 The recorded Linux build environment was:
 
@@ -118,7 +118,7 @@ The recorded Linux build environment was:
   cargo: 1.96.0 (30a34c682 2026-05-25)
   tauri-cli: 2.11.2
 
-The source tree was copied into /tmp/arculus-linux-src without .git metadata,
+The source tree was copied into /tmp/yellowsphere-linux-src without .git metadata,
 target directories, node_modules, release outputs, or macOS AppleDouble files.
 The package build command was:
 
@@ -136,15 +136,15 @@ set.
 SHA-256
 -------
 
-  61317f534d80d39504f296c48be3ed45b256dc05162ac851fb035d6dfb8aa0cf  releases/tauri/windows/arculus-recovery.exe
-  8f461fe50df109a74cfe7b24873f218394c95b7b6356cd494684876e180a58f6  releases/tauri/windows/Arculus Recovery_1.6.2_x64-setup.exe
-  e11f404e2a1db85edcd42d534c6cd5c73cf286275e6b9e99d6d976752963a472  releases/tauri/windows/Arculus Recovery_1.6.2_x64_en-US.msi
-  1c1f3c55911a3baaa3f84d1537f33c92703a88d5baea5009e12d5ce5402a975c  releases/tauri/macos/Arculus Recovery_1.6.2_x64.dmg
-  eb996da31823d16d47472496d24f19a63709dd7c2166185c6fd28ed51b097718  releases/tauri/macos/Arculus Recovery_1.6.2_aarch64.dmg
-  50a575cadd4a6fce213923041b6a5bb3124f77727f51e9bf78f04f3b401ae1af  releases/tauri/macos/Arculus Recovery_1.6.2_universal.dmg
-  5ecca80fbcae77fb209d3f14fdd193009920c1031990fdbcd74246bcebc0a352  releases/tauri/linux/arculus-recovery
-  609d4b66b7b1ac1b11021390b330b2a207601dccd1de41dd8959e1568e45c01a  releases/tauri/linux/Arculus Recovery_1.6.2_amd64.deb
-  a334d2aaac79ce8049e42061d0ba471f9c9466cac1fbeddba83d206c74a3e447  releases/tauri/linux/Arculus Recovery-1.6.2-1.x86_64.rpm
+  61317f534d80d39504f296c48be3ed45b256dc05162ac851fb035d6dfb8aa0cf  releases/tauri/windows/yellowsphere.exe
+  8f461fe50df109a74cfe7b24873f218394c95b7b6356cd494684876e180a58f6  releases/tauri/windows/YellowSphere_1.6.2_x64-setup.exe
+  e11f404e2a1db85edcd42d534c6cd5c73cf286275e6b9e99d6d976752963a472  releases/tauri/windows/YellowSphere_1.6.2_x64_en-US.msi
+  1c1f3c55911a3baaa3f84d1537f33c92703a88d5baea5009e12d5ce5402a975c  releases/tauri/macos/YellowSphere_1.6.2_x64.dmg
+  eb996da31823d16d47472496d24f19a63709dd7c2166185c6fd28ed51b097718  releases/tauri/macos/YellowSphere_1.6.2_aarch64.dmg
+  50a575cadd4a6fce213923041b6a5bb3124f77727f51e9bf78f04f3b401ae1af  releases/tauri/macos/YellowSphere_1.6.2_universal.dmg
+  5ecca80fbcae77fb209d3f14fdd193009920c1031990fdbcd74246bcebc0a352  releases/tauri/linux/yellowsphere
+  609d4b66b7b1ac1b11021390b330b2a207601dccd1de41dd8959e1568e45c01a  releases/tauri/linux/YellowSphere_1.6.2_amd64.deb
+  a334d2aaac79ce8049e42061d0ba471f9c9466cac1fbeddba83d206c74a3e447  releases/tauri/linux/YellowSphere-1.6.2-1.x86_64.rpm
 
 Verify these values against docs/SHA256SUMS before installation or recovery
 use.
