@@ -1,4 +1,4 @@
-# Security Policy
+﻿# Security Policy
 
 ## Supported Versions
 
@@ -14,7 +14,7 @@ from the same release set.
 
 ## Security Model
 
-Arculus Recovery is an offline local recovery tool. It does not require an
+YellowSphere is an offline local recovery tool. It does not require an
 account, server, telemetry endpoint, hosted script, CDN, balance API, or
 blockchain node during normal recovery use.
 
@@ -58,8 +58,8 @@ structure and activity when correlated with public chain data.
 
 ## `.arc` Security
 
-Current v1.6.4 protected `.arc` exports use `ARCULUS-ARC-V2` outer armor with
-internal `arculus-encrypted-seed-v3`:
+Current v1.6.6 protected `.arc` exports use `YELLOWSPHERE-ARC-V2` outer armor with
+internal `yellowsphere-encrypted-seed-v3`:
 
 - AES-256-GCM with a 128-bit tag
 - 32-byte random salt
@@ -82,10 +82,10 @@ procedures where plaintext handling is intentional.
 The `.arc` file stores the mnemonic only. It does not store the BIP39
 passphrase or derived keys.
 
-### ARC V3 and Encrypted-Keyfile v2
+### YellowSphere ARC V3 and Encrypted-Keyfile v2
 
-`Arculus_Beta.html` v1.6.4 writes newly protected `.arc` exports as internal format
-`arculus-encrypted-seed-v3`. It retains the existing outer armor header but
+`YellowSphere.html` v1.6.6 writes newly protected `.arc` exports as internal format
+`yellowsphere-encrypted-seed-v3`. It retains the existing outer armor header but
 uses AES-256-GCM with a 32-byte salt, 12-byte nonce, 128-bit authentication tag,
 and a fixed 512-byte padded plaintext.
 
@@ -100,7 +100,7 @@ or ciphertext causes authentication failure. V3 does not use a separate MAC.
 
 New beta encrypted keyfiles use AES-256-GCM with SHA-512 password pre-hashing,
 PBKDF2-HMAC-SHA512 at 1,000,000 iterations, and a 12-byte nonce. Their magic and
-format fields are authenticated. Legacy ARC formats and encrypted keyfiles are
+format fields are authenticated. Legacy YellowSphere ARC formats and encrypted keyfiles are
 still read by their original compatibility paths.
 
 ## Clipboard, Display, and Memory
