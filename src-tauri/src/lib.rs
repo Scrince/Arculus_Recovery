@@ -17,12 +17,12 @@ const EXPORT_BRIDGE_SCRIPT: &str = r#"
     throw new Error("Tauri invoke bridge is not available.");
   };
 
-  Object.defineProperty(window, "arculusTauriSaveExport", {
+  Object.defineProperty(window, "yellowSphereTauriSaveExport", {
     configurable: true,
     value: (filename, contentBase64) => invoke("save_export", { filename, contentBase64 })
   });
 
-  Object.defineProperty(window, "arculusTauriExportBridgeReady", {
+  Object.defineProperty(window, "yellowSphereTauriExportBridgeReady", {
     configurable: true,
     value: true
   });
@@ -40,7 +40,7 @@ fn safe_filename(filename: &str) -> String {
         .collect();
     let trimmed = cleaned.trim().trim_matches('.').to_string();
     if trimmed.is_empty() {
-        "Arculus_Recovery_export".to_string()
+        "YellowSphere_export".to_string()
     } else {
         trimmed
     }
@@ -76,7 +76,7 @@ fn export_filter(filename: &str) -> (&'static str, &'static [&'static str]) {
         Some("json") => ("JSON", &["json"]),
         Some("csv") => ("CSV", &["csv"]),
         Some("txt") => ("Text", &["txt"]),
-        Some("arc") => ("Arculus Encrypted Seed", &["arc"]),
+        Some("arc") => ("YellowSphere Encrypted Seed", &["arc"]),
         Some("png") => ("PNG Image", &["png"]),
         _ => ("Export File", &["*"]),
     }
@@ -113,7 +113,7 @@ pub fn run() {
         .setup(|app| {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .initialization_script(EXPORT_BRIDGE_SCRIPT)
-                .title("Arculus Recovery")
+                .title("YellowSphere")
                 .inner_size(1180.0, 860.0)
                 .min_inner_size(900.0, 700.0)
                 .resizable(true)
@@ -122,7 +122,7 @@ pub fn run() {
                         let filename = destination
                             .file_name()
                             .map(|name| name.to_owned())
-                            .unwrap_or_else(|| "Arculus_Recovery_export".into());
+                            .unwrap_or_else(|| "YellowSphere_export".into());
                         *destination = downloads_dir().join(filename);
                     }
                     true
@@ -131,7 +131,7 @@ pub fn run() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("error while running Arculus Recovery");
+        .expect("error while running YellowSphere");
 }
 
 #[cfg(test)]
@@ -142,7 +142,7 @@ mod tests {
     #[test]
     fn save_export_decodes_base64_and_writes_file() {
         let filename = format!(
-            "Arculus_Recovery_export_test_{}.txt",
+            "YellowSphere_export_test_{}.txt",
             std::process::id()
         );
         let path = std::env::temp_dir().join(&filename);
@@ -151,21 +151,21 @@ mod tests {
         }
 
         let bytes = base64::engine::general_purpose::STANDARD
-            .decode("QXJjdWx1cyBleHBvcnQgdGVzdA==")
+            .decode("WWVsbG93U3BoZXJlIGV4cG9ydCB0ZXN0")
             .expect("decode fixture");
         let saved_path =
             write_export_file(path.clone(), &bytes).expect("save export should write content");
         let bytes = std::fs::read(&saved_path).expect("read saved export test file");
 
-        assert_eq!(bytes, b"Arculus export test");
+        assert_eq!(bytes, b"YellowSphere export test");
         std::fs::remove_file(path).expect("remove export test file");
     }
 
     #[test]
     fn safe_filename_removes_windows_reserved_characters() {
         assert_eq!(
-            safe_filename("Arculus:Recovery/export?.txt"),
-            "Arculus_Recovery_export_.txt"
+            safe_filename("YellowSphere:export?.txt"),
+            "YellowSphere_export_.txt"
         );
     }
 }
