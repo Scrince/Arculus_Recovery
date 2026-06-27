@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Arculus Recovery",
-  "version": "1.6.4",
-  "identifier": "com.arculus.recovery",
+  "productName": "YellowSphere",
+  "version": "1.6.6",
+  "identifier": "com.yellowsphere.recovery",
   "build": {
     "frontendDist": "../tauri-dist"
   },
@@ -23,6 +23,6 @@
     ],
     "category": "Utility",
     "shortDescription": "Offline BIP39/BIP32 recovery and key-derivation tool",
-    "longDescription": "Offline Arculus-compatible BIP39/BIP32 recovery and key-derivation tool."
+    "longDescription": "Offline YellowSphere-compatible BIP39/BIP32 recovery and key-derivation tool."
   }
 }
