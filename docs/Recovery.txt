@@ -1,26 +1,27 @@
-Arculus Recovery v1.6.4 - Recovery Procedure and Data Boundary Specification
+﻿YellowSphere v1.6.6 - Recovery Procedure and Data Boundary Specification
 ============================================================================
 
 Release Boundary
 ----------------
 
 This document specifies recovery with the promoted production
-Arculus_Recovery.html v1.6.4.
+YellowSphere.html v1.6.6.
 The production selector contains Bitcoin, Bitcoin Cash, Litecoin, Dogecoin,
 Ethereum / ERC-20, Tron / TRC-20, BNB Chain, Avalanche C-Chain, Polygon,
 Cosmos / ATOM, Solana, Stellar, Cardano, and XRP. Every listed currency has an
 Advanced Testnet profile. Polkadot and Monero are not production browser
 recovery routes.
 
-The archived LTS files are lts/Arculus_Recovery_v1.6.0_LTS.html and
-lts/Arculus Recovery_v1.5.0_LTS.html. Monero procedures retained later apply
+The archived LTS files are lts/YellowSphere_v1.6.4_LTS.html,
+lts/YellowSphere_v1.6.2_LTS.html, lts/YellowSphere_v1.6.0_LTS.html,
+and lts/YellowSphere_v1.5.0_LTS.html. Monero procedures retained later apply
 only to the archived v1.6.0 file or a separate compatibility surface.
-Use the verified Arculus_Recovery.html hash published in docs/SHA256SUMS.
+Use the verified YellowSphere.html hash published in docs/SHA256SUMS.
 
 Scope
 -----
 
-This document defines recovery procedures for Arculus_Recovery.html v1.6.4. It
+This document defines recovery procedures for YellowSphere.html v1.6.6. It
 covers direct mnemonic entry, generated/imported seed handling, protected and
 unprotected .arc import, credential-mode selection, BIP39 passphrase checks,
 derivation path recovery, address range selection, output export, QR generation,
@@ -81,7 +82,7 @@ Pre-Session Checklist
 
 Before entering real recovery material:
 
-  - Confirm local file is Arculus_Recovery.html v1.6.4.
+  - Confirm local file is YellowSphere.html v1.6.6.
   - Disconnect networking.
   - Disable browser sync and extensions where practical.
   - Use a private physical environment.
@@ -120,7 +121,7 @@ Supported word counts:
   - 12 words: 128 entropy bits, 4 checksum bits
   - 24 words: 256 entropy bits, 8 checksum bits
 
-v1.6.4 does not support 15-, 18-, or 21-word mnemonic recovery.
+v1.6.6 does not support 15-, 18-, or 21-word mnemonic recovery.
 
 
 Generated Seed Procedure
@@ -179,7 +180,7 @@ Seed file import reads the selected file as text and calls parseSeedBundle.
 
 Armor path:
 
-  if trimmed file starts with "ARCULUS-ARC-V2":
+  if trimmed file starts with "YELLOWSPHERE-ARC-V2":
       remove first line
       join remaining lines
       base64-decode
@@ -192,16 +193,16 @@ Raw JSON path:
 
 Plain .arc:
 
-  magic == "ARCULUS-ARC"
-  format == "arculus-plain-seed-v1"
+  magic == "YELLOWSPHERE-ARC"
+  format == "yellowsphere-plain-seed-v1"
 
   The mnemonic is read directly, normalized, and BIP39-validated. No credential
   is requested.
 
 Protected .arc:
 
-  magic == "ARCULUS-ARC"
-  format == "arculus-encrypted-seed-v3"
+  magic == "YELLOWSPHERE-ARC"
+  format == "yellowsphere-encrypted-seed-v3"
   version == 3
 
   The user supplies the required credential mode. AES-GCM authentication occurs
@@ -211,7 +212,7 @@ Protected .arc:
 Credential hint:
 
   credential_mode, credentialMode, or protection can select/lock the import
-  dialog mode. In ARC V3 it is authenticated as additional data, but it remains
+  dialog mode. In YellowSphere ARC V3 it is authenticated as additional data, but it remains
   a mode identifier rather than an authorization mechanism.
 
 After import:
@@ -227,7 +228,7 @@ Protected .arc Credential Decision
 
 Password mode:
 
-  Need exact ARC password.
+  Need exact YellowSphere ARC password.
 
 Keyfile mode:
 
@@ -248,13 +249,13 @@ If import fails:
   - Check password spacing and capitalization.
   - Check whether the keyfile itself is encrypted.
   - Do not assume the BIP39 passphrase can open the .arc; it cannot unless it
-    was deliberately reused as the ARC credential.
+    was deliberately reused as the YellowSphere ARC credential.
 
 
 Default Derivation Paths
 ------------------------
 
-v1.6.4 default paths:
+v1.6.6 default paths:
 
   bitcoin       m/0'
   bitcoincash   m/0'
@@ -271,7 +272,7 @@ v1.6.4 default paths:
   cardano       m/1852'/1815'/0'/0/0
   xrp           m/44'/144'/0'
 
-The Bitcoin and Bitcoin Cash default m/0' reflects Arculus-specific recovery
+The Bitcoin and Bitcoin Cash default m/0' reflects YellowSphere-specific recovery
 behavior. Other wallets often use BIP44/BIP49/BIP84/BIP86 account paths.
 
 
@@ -296,12 +297,12 @@ Bitcoin:
       m/86'/0'/0'
       addresses begin bc1p
 
-  Arculus native:
+  YellowSphere native:
       m/0'
 
 Bitcoin Cash:
 
-  Arculus/native default:
+  YellowSphere/native default:
       m/0'
 
   Common BIP44:
@@ -489,7 +490,7 @@ wallet tree and may create confusion if exported.
 Bitcoin Cash Display Choice
 ---------------------------
 
-v1.6.4 default Bitcoin Cash display/export uses CashAddr when the legacy toggle
+v1.6.6 default Bitcoin Cash display/export uses CashAddr when the legacy toggle
 is off.
 
 Operational issue:
@@ -553,13 +554,13 @@ Monero output includes spend/view material as specified in Derivation.txt.
 
 The tool does not scan the Monero blockchain. It cannot determine balance or
 transaction history. Wallet restore height and chain scanning happen in Monero
-wallet software, not in Arculus Recovery.
+wallet software, not in YellowSphere.
 
 
 Cardano Boundary
 ----------------
 
-Cardano output uses the v1.6.4 Icarus/CIP-1852 behavior specified in
+Cardano output uses the v1.6.6 Icarus/CIP-1852 behavior specified in
 Derivation.txt.
 
 The tool derives address/key material. It does not query staking state, rewards,
@@ -603,7 +604,7 @@ exports are often more sensitive than a protected .arc file.
 Sweeping Procedure
 ------------------
 
-Arculus Recovery does not sign or broadcast transactions. To move funds:
+YellowSphere does not sign or broadcast transactions. To move funds:
 
   1. Derive and verify the target private key or account secret offline.
   2. Transfer only the minimum private material needed to a trusted signing
@@ -652,7 +653,7 @@ Valid mnemonic, no funds:
 .arc will not open:
 
   Possible causes:
-      wrong ARC password
+      wrong YellowSphere ARC password
       wrong keyfile
       wrong combined-mode password
       encrypted keyfile not decrypted
@@ -708,8 +709,8 @@ Use this procedure when the mnemonic is available on paper or another offline
 record.
 
   1. Prepare the offline environment according to OpSec.txt.
-  2. Open Arculus_Recovery.html locally.
-  3. Confirm v1.6.4.
+  2. Open YellowSphere.html locally.
+  3. Confirm v1.6.6.
   4. Select 12 or 24 words.
   5. Enter the mnemonic.
   6. Enter BIP39 passphrase if used. Leave empty only if no passphrase was used
@@ -736,7 +737,7 @@ Use this procedure when a protected .arc file is the mnemonic backup.
 
   1. Prepare offline environment.
   2. Place .arc file on local/removable media.
-  3. Open Arculus_Recovery.html locally.
+  3. Open YellowSphere.html locally.
   4. Click Import Seed.
   5. Select .arc file.
   6. If credential hint selects a mode, verify it matches your backup notes.
@@ -754,7 +755,7 @@ notes. Record the failure, verify mode and files, and restart cleanly if needed.
 Procedure: Backup Migration
 ---------------------------
 
-Use this when converting an older or uncertain backup into current v1.6.4 form.
+Use this when converting an older or uncertain backup into current v1.6.6 form.
 
   1. Import the old .arc or mnemonic offline.
   2. Validate mnemonic checksum.
@@ -955,7 +956,7 @@ Retirement procedure:
 Implementation Compatibility Checklist
 --------------------------------------
 
-A v1.6.4-compatible recovery implementation must:
+A v1.6.6-compatible recovery implementation must:
 
   - Support 12- and 24-word BIP39 English mnemonics.
   - Normalize mnemonic whitespace before BIP39 seed derivation.
@@ -965,7 +966,7 @@ A v1.6.4-compatible recovery implementation must:
   - Parse paths with "'", h, and H hardened suffixes.
   - Map Auto script type by first purpose component.
   - Derive UTXO receiving and change branches.
-  - Route Solana/Stellar/Cardano to their current v1.6.4 derivation
+  - Route Solana/Stellar/Cardano to their current v1.6.6 derivation
     families.
-  - Import ARCULUS-ARC-V2 protected and plain bundles.
+  - Import YELLOWSPHERE-ARC-V2 protected and plain bundles.
   - Preserve the distinction between BIP39 passphrase and .arc credentials.
