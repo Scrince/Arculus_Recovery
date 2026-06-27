@@ -1,10 +1,10 @@
-Arculus Recovery v1.6.4 - Operational Security Specification
+﻿YellowSphere v1.6.6 - Operational Security Specification
 ============================================================
 
 Release Boundary
 ----------------
 
-This document specifies the promoted production Arculus_Recovery.html v1.6.4.
+This document specifies the promoted production YellowSphere.html v1.6.6.
 The default session timeout is five minutes; supported
 values are 2, 5, 15 minutes, or Off. Visibility loss starts a default 15-second
 grace period and clears secrets if the user does not return. The live derived-output search can match private-key
@@ -13,18 +13,18 @@ expanded output as secret-bearing display state even though search state is not
 exported.
 
 The archived browser builds now reside under lts/. Monero-specific guidance
-retained later applies only to lts/Arculus_Recovery_v1.6.0_LTS.html or a
-separate compatibility tool, not to the v1.6.4 browser selector.
+retained later applies only to lts/YellowSphere_v1.6.0_LTS.html or a
+separate compatibility tool, not to the v1.6.6 browser selector.
 
 The configurable timeout, visibility-loss grace period, stricter CSP, embedded
 favicon, credential-dialog clearing, typed-array cleanup, and serialized
-sensitive operations are normative v1.6.4 requirements.
+sensitive operations are normative v1.6.6 requirements.
 
 Scope
 -----
 
 This document defines the operational security requirements for using
-Arculus_Recovery.html v1.6.4. It is tied to the actual implementation behavior:
+YellowSphere.html v1.6.6. It is tied to the actual implementation behavior:
 mnemonic generation and entry, BIP39 passphrase use, .arc export/import,
 password and keyfile credential modes, derived-output exports, QR generation,
 clipboard behavior, idle clearing, browser runtime limits, and native Tauri
@@ -46,7 +46,7 @@ Even if the UI currently shows only an address, the same session can contain:
 
   - mnemonic words
   - BIP39 wallet passphrase
-  - ARC password
+  - YellowSphere ARC password
   - keyfile bytes
   - combined credential material
   - BIP39 seed
@@ -75,7 +75,7 @@ In scope:
 
   File tampering:
       An attacker modifies protected .arc metadata, salt, nonce, ciphertext, or
-      MAC. ARC v2 detects this through MAC verification before decryption.
+      MAC. YellowSphere ARC v2 detects this through MAC verification before decryption.
 
   Wrong-path recovery error:
       The mnemonic is correct, but the operator uses the wrong coin, BIP39
@@ -103,7 +103,7 @@ Out of scope:
   - Cameras or observers with screen/keyboard visibility.
   - Coercion.
   - An attacker who already knows the mnemonic or correct .arc credential.
-  - A malicious copy of Arculus_Recovery.html.
+  - A malicious copy of YellowSphere.html.
 
 For high-value recovery, assume an ordinary daily-use online computer is not an
 acceptable secret-handling environment.
@@ -174,7 +174,7 @@ Disable:
   - browser profile sync
   - browser extensions where practical
 
-The v1.6.4 UI uses navigator.onLine for the network indicator:
+The v1.6.6 UI uses navigator.onLine for the network indicator:
 
   online:
       networkStatus class "online"
@@ -192,8 +192,8 @@ Recommended Session Procedure
 
 Before the session:
 
-  1. Obtain the intended Arculus_Recovery.html build from trusted local media.
-  2. Verify the visible app version is v1.6.4.
+  1. Obtain the intended YellowSphere.html build from trusted local media.
+  2. Verify the visible app version is v1.6.6.
   3. Use a fresh live OS or a dedicated offline machine for high-value work.
   4. Disable networking before opening the file.
   5. Close unrelated applications.
@@ -232,7 +232,7 @@ Mnemonic Handling
 
 Mnemonic input and generated mnemonics are Class A secrets.
 
-v1.6.4 behavior:
+v1.6.6 behavior:
 
   - Generated seeds use browser CSPRNG.
   - Generated/imported seeds are hidden after generation/import.
@@ -344,24 +344,24 @@ Unprotected .arc requirements:
 
 Default saved filename:
 
-  Arculus_Encrypted_Seed.arc
+  YellowSphere_Encrypted_Seed.arc
 
-The filename does not prove the file is encrypted. v1.6.4 uses this filename
+The filename does not prove the file is encrypted. v1.6.6 uses this filename
 for both protected and unprotected seed exports. Inspect the decoded bundle
 format if protection status matters:
 
   Protected:
-      format == "arculus-encrypted-seed-v3"
+      format == "yellowsphere-encrypted-seed-v3"
 
   Unprotected:
-      format == "arculus-plain-seed-v1"
+      format == "yellowsphere-plain-seed-v1"
 
 
 Password Mode
 -------------
 
 Password mode normalizes and SHA-512 pre-hashes the password, then derives the
-ARC V3 AES key with PBKDF2-HMAC-SHA512 at 1000000 iterations.
+YellowSphere ARC V3 AES key with PBKDF2-HMAC-SHA512 at 1000000 iterations.
 
 Minimum operational requirements:
 
@@ -386,7 +386,7 @@ and uses that string as the .arc credential.
 
 Generated raw keyfiles contain 64 random bytes and are saved as:
 
-  Arculus_Recovery_Keyfile.key
+  YellowSphere_Keyfile.key
 
 Operational requirements:
 
@@ -410,13 +410,13 @@ Combined mode requires both:
 
 The app derives with HKDF-SHA512:
 
-  "arc-combined-v1:" + base64(HKDF(keyfile_bytes || NFKD password, ARC salt))
+  "arc-combined-v1:" + base64(HKDF(keyfile_bytes || NFKD password, YellowSphere ARC salt))
 
 and uses that as the .arc credential.
 
 Generated encrypted keyfiles are saved as:
 
-  Arculus_Recovery_Keyfile.enc.key
+  YellowSphere_Keyfile.enc.key
 
 Operational requirements:
 
@@ -439,7 +439,7 @@ but still require a high-entropy password.
 Operational notes:
 
   - The 128-bit GCM tag authenticates ciphertext and the exact magic/format AAD.
-  - ARC V3 authenticates its complete metadata object as AES-GCM AAD.
+  - YellowSphere ARC V3 authenticates its complete metadata object as AES-GCM AAD.
   - The decrypted keyfile bytes exist in browser memory during import.
   - The encrypted keyfile password is separate from the BIP39 wallet passphrase.
 
@@ -480,7 +480,7 @@ QR Export Boundary
 
 QR export is designed for address payloads, not seeds or private keys.
 
-v1.6.4 behavior:
+v1.6.6 behavior:
 
   - QR modal accepts a user-entered address.
   - XRP r-address input prompts for an optional destination tag.
@@ -539,9 +539,9 @@ Constants and persisted settings:
 
   DEFAULT_IDLE_TIMEOUT_MINUTES = 5
   allowed values = "2", "5", "15", "off"
-  localStorage key = "arculusSessionTimeout"
+  localStorage key = "yellowsphereSessionTimeout"
   VISIBILITY_CLEAR_GRACE_MS = 15000
-  localStorage key = "arculusVisibilityGrace"
+  localStorage key = "yellowsphereVisibilityGrace"
   warning time = 60 seconds before a finite timeout
 
 Events that reset the timer:
@@ -596,7 +596,7 @@ Limitations:
 Browser Runtime Risk
 --------------------
 
-Arculus_Recovery.html is a local offline browser application, but browser
+YellowSphere.html is a local offline browser application, but browser
 runtimes are not hardened secret vaults.
 
 Risks:
@@ -785,7 +785,7 @@ Operator Checklist
 
 Before entering a real seed:
 
-  - v1.6.4 build confirmed
+  - v1.6.6 build confirmed
   - offline state confirmed
   - clean browser/profile confirmed
   - no extensions or sync
@@ -837,7 +837,7 @@ For high-value sessions, perform these checks before opening the HTML file:
   - Disable Bluetooth in firmware or hardware controls where possible.
   - Remove USB network adapters.
   - Disable cellular modems.
-  - Use a local copy of Arculus_Recovery.html, not a remote URL.
+  - Use a local copy of YellowSphere.html, not a remote URL.
   - Confirm the browser did not restore prior tabs into online services.
   - Confirm password managers and form-fill extensions are disabled.
   - Confirm no cloud storage client is syncing the working directory.
@@ -967,13 +967,13 @@ Failure to test a backup is equivalent to not having a backup.
 Handling Legacy Files
 ---------------------
 
-v1.6.4 can import older seed formats. Legacy import support is for migration,
+v1.6.6 can import older seed formats. Legacy import support is for migration,
 not for continued archival use.
 
 After importing a legacy .arc:
 
   1. Confirm the mnemonic and root fingerprint.
-  2. Export a new protected v1.6.4 .arc.
+  2. Export a new protected v1.6.6 .arc.
   3. Test import of the new file.
   4. Retire the legacy file according to the sensitivity of the original
      storage medium.
@@ -1043,7 +1043,7 @@ For operational records, keep non-secret metadata separate from secrets.
 
 Safe-ish metadata to record:
 
-  - app version v1.6.4
+  - app version v1.6.6
   - date of backup creation
   - coin
   - derivation path
