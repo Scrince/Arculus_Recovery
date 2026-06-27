@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 import re
@@ -25,7 +25,7 @@ from reportlab.platypus import (
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
-OUT = DOCS / "Arculus_Recovery_Manual.pdf"
+OUT = DOCS / "YellowSphere_Manual.pdf"
 
 DOC_ORDER = [
     "Recovery.txt",
@@ -41,14 +41,14 @@ DOC_ORDER = [
 ]
 
 SCREENSHOTS = [
-    ("arculus-main-recovery.png", "Figure 1. Main recovery workspace with test-vector mnemonic validation controls."),
-    ("arculus-derived-output.png", "Figure 2. Derived output table after address derivation, with output tabs and export controls."),
-    ("arculus-qr-export.png", "Figure 3. QR Export modal generating an address QR code without external services."),
-    ("arculus-settings.png", "Figure 4. Settings dialog with theme selection and auto-derive preference."),
-    ("arculus-light.png", "Figure 5. Light theme interface."),
-    ("arculus-dark.png", "Figure 6. Dark theme interface."),
-    ("arculus-dark-plus.png", "Figure 7. Dark+ theme interface."),
-    ("arculus-terminal.png", "Figure 8. Terminal theme interface."),
+    ("yellowsphere-main-recovery.png", "Figure 1. Main recovery workspace with test-vector mnemonic validation controls."),
+    ("yellowsphere-derived-output.png", "Figure 2. Derived output table after address derivation, with output tabs and export controls."),
+    ("yellowsphere-qr-export.png", "Figure 3. QR Export modal generating an address QR code without external services."),
+    ("yellowsphere-settings.png", "Figure 4. Settings dialog with theme selection and advanced recovery preferences."),
+    ("yellowsphere-light.png", "Figure 5. Light theme interface."),
+    ("yellowsphere-dark.png", "Figure 6. Dark theme interface."),
+    ("yellowsphere-dark-plus.png", "Figure 7. Dark+ theme interface."),
+    ("yellowsphere-terminal.png", "Figure 8. Terminal theme interface."),
 ]
 
 
@@ -286,7 +286,7 @@ def header_footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Helvetica", 7)
     canvas.setFillColor(colors.HexColor("#6B7280"))
-    canvas.drawString(doc.leftMargin, 0.45 * inch, "Arculus Recovery v1.6.0 User Guide")
+    canvas.drawString(doc.leftMargin, 0.45 * inch, "YellowSphere v1.6.6 User Guide")
     canvas.drawRightString(letter[0] - doc.rightMargin, 0.45 * inch, f"Page {doc.page}")
     canvas.restoreState()
 
@@ -300,13 +300,13 @@ def build():
         leftMargin=0.65 * inch,
         topMargin=0.65 * inch,
         bottomMargin=0.65 * inch,
-        title="Arculus Recovery v1.6.0 User Guide",
-        author="Arculus Recovery",
+        title="YellowSphere v1.6.6 User Guide",
+        author="YellowSphere",
     )
 
     story = [
         Spacer(1, 1.35 * inch),
-        Paragraph("Arculus Recovery v1.6.0", styles["title"]),
+        Paragraph("YellowSphere v1.6.6", styles["title"]),
         Paragraph("User Guide and Technical Reference", styles["subtitle"]),
         Paragraph(
             "Offline BIP39/BIP32 recovery, encrypted seed backup, QR export, "
@@ -320,7 +320,7 @@ def build():
                 ["Desktop GUI", "PySide6 WebEngine wrapper"],
                 ["Desktop Package", "Tauri wrapper with native export bridge"],
                 ["CLI", "Python derivation and export interface"],
-                ["Generated", "June 14, 2026"],
+                ["Generated", "June 18, 2026"],
             ],
             colWidths=[1.6 * inch, 4.7 * inch],
             style=TableStyle(
