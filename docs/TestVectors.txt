@@ -1,11 +1,11 @@
-Arculus Recovery v1.6.4 - Canonical Test Vector Specification
+﻿YellowSphere v1.6.6 - Canonical Test Vector Specification
 =============================================================
 
 Release Boundary
 ----------------
 
-This document is the conformance suite for Arculus_Recovery.html v1.6.4. Retained
-BIP39, BIP32, Ed25519, Cardano, XRP, ARC V3/legacy ARC V2, UTXO, Ethereum,
+This document is the conformance suite for YellowSphere.html v1.6.6. Retained
+BIP39, BIP32, Ed25519, Cardano, XRP, YellowSphere ARC V3/legacy YellowSphere ARC V2, UTXO, Ethereum,
 Solana, and Stellar vectors remain byte-identical where their algorithms did
 not change. Production adds deterministic profiles for Tron, BNB Chain,
 Avalanche C-Chain, Polygon, and Cosmos and mainnet/testnet metadata profiles for
@@ -20,27 +20,27 @@ Cardano testnet profiles do change address/version encoding as specified in
 Derivation.txt.
 
 Monero vectors retained later are archived v1.6.0 LTS/Python compatibility
-vectors. They are not production v1.6.4 browser conformance requirements.
-Arculus_Recovery.html is the v1.6.4 production vector target.
+vectors. They are not production v1.6.6 browser conformance requirements.
+YellowSphere.html is the v1.6.6 production vector target.
 
 Scope
 -----
 
-This document is the byte-level conformance suite for Arculus_Recovery.html
-v1.6.4. It records deterministic input/output pairs for mnemonic validation,
+This document is the byte-level conformance suite for YellowSphere.html
+v1.6.6. It records deterministic input/output pairs for mnemonic validation,
 PBKDF2 seed stretching, BIP32 and SLIP-0010 root construction, account
-derivation, address encoding, ARC V3 and legacy ARC V2 encryption, and negative rejection paths.
+derivation, address encoding, YellowSphere ARC V3 and legacy YellowSphere ARC V2 encryption, and negative rejection paths.
 
-An implementation is specification-equivalent to v1.6.4 only when it produces
+An implementation is specification-equivalent to v1.6.6 only when it produces
 the exact bytes and exact encoded strings in this document for the stated
 inputs. Matching only an address while producing a different private key,
 public key, chain code, extended key, or encryption transcript is not
 compliant.
 
 Randomized operations are not byte-stable unless their random inputs are fixed.
-For ARC V2 encryption this document fixes salt, nonce, created_at, and plaintext
+For YellowSphere ARC V2 encryption this document fixes salt, nonce, created_at, and plaintext
 so the whole armored file can be compared byte-for-byte. For generated
-mnemonics and normal ARC exports, implementations must validate structure and
+mnemonics and normal YellowSphere ARC exports, implementations must validate structure and
 round-trip behavior instead of comparing random bytes.
 
 
@@ -58,7 +58,7 @@ Bitcoin-family Base58 for Bitcoin, Bitcoin Cash legacy, Litecoin, and Dogecoin;
 XRPL Base58 for XRP. Bech32 strings are lowercase. Bech32m strings are
 lowercase. Ethereum addresses are EIP-55 checksum addresses.
 
-Mnemonic text is normalized exactly as v1.6.4 does before seed derivation:
+Mnemonic text is normalized exactly as v1.6.6 does before seed derivation:
 
   1. Trim leading and trailing JavaScript whitespace.
   2. Split on one or more whitespace code points.
@@ -192,10 +192,10 @@ BIP32 serialized public extended key payload before checksum is 78 bytes:
   key_data: 0339a36013301597daef41fdf21a57419e8c75857fbbfddf8b76b3a8dc9cd0d4d8
 
 
-Default v1.6.4 Account Paths
+Default v1.6.6 Account Paths
 ----------------------------
 
-The v1.6.4 UI preselects these account-level derivation paths for the supported
+The v1.6.6 UI preselects these account-level derivation paths for the supported
 coin selector values:
 
   Bitcoin: m/0'
@@ -210,7 +210,7 @@ coin selector values:
   XRP: m/44'/144'/0'
 
 For secp256k1 coins, the displayed receiving rows append /0/i and displayed
-change rows append /1/i to the account path. For Solana and Stellar, v1.6.4
+change rows append /1/i to the account path. For Solana and Stellar, v1.6.6
 uses hardened account-style rows under the selected account path. For Monero,
 the account path itself is the displayed account address. For Cardano, the
 selected path is the payment key path and the staking key path is fixed at
@@ -810,10 +810,10 @@ XRP address construction:
   destination tag: not derived and not encoded in the key vector
 
 
-ARC V3 Fixed Encryption Vectors
+YellowSphere ARC V3 Fixed Encryption Vectors
 -------------------------------
 
-These vectors fix every random and time-dependent ARC V3 input. Standard
+These vectors fix every random and time-dependent YellowSphere ARC V3 input. Standard
 base64 includes padding. Hex is lowercase. JSON is compact JSON.stringify
 output with insertion order exactly as shown in Encryption.txt.
 
@@ -842,7 +842,7 @@ Common inputs:
 
 Password-mode AAD UTF-8 text (one line, no LF):
 
-  {"magic":"ARCULUS-ARC","format":"arculus-encrypted-seed-v3","version":3,"created_at":"2026-06-19T00:00:00.000Z","credential_mode":"password","kdf":{"name":"PBKDF2","hash":"SHA-512","iterations":1000000,"salt_b64":"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="},"cipher":{"name":"AES-256-GCM","nonce_b64":"oKGio6Slpqeoqaqr"},"padding":{"name":"ZERO","length":512}}
+  {"magic":"YELLOWSPHERE-ARC","format":"yellowsphere-encrypted-seed-v3","version":3,"created_at":"2026-06-19T00:00:00.000Z","credential_mode":"password","kdf":{"name":"PBKDF2","hash":"SHA-512","iterations":1000000,"salt_b64":"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="},"cipher":{"name":"AES-256-GCM","nonce_b64":"oKGio6Slpqeoqaqr"},"padding":{"name":"ZERO","length":512}}
 
 Password-mode ciphertext_b64, including the 16-byte GCM tag:
 
@@ -858,7 +858,7 @@ SHA-256(decoded ciphertext_b64):
 
 The complete armored password-mode file is:
 
-  "ARCULUS-ARC-V2" || LF ||
+  "YELLOWSPHERE-ARC-V2" || LF ||
   base64(UTF8(JSON.stringify(bundle_with_ciphertext_b64))) || LF
 
 Complete armored length:
@@ -913,7 +913,7 @@ Inputs:
 
 AAD UTF-8 text (one line, no LF):
 
-  {"magic":"ARCULUS-KEYFILE-ENC","format":"arculus-recovery-keyfile-enc-v1"}
+  {"magic":"YELLOWSPHERE-KEYFILE-ENC","format":"yellowsphere-keyfile-enc-v1"}
 
 ciphertext_b64, including the 16-byte GCM tag:
 
@@ -928,10 +928,10 @@ Any change to password, salt, nonce, AAD, raw keyfile bytes, iteration count, or
 tag must fail authentication or produce a different vector.
 
 
-Legacy ARC V2 Fixed Encryption Vector
+Legacy YellowSphere ARC V2 Fixed Encryption Vector
 -------------------------------------
 
-This vector fixes every random or time-dependent value used by ARC V2 so the
+This vector fixes every random or time-dependent value used by YellowSphere ARC V2 so the
 KDF, stream cipher, HMAC transcript, and final armored file can be tested
 byte-for-byte.
 
@@ -1001,7 +1001,7 @@ MAC decoded byte length:
 
 Armored line 1:
 
-  ARCULUS-ARC-V2
+  YELLOWSPHERE-ARC-V2
 
 Armored line 2:
 
@@ -1009,11 +1009,11 @@ Armored line 2:
 
 Armored file bytes:
 
-  ASCII("ARCULUS-ARC-V2") || 0a || ASCII(line2) || 0a
+  ASCII("YELLOWSPHERE-ARC-V2") || 0a || ASCII(line2) || 0a
 
-ARC V2 importer rejection rules:
+YellowSphere ARC V2 importer rejection rules:
 
-  line 1 must be exactly ARCULUS-ARC-V2
+  line 1 must be exactly YELLOWSPHERE-ARC-V2
   version must be exactly integer 2
   kdf.name must be exactly PBKDF2
   kdf.hash must be exactly SHA-512
@@ -1029,7 +1029,7 @@ Common secp256k1 Path Matrix, TV1, Receiving Row 0
 --------------------------------------------------
 
 This matrix fixes the first receiving row for the common account paths that
-v1.6.4 can derive for secp256k1-based coins. Each row uses TV1, empty
+v1.6.6 can derive for secp256k1-based coins. Each row uses TV1, empty
 passphrase, mainnet, script selector Auto, count 1, and range empty.
 
 Bitcoin m/44'/0'/0':
@@ -1428,12 +1428,12 @@ XRP:
   private_key_hex: c269a68e88e67c566a24789fb4de96b03eb27424dbe02390dd225a82f4655db0
 
 
-ARC V2 Fixed 24-Word Encryption Vector
+YellowSphere ARC V2 Fixed 24-Word Encryption Vector
 --------------------------------------
 
-This vector verifies ARC V2 behavior for a 24-word mnemonic and an alternate
+This vector verifies YellowSphere ARC V2 behavior for a 24-word mnemonic and an alternate
 salt/nonce ordering. It uses the same password and created_at value as the TV1
-ARC V2 vector.
+YellowSphere ARC V2 vector.
 
 Inputs:
 
@@ -1487,7 +1487,7 @@ Armored line 2:
 Negative Test Vectors
 ---------------------
 
-Conforming v1.6.4 implementations must reject every input in this section
+Conforming v1.6.6 implementations must reject every input in this section
 before producing account rows, downloadable bundles, QR payloads, or partial
 derived output.
 
@@ -1562,33 +1562,33 @@ Unsupported script:
   coin selector: Dogecoin
   script selector: P2TR
   expected result: reject
-  reason: Dogecoin Taproot output is not supported by v1.6.4
+  reason: Dogecoin Taproot output is not supported by v1.6.6
 
-Malformed ARC V3 salt:
+Malformed YellowSphere ARC V3 salt:
 
   salt length: 31 bytes
   expected result: reject
-  reason: ARC V3 salt must be exactly 32 bytes
+  reason: YellowSphere ARC V3 salt must be exactly 32 bytes
 
-Malformed ARC V3 nonce:
+Malformed YellowSphere ARC V3 nonce:
 
   nonce length: 11 bytes
   expected result: reject
-  reason: ARC V3 AES-GCM nonce must be exactly 12 bytes
+  reason: YellowSphere ARC V3 AES-GCM nonce must be exactly 12 bytes
 
-Malformed ARC V3 padding:
+Malformed YellowSphere ARC V3 padding:
 
   padding: {"name":"ZERO","length":511}
   expected result: reject
-  reason: ARC V3 plaintext padding length must be exactly 512
+  reason: YellowSphere ARC V3 plaintext padding length must be exactly 512
 
-ARC V3 metadata mutation:
+YellowSphere ARC V3 metadata mutation:
 
   mutation: change credential_mode without recomputing ciphertext/tag
   expected result: reject
   reason: complete metadata JSON is AES-GCM additional authenticated data
 
-ARC V3 ciphertext/tag mutation:
+YellowSphere ARC V3 ciphertext/tag mutation:
 
   mutation: flip any bit of decoded ciphertext_b64
   expected result: reject
@@ -1606,43 +1606,43 @@ Encrypted-keyfile v2 AAD mutation:
   expected result: reject
   reason: exact magic/format JSON is AES-GCM additional authenticated data
 
-Malformed ARC V2 salt:
+Malformed YellowSphere ARC V2 salt:
 
   salt length: 31 bytes
   expected result: reject
-  reason: ARC V2 salt must be exactly 32 bytes
+  reason: YellowSphere ARC V2 salt must be exactly 32 bytes
 
-Malformed ARC V2 nonce:
+Malformed YellowSphere ARC V2 nonce:
 
   nonce length: 23 bytes
   expected result: reject
-  reason: ARC V2 nonce must be exactly 24 bytes
+  reason: YellowSphere ARC V2 nonce must be exactly 24 bytes
 
-Malformed ARC V2 MAC:
+Malformed YellowSphere ARC V2 MAC:
 
   mac length: 63 bytes
   expected result: reject
-  reason: ARC V2 HMAC-SHA512 tag must be exactly 64 bytes
+  reason: YellowSphere ARC V2 HMAC-SHA512 tag must be exactly 64 bytes
 
-Weak ARC V2 iteration count:
+Weak YellowSphere ARC V2 iteration count:
 
   iterations: 599999
   expected result: reject
   reason: import floor is 600000 iterations
 
-ARC V2 MAC mismatch:
+YellowSphere ARC V2 MAC mismatch:
 
   mutation: flip bit 0 of decoded mac_b64 byte 0
   expected result: reject
   reason: constant-time HMAC comparison fails
 
-ARC V2 ciphertext mutation:
+YellowSphere ARC V2 ciphertext mutation:
 
   mutation: flip bit 0 of decoded ciphertext_b64 byte 0 without recomputing MAC
   expected result: reject
   reason: ciphertext bytes are included in the MAC transcript
 
-ARC V2 plaintext mismatch:
+YellowSphere ARC V2 plaintext mismatch:
 
   mutation: decrypts to mnemonic with 12 words but word_count field is 24
   expected result: reject
@@ -1652,7 +1652,7 @@ ARC V2 plaintext mismatch:
 Compliance Checklist
 --------------------
 
-A test harness for v1.6.4 should verify all of the following conditions:
+A test harness for v1.6.6 should verify all of the following conditions:
 
   1. TV1 mnemonic normalization produces the exact 93 bytes listed above.
   2. TV1 BIP39 PBKDF2 produces the exact 64-byte seed.
@@ -1667,7 +1667,7 @@ A test harness for v1.6.4 should verify all of the following conditions:
   11. Solana and Stellar use SLIP-0010 Ed25519 hardened derivation only.
   12. Monero emits spend/view key pairs and a standard mainnet address.
   13. Cardano emits the Shelley base address from payment and staking keys.
-  14. ARC V3 fixed Password, Keyfile, and combined vectors match exact
+  14. YellowSphere ARC V3 fixed Password, Keyfile, and combined vectors match exact
       ciphertext/tag and armored-file SHA-256 values.
   15. Common secp256k1 path matrix rows match exact path, script type, address, public key, and private key bytes.
   16. JSON, CSV, and TXT export byte lengths and SHA-256 digests match for every supported coin.
@@ -1675,7 +1675,7 @@ A test harness for v1.6.4 should verify all of the following conditions:
   18. Expanded Cardano rows 0..2 match exact payment paths, staking path, Shelley base addresses, and payment/stake key bytes.
   19. Additional Monero vectors match exact alternate-account and passphrase-sensitive spend/view key material.
   20. TV1 passphrase "TREZOR" first-row vectors match for every supported coin family.
-  21. Legacy ARC V2 fixed 12/24-word vectors remain import-compatible.
+  21. Legacy YellowSphere ARC V2 fixed 12/24-word vectors remain import-compatible.
   22. Encrypted-keyfile v2 matches its exact AAD and ciphertext/tag vector.
   23. Every negative test rejects without returning partial key material.
 
@@ -1696,15 +1696,15 @@ below is TV1:
 
 Version check:
 
-  python Arculus_Recovery.py --version
+  python YellowSphere.py --version
 
 Expected stdout:
 
-  Arculus Recovery 1.6.2
+  YellowSphere 1.6.2
 
 Bitcoin Cash command:
 
-  python Arculus_Recovery.py --mnemonic "<TV1>" --coin bitcoincash --output-format json
+  python YellowSphere.py --mnemonic "<TV1>" --coin bitcoincash --output-format json
 
 Required JSON fields:
 
@@ -1715,7 +1715,7 @@ Required JSON fields:
 
 Solana command:
 
-  python Arculus_Recovery.py --mnemonic "<TV1>" --coin solana --output-format json
+  python YellowSphere.py --mnemonic "<TV1>" --coin solana --output-format json
 
 Required JSON fields:
 
@@ -1726,7 +1726,7 @@ Required JSON fields:
 
 Stellar command:
 
-  python Arculus_Recovery.py --mnemonic "<TV1>" --coin stellar --output-format json
+  python YellowSphere.py --mnemonic "<TV1>" --coin stellar --output-format json
 
 Required JSON fields:
 
@@ -1739,7 +1739,7 @@ Required JSON fields:
 
 Monero command:
 
-  python Arculus_Recovery.py --mnemonic "<TV1>" --coin monero --output-format json
+  python YellowSphere.py --mnemonic "<TV1>" --coin monero --output-format json
 
 Required JSON fields:
 
@@ -1752,7 +1752,7 @@ Required JSON fields:
 
 Cardano command:
 
-  python Arculus_Recovery.py --mnemonic "<TV1>" --coin cardano --output-format json
+  python YellowSphere.py --mnemonic "<TV1>" --coin cardano --output-format json
 
 Required JSON fields:
 
@@ -1763,7 +1763,7 @@ Required JSON fields:
 
 Bitcoin regression command:
 
-  python Arculus_Recovery.py --mnemonic "<TV1>" --coin bitcoin --derivation "m/0'" --script-type p2wpkh --count 1 --output-format json
+  python YellowSphere.py --mnemonic "<TV1>" --coin bitcoin --derivation "m/0'" --script-type p2wpkh --count 1 --output-format json
 
 Required JSON field:
 
