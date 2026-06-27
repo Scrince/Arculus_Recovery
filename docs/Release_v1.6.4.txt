@@ -1,10 +1,10 @@
-Arculus v1.6.4 - Release Notes
+﻿YellowSphere v1.6.4 - Release Notes
 ==============================
 
 Release boundary (2026-06-19)
 -----------------------------
 
-Arculus_Recovery.html reports APP_VERSION 1.6.4 and displays "Arculus v1.6.4".
+YellowSphere.html reports APP_VERSION 1.6.4 and displays "YellowSphere v1.6.4".
 It is the promoted normative production source. The packaged Python HTML and
 Tauri frontend assets are synchronized to it. Historical v1.6.2 artifacts
 remain preserved under their versioned filenames.
@@ -17,11 +17,11 @@ its measured SHA-256 to docs/SHA256SUMS only after the final bytes exist.
 Encryption changes
 ------------------
 
-New protected .arc exports retain ARCULUS-ARC-V2 outer armor for parser
-compatibility but use internal format arculus-encrypted-seed-v3 and version 3.
+New protected .arc exports retain YELLOWSPHERE-ARC-V2 outer armor for parser
+compatibility but use internal format yellowsphere-encrypted-seed-v3 and version 3.
 The decoded JSON format/version, not the armor header, identifies the cipher.
 
-ARC V3 uses:
+YellowSphere ARC V3 uses:
 
   AES-256-GCM
   32-byte CSPRNG salt
@@ -35,15 +35,15 @@ Password mode uses UTF-8 NFKD normalization, SHA-512 pre-hashing, and
 PBKDF2-HMAC-SHA512 at 1,000,000 iterations to derive the AES-256 key.
 
 Keyfile mode uses HKDF-SHA512 over the complete arc-keyfile-v1 credential,
-the ARC salt, and info string "Arculus ARC v3 AES-256-GCM key".
+the YellowSphere ARC salt, and info string "YellowSphere ARC v3 AES-256-GCM key".
 
 Keyfile + Password mode concatenates raw keyfile bytes with UTF-8 NFKD password
 bytes, derives 64 bytes through HKDF-SHA512 with info
-"arculus-arc-v3-combined-key", prefixes the base64 result with
-"arc-combined-v1:", and runs that credential through the ARC AES-key HKDF.
+"yellowsphere-arc-v3-combined-key", prefixes the base64 result with
+"arc-combined-v1:", and runs that credential through the YellowSphere ARC AES-key HKDF.
 
-New password-protected keyfiles retain magic ARCULUS-KEYFILE-ENC and format
-arculus-recovery-keyfile-enc-v1 but write version 2. They use:
+New password-protected keyfiles retain magic YELLOWSPHERE-KEYFILE-ENC and format
+yellowsphere-keyfile-enc-v1 but write version 2. They use:
 
   SHA-512 password pre-hash
   PBKDF2-HMAC-SHA512 at 1,000,000 iterations
@@ -54,7 +54,7 @@ arculus-recovery-keyfile-enc-v1 but write version 2. They use:
   exact magic/format compact JSON as additional authenticated data
 
 Earlier-beta encrypted-keyfile v2 files at 200,000 iterations remain readable.
-Encrypted-keyfile version 1 and ARC V1/V2 seed bundles remain importable with
+Encrypted-keyfile version 1 and YellowSphere ARC V1/V2 seed bundles remain importable with
 their original algorithms. New v1.6.4 exports do not downgrade to those legacy
 formats.
 
@@ -82,11 +82,11 @@ Security and runtime changes
 Compatibility and verification
 ------------------------------
 
-The Playwright browser harness targets Arculus_Recovery.html and covers smoke,
-ARC V3 Password/Keyfile/combined modes, independent Web Crypto conformance,
+The Playwright browser harness targets YellowSphere.html and covers smoke,
+YellowSphere ARC V3 Password/Keyfile/combined modes, independent Web Crypto conformance,
 metadata/ciphertext tampering, encrypted-keyfile v2, reserved-prefix password
 handling, credential cleanup, password-meter repetition handling, and legacy
-ARC V2/encrypted-keyfile v1 import compatibility.
+YellowSphere ARC V2/encrypted-keyfile v1 import compatibility.
 
 Run from the repository root:
 
@@ -108,7 +108,7 @@ and SHA-256 manifest entries. From macOS, Linux validation runs inside the
 documented Ubuntu 22.04 amd64 Docker builder.
 
 Cross-platform instructions are in tests/fixtures/TESTING_INSTRUCTIONS.txt.
-The deterministic byte-level ARC V3 and encrypted-keyfile v2 vectors are in
+The deterministic byte-level YellowSphere ARC V3 and encrypted-keyfile v2 vectors are in
 docs/TestVectors.txt. Exact constructions are normative in docs/Encryption.txt
 and serialized layouts are normative in docs/FileFormat.txt.
 
@@ -116,7 +116,7 @@ and serialized layouts are normative in docs/FileFormat.txt.
 Completed promotion checklist
 -----------------------------
 
-  1. Confirm the reviewed Arculus_Recovery.html production bytes.
+  1. Confirm the reviewed YellowSphere.html production bytes.
   2. Synchronize packaged HTML assets and APP_VERSION values.
   3. Synchronize package.json, Python, Cargo, and Tauri version metadata.
   4. Recompute CSP hashes only if promoted HTML bytes are changed.
