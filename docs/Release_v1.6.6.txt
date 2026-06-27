@@ -1,0 +1,44 @@
+﻿YellowSphere v1.6.6 - Release Notes
+==============================
+
+Release date: 2026-06-26
+
+YellowSphere.html reports APP_VERSION 1.6.6 and displays "YellowSphere v1.6.6".
+The previous production standalone HTML build is archived as:
+
+  lts/YellowSphere_v1.6.4_LTS.html
+
+The beta standalone HTML filename has been retired for this promotion. The
+canonical browser application is again:
+
+  YellowSphere.html
+
+Highlights
+----------
+
+- Promoted the reviewed beta browser build to the production filename.
+- Kept keyfile drag-and-drop support limited to keyfile import rows.
+- Made keyfile drop targets easier to recognize with a persistent dashed
+  outline, drop icon, helper text, and stronger drag-over highlight.
+- Added Playwright coverage for keyfile picker import, keyfile drag-and-drop
+  import, encrypted keyfile import, wrong-password handling, and CSP hash
+  enforcement.
+- Deferred browser object URL revocation after downloads to improve browser
+  download reliability.
+- Consolidated global Escape-key handling for QR modal and expanded output
+  panel behavior.
+- Cleaned idle-warning state when sensitive fields are cleared.
+
+Artifact status
+---------------
+
+This note documents the promoted source/browser build and the rebuilt Windows
+Tauri artifacts:
+
+  releases/tauri/windows/yellowsphere.exe
+  releases/tauri/windows/YellowSphere_1.6.6_x64_en-US.msi
+  releases/tauri/windows/YellowSphere_1.6.6_x64-setup.exe
+
+The Windows artifacts are unsigned. Rebuild Python, macOS, and Linux artifacts
+from the v1.6.6 source before publishing those package families. Existing older
+artifacts and hashes remain historical records.
