@@ -1,32 +1,34 @@
-Arculus Recovery v1.6.4 - Byte-Level User and Operator Guide
+﻿YellowSphere v1.6.6 - Byte-Level User and Operator Guide
 ============================================================
 
 Release Boundary
 ----------------
 
-This guide describes the promoted production Arculus_Recovery.html v1.6.4.
+This guide describes the promoted production YellowSphere.html v1.6.6.
 The coin selector contains Bitcoin, Bitcoin Cash,
 Litecoin, Dogecoin, Ethereum /
 ERC-20, Tron / TRC-20, BNB Chain, Avalanche C-Chain, Polygon, Cosmos / ATOM,
 Solana, Stellar, Cardano, and XRP. The Advanced Testnet toggle selects a
 testnet profile for each currency. Polkadot and Monero are not production
-v1.6.4 browser options.
+v1.6.6 browser options.
 
-Version 1.6.4 adds live case-insensitive partial filtering of derived rows.
+Version 1.6.6 adds live case-insensitive partial filtering of derived rows.
 The search covers addresses, private keys, and other displayed row fields,
 reports visible and total row counts, remains available in expanded output,
 and is never written into exported data.
 
 The archived browser builds are:
 
-  lts/Arculus_Recovery_v1.6.0_LTS.html
-  lts/Arculus Recovery_v1.5.0_LTS.html
+  lts/YellowSphere_v1.6.4_LTS.html
+  lts/YellowSphere_v1.6.2_LTS.html
+  lts/YellowSphere_v1.6.0_LTS.html
+  lts/YellowSphere_v1.5.0_LTS.html
 
 Monero guidance retained later is archived v1.6.0 LTS/Python compatibility
-material. Version 1.6.4 writes protected internal ARC V3 bundles using AES-256-GCM
+material. Version 1.6.6 writes protected internal YellowSphere ARC V3 bundles using AES-256-GCM
 and writes AES-256-GCM encrypted-keyfile version 2 files. It continues to read
-legacy ARC V2, older ARC formats, and encrypted-keyfile version 1. The
-outer .arc armor header remains ARCULUS-ARC-V2, so operators should use the
+legacy YellowSphere ARC V2, older YellowSphere ARC formats, and encrypted-keyfile version 1. The
+outer .arc armor header remains YELLOWSPHERE-ARC-V2, so operators should use the
 decoded bundle version rather than the armor line to identify the cipher
 format. See Encryption.txt and the repository README release notes for
 the exact KDF, padding, authentication, and compatibility rules.
@@ -35,12 +37,12 @@ Source of Truth
 ---------------
 
 This guide describes the standalone browser application implemented by the
-repository root file Arculus_Recovery.html with APP_VERSION equal to v1.6.4.
+repository root file YellowSphere.html with APP_VERSION equal to v1.6.6.
 The HTML file is the authoritative implementation for the UI, mnemonic
-normalization, key derivation, address construction, ARC seed-file encryption,
+normalization, key derivation, address construction, YellowSphere ARC seed-file encryption,
 QR generation, export formatting, and runtime clearing behavior.
 
-The application is designed to run fully offline in a browser. The v1.6.4 HTML
+The application is designed to run fully offline in a browser. The v1.6.6 HTML
 embeds its cryptographic and serialization dependencies directly, including:
 
   BIP39 English word list
@@ -71,7 +73,7 @@ capture, and downloaded files.
 Supported Recovery Scope
 ------------------------
 
-Arculus Recovery v1.6.4 derives keys and addresses. It does not scan balances,
+YellowSphere v1.6.6 derives keys and addresses. It does not scan balances,
 query account state, broadcast transactions, import funds, sign transactions,
 fetch token metadata, check address reuse, infer wallet gap limits, or contact
 wallet-provider APIs.
@@ -84,7 +86,7 @@ The supported visible seed sizes are:
 Both sizes are BIP39 English mnemonics. A 12-word mnemonic encodes 128 entropy
 bits plus 4 checksum bits. A 24-word mnemonic encodes 256 entropy bits plus 8
 checksum bits. Other BIP39-valid word counts such as 15, 18, and 21 are not
-accepted by v1.6.4.
+accepted by v1.6.6.
 
 The production selector and Advanced Testnet toggle expose:
 
@@ -107,7 +109,7 @@ The production selector and Advanced Testnet toggle expose:
 Initial UI State
 ----------------
 
-On load, the title row displays "Arculus" and v1.6.4. The default
+On load, the title row displays "YellowSphere" and v1.6.6. The default
 input state is:
 
   mnemonic textarea: empty
@@ -142,7 +144,7 @@ also updates the script selector:
   XRP: Auto
 
 The derivation-path info marker is displayed when the active path is exactly
-m/0'. That marker exists because the Arculus default path is a single hardened
+m/0'. That marker exists because the YellowSphere default path is a single hardened
 account level rather than the BIP44-style m/44'/coin_type'/account' path used
 by many other wallets.
 
@@ -186,7 +188,7 @@ Validation rejects:
   words absent from the embedded BIP39 English list
   valid words whose checksum bits do not match SHA-256(entropy)
 
-When the visible mnemonic is successfully derived for the first time, v1.6.4
+When the visible mnemonic is successfully derived for the first time, v1.6.6
 promotes it into the protected hidden seed state. The textarea and word cells
 are replaced by mask tokens, and later derivations use the hidden internal seed
 unless Clear All is pressed.
@@ -213,7 +215,7 @@ Generation steps:
   8. Replace the visible textarea and word grid with mask tokens.
 
 The generated mnemonic is ready for validation, derivation, copy, QR-free
-export, and ARC export without revealing it on screen. Hold Show Seed to reveal
+export, and YellowSphere ARC export without revealing it on screen. Hold Show Seed to reveal
 the words temporarily. Release the button, move the pointer away, or end the
 touch event to re-mask the phrase.
 
@@ -235,7 +237,7 @@ The BIP39 seed calculation is:
 
 An empty passphrase is a distinct wallet from any non-empty passphrase. A
 mistyped passphrase can produce valid-looking derived addresses that do not
-match the intended wallet. v1.6.4 shows a passphrase warning in validation
+match the intended wallet. v1.6.6 shows a passphrase warning in validation
 output when the mnemonic is valid and the passphrase field is empty.
 
 The passphrase visibility button toggles the HTML input type between password
@@ -319,7 +321,7 @@ script addresses.
 Default Derivation Paths
 ------------------------
 
-The v1.6.4 default account paths are:
+The v1.6.6 default account paths are:
 
   bitcoin: m/0'
   bitcoincash: m/0'
@@ -464,7 +466,7 @@ Bitcoin Cash:
 
   Default display is CashAddr with prefix "bitcoincash".
   Advanced legacy mode displays Base58Check P2PKH using version byte 0x00.
-  P2WPKH, P2WPKH-P2SH, and P2TR are not supported for Bitcoin Cash in v1.6.4.
+  P2WPKH, P2WPKH-P2SH, and P2TR are not supported for Bitcoin Cash in v1.6.6.
 
 Litecoin:
 
@@ -503,7 +505,7 @@ Stellar:
 
 Archived v1.6.0 LTS Monero:
 
-  Derivation uses the v1.6.4 Monero Ed25519 path logic.
+  Derivation uses the v1.6.6 Monero Ed25519 path logic.
   Output includes private spend key, private view key, public spend key, and public view key.
   Standard mainnet address construction uses network byte 0x12 and a 4-byte Keccak checksum.
   The tool does not scan subaddresses or account balances.
@@ -543,13 +545,13 @@ the status line reports that there is nothing to export.
 
 JSON export:
 
-  filename: Arculus_Derived_Keys_Addresses.json
+  filename: YellowSphere_Derived_Keys_Addresses.json
   MIME type: application/json;charset=utf-8
   bytes: JSON.stringify(lastDerivedOutput, null, 2) || 0a
 
 CSV export:
 
-  filename: Arculus_Derived_Keys_Addresses.csv
+  filename: YellowSphere_Derived_Keys_Addresses.csv
   MIME type: text/csv;charset=utf-8
   row separator: LF, byte 0x0a
   final byte: LF, byte 0x0a
@@ -558,20 +560,20 @@ CSV export:
 
 TXT export:
 
-  filename: Arculus_Derived_Keys_Addresses.txt
+  filename: YellowSphere_Derived_Keys_Addresses.txt
   MIME type: text/plain;charset=utf-8
   row separator: LF, byte 0x0a
   final byte: LF, byte 0x0a
 
 PDF export:
 
-  filename: Arculus_Key_Export_<CoinDisplayName>.pdf
+  filename: YellowSphere_Key_Export_<CoinDisplayName>.pdf
   library: embedded jsPDF
   orientation: landscape
   unit: points
   page size: A4
-  title: Arculus Key Export
-  metadata line: coin, Arculus v1.6.4, UTC timestamp, optional root fingerprint
+  title: YellowSphere Key Export
+  metadata line: coin, YellowSphere v1.6.6, UTC timestamp, optional root fingerprint
 
 PDF column selection:
 
@@ -586,14 +588,14 @@ The PDF also renders an Extended Keys section when account extended keys are
 present in lastDerivedOutput.
 
 
-ARC Seed Export Overview
+YellowSphere ARC Seed Export Overview
 ------------------------
 
 Encrypt/Export Seed writes:
 
-  filename: Arculus_Encrypted_Seed.arc
+  filename: YellowSphere_Encrypted_Seed.arc
   MIME type: text/plain;charset=utf-8
-  armor line 1: ARCULUS-ARC-V2
+  armor line 1: YELLOWSPHERE-ARC-V2
   armor line 2: base64(UTF8(JSON.stringify(bundle)))
   final byte: LF
 
@@ -608,16 +610,16 @@ Seed export always validates that the active mnemonic is a valid 12-word or
 24-word BIP39 mnemonic before creating the .arc file.
 
 
-ARC V3 Password Mode
+YellowSphere ARC V3 Password Mode
 --------------------
 
 Password mode uses the password text from the export dialog as the .arc
-encryption secret. The password is NFKD-normalized inside the ARC V3 KDF.
+encryption secret. The password is NFKD-normalized inside the YellowSphere ARC V3 KDF.
 
-New ARC V3 encrypted seed bundles use:
+New YellowSphere ARC V3 encrypted seed bundles use:
 
-  magic: ARCULUS-ARC
-  format: arculus-encrypted-seed-v3
+  magic: YELLOWSPHERE-ARC
+  format: yellowsphere-encrypted-seed-v3
   version: 3
   credential_mode: password
   kdf.name: PBKDF2
@@ -640,7 +642,7 @@ metadata fields preceding ciphertext_b64 are serialized as compact JSON and
 authenticated as AES-GCM additional data. The BIP39 passphrase is not stored.
 
 
-ARC V3 Keyfile Mode
+YellowSphere ARC V3 Keyfile Mode
 -------------------
 
 Keyfile mode generates or loads at least 32 bytes of key material. The normal
@@ -648,10 +650,10 @@ generated keyfile contains 64 random bytes.
 
 Generated raw keyfile:
 
-  filename: Arculus_Recovery_Keyfile.key
+  filename: YellowSphere_Keyfile.key
   MIME type: application/json;charset=utf-8
-  magic: ARCULUS-KEYFILE
-  format: arculus-recovery-keyfile-v1
+  magic: YELLOWSPHERE-KEYFILE
+  format: yellowsphere-keyfile-v1
   version: 1
   key_b64: 64 random bytes encoded as base64
 
@@ -661,27 +663,27 @@ The HKDF input key material is:
 
 Accepted import forms for raw keyfiles:
 
-  JSON object with magic ARCULUS-KEYFILE and format arculus-recovery-keyfile-v1
+  JSON object with magic YELLOWSPHERE-KEYFILE and format yellowsphere-keyfile-v1
   JSON object with legacy magic KEYFILE and key field
   plain base64 key material text
 
-A raw keyfile must decode to at least 32 bytes. Generated v1.6.4 keyfiles are
+A raw keyfile must decode to at least 32 bytes. Generated v1.6.6 keyfiles are
 64 bytes.
 
 
-ARC V3 Keyfile + Password Mode
+YellowSphere ARC V3 Keyfile + Password Mode
 ------------------------------
 
 Keyfile + Password mode uses both possession of keyfile bytes and knowledge of
-the password. For new exports, v1.6.4 generates 64 random keyfile bytes and
+the password. For new exports, v1.6.6 generates 64 random keyfile bytes and
 writes them in encrypted keyfile form.
 
 Generated encrypted keyfile:
 
-  filename: Arculus_Recovery_Keyfile.enc.key
+  filename: YellowSphere_Keyfile.enc.key
   MIME type: application/json;charset=utf-8
-  magic: ARCULUS-KEYFILE-ENC
-  format: arculus-recovery-keyfile-enc-v1
+  magic: YELLOWSPHERE-KEYFILE-ENC
+  format: yellowsphere-keyfile-enc-v1
   version: 2
   kdf.algo: PBKDF2-SHA512
   kdf.iterations: 1000000
@@ -702,14 +704,14 @@ Encrypted keyfile KDF:
 The .arc encryption secret for combined mode is:
 
   input = keyfile_bytes || UTF8(NFKD(password))
-  bits = HKDF-SHA512(input, ARC salt, UTF8("arculus-arc-v3-combined-key"), 64)
+  bits = HKDF-SHA512(input, YellowSphere ARC salt, UTF8("yellowsphere-arc-v3-combined-key"), 64)
   secret = "arc-combined-v1:" || base64(bits)
 
 The password encrypts the .enc.key file and also participates in the combined
 .arc secret. Losing either the password or the matching keyfile prevents import.
 
 
-Unprotected ARC Export
+Unprotected YellowSphere ARC Export
 ----------------------
 
 The Advanced option "Save .arc file without key or password" writes a plaintext
@@ -717,15 +719,15 @@ seed bundle. It exists for controlled offline workflows and test data only.
 
 Plain seed bundle fields:
 
-  magic: ARCULUS-ARC
-  format: arculus-plain-seed-v1
+  magic: YELLOWSPHERE-ARC
+  format: yellowsphere-plain-seed-v1
   version: 1
   created_at: ISO-8601 timestamp
   mnemonic: normalized mnemonic words
   word_count: 12 or 24
   encrypted: false
 
-Even unprotected seed bundles are armored with ARCULUS-ARC-V2 line 1 and base64
+Even unprotected seed bundles are armored with YELLOWSPHERE-ARC-V2 line 1 and base64
 JSON line 2. The protection difference is inside the decoded JSON bundle.
 
 
@@ -735,17 +737,17 @@ Import Seed Workflow
 Import Seed accepts:
 
   .arc files
-  JSON files containing supported ARC bundle JSON
+  JSON files containing supported YellowSphere ARC bundle JSON
   application/json files selected by the browser file picker
 
 Import parsing:
 
-  If text begins with ARCULUS-ARC-V2, remove the first line, concatenate the
+  If text begins with YELLOWSPHERE-ARC-V2, remove the first line, concatenate the
   remaining lines, base64-decode them, UTF-8 decode the result, and parse JSON.
 
   Otherwise, parse the selected file text directly as JSON.
 
-If the bundle is plaintext ARCULUS-ARC / arculus-plain-seed-v1, no credential
+If the bundle is plaintext YELLOWSPHERE-ARC / yellowsphere-plain-seed-v1, no credential
 dialog is needed. If the bundle is encrypted, the dialog asks for password,
 keyfile, or keyfile + password. If the bundle has a credential_mode hint, the
 matching mode is selected and locked.
@@ -843,13 +845,13 @@ The post-clear text is:
   Session cleared due to inactivity.
 
 Advanced Session Timeout values are 2 minutes, 5 minutes, 15 minutes, and Off.
-The selection is stored as arculusSessionTimeout. Finite selections show the
+The selection is stored as yellowsphereSessionTimeout. Finite selections show the
 warning 60 seconds before clearing.
 
 Tab-Switch Grace Period is enabled by default. Hiding the page starts a
 15-second clear timer; returning before expiry cancels it. Disabling the toggle
 restores immediate visibility-loss clearing. The selection is stored as
-arculusVisibilityGrace.
+yellowsphereVisibilityGrace.
 
 
 Settings
@@ -864,7 +866,7 @@ Theme settings:
 
 Theme selection is stored in localStorage under:
 
-  arculusTheme
+  yellowsphereTheme
 
 If localStorage is unavailable, the theme still applies to the current page but
 may not persist.
@@ -924,7 +926,7 @@ QR URI Construction
 If the address input already begins with a URI scheme matching /^[a-z]+:/i, the
 input is used unchanged.
 
-Otherwise v1.6.4 generates these QR payload strings:
+Otherwise v1.6.6 generates these QR payload strings:
 
   Solana:
     "solana:" || address
@@ -968,11 +970,11 @@ service accepts an empty or zero destination tag. If a service requires a tag,
 use the tag supplied by that service.
 
 
-Python 1.6.4 Automation Surface
+Python 1.6.6 Automation Surface
 -------------------------------
 
-The synchronized Python package and launcher report APP_VERSION 1.6.4 for
-scripted derivation. Arculus_Recovery.html v1.6.4 remains the interactive
+The synchronized Python package and launcher report APP_VERSION 1.6.6 for
+scripted derivation. YellowSphere.html v1.6.6 remains the interactive
 source of truth. The supported command-line coin ids are:
 
   bitcoin
@@ -993,10 +995,10 @@ source of truth. The supported command-line coin ids are:
 CLI default behavior:
 
   command:
-    python Arculus_Recovery.py --mnemonic "<words>" --coin <coin> --output-format json
+    python YellowSphere.py --mnemonic "<words>" --coin <coin> --output-format json
 
   version string:
-    Arculus Recovery 1.6.2
+    YellowSphere 1.6.2
 
   default script type:
     auto
@@ -1027,8 +1029,8 @@ Operational Procedure
 
 Recommended offline recovery procedure:
 
-  1. Open Arculus_Recovery.html from local storage on a trusted machine.
-  2. Confirm the title shows v1.6.4.
+  1. Open YellowSphere.html from local storage on a trusted machine.
+  2. Confirm the title shows v1.6.6.
   3. Disconnect the machine from networks when practical.
   4. Paste, import, or generate the mnemonic.
   5. Enter the BIP39 passphrase if the wallet used one.
@@ -1056,22 +1058,22 @@ File Sensitivity
 Exported derived-key files contain private keys unless the operator manually
 removes them after export. Treat these as seed-equivalent:
 
-  Arculus_Derived_Keys_Addresses.json
-  Arculus_Derived_Keys_Addresses.csv
-  Arculus_Derived_Keys_Addresses.txt
-  Arculus_Key_Export_<CoinDisplayName>.pdf
+  YellowSphere_Derived_Keys_Addresses.json
+  YellowSphere_Derived_Keys_Addresses.csv
+  YellowSphere_Derived_Keys_Addresses.txt
+  YellowSphere_Key_Export_<CoinDisplayName>.pdf
 
 Encrypted seed bundle:
 
-  Arculus_Encrypted_Seed.arc
+  YellowSphere_Encrypted_Seed.arc
 
 Raw keyfile:
 
-  Arculus_Recovery_Keyfile.key
+  YellowSphere_Keyfile.key
 
 Encrypted keyfile:
 
-  Arculus_Recovery_Keyfile.enc.key
+  YellowSphere_Keyfile.enc.key
 
 QR PNG files may contain deposit addresses or payment URIs. Address QR files do
 not contain private keys unless the operator manually pastes private material
@@ -1114,23 +1116,23 @@ Common failure states:
 Byte-Level Boundaries
 ---------------------
 
-The following values are hard requirements in v1.6.4:
+The following values are hard requirements in v1.6.6:
 
-  APP_VERSION: 1.6.4
-  ARC armor header: ARCULUS-ARC-V2
-  ARC encrypted format: arculus-encrypted-seed-v3
-  ARC plaintext format: arculus-plain-seed-v1
-  ARC encrypted version: 3
-  ARC plaintext version: 1
-  ARC V3 Password KDF: SHA-512 prehash then PBKDF2-HMAC-SHA512
-  ARC V3 Password KDF iterations: 1000000
-  ARC V3 Keyfile/combined KDF: HKDF-SHA512
-  ARC V3 salt length: 32 bytes
-  ARC V3 nonce length: 12 bytes
-  ARC V3 tag length: 16 bytes
-  ARC V3 padded plaintext length: 512 bytes
-  ARC V3 ciphertext/tag length: 528 bytes
-  ARC V3 cipher name: AES-256-GCM
+  APP_VERSION: 1.6.6
+  YellowSphere ARC armor header: YELLOWSPHERE-ARC-V2
+  YellowSphere ARC encrypted format: yellowsphere-encrypted-seed-v3
+  YellowSphere ARC plaintext format: yellowsphere-plain-seed-v1
+  YellowSphere ARC encrypted version: 3
+  YellowSphere ARC plaintext version: 1
+  YellowSphere ARC V3 Password KDF: SHA-512 prehash then PBKDF2-HMAC-SHA512
+  YellowSphere ARC V3 Password KDF iterations: 1000000
+  YellowSphere ARC V3 Keyfile/combined KDF: HKDF-SHA512
+  YellowSphere ARC V3 salt length: 32 bytes
+  YellowSphere ARC V3 nonce length: 12 bytes
+  YellowSphere ARC V3 tag length: 16 bytes
+  YellowSphere ARC V3 padded plaintext length: 512 bytes
+  YellowSphere ARC V3 ciphertext/tag length: 528 bytes
+  YellowSphere ARC V3 cipher name: AES-256-GCM
   generated keyfile bytes: 64 bytes
   encrypted keyfile KDF iterations: 1000000
   encrypted keyfile salt length: 16 bytes
@@ -1148,7 +1150,7 @@ The following values are hard requirements in v1.6.4:
 Non-Goals
 ---------
 
-Arculus Recovery v1.6.4 does not:
+YellowSphere v1.6.6 does not:
 
   create transactions
   sign transactions
