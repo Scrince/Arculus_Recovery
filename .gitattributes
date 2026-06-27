@@ -1,0 +1,50 @@
+# Default text handling for cross-platform builds.
+* text=auto eol=lf
+
+# Source, config, and documentation that must stay LF on every platform.
+*.html text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.rs text eol=lf
+*.py text eol=lf
+*.sh text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.css text eol=lf
+*.svg text eol=lf
+
+# Windows-native scripts and metadata.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.rc text eol=crlf
+
+# Binary assets and release artifacts.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.icns binary
+*.pdf binary
+*.dmg binary
+*.app binary
+*.AppImage binary
+*.deb binary
+*.rpm binary
+*.msi binary
+*.exe binary
+*.dll binary
+*.lib binary
+*.pdb binary
+*.rlib binary
+*.rmeta binary
+*.zip binary
+*.tar binary
+*.gz binary
+
+# Vendored minified libraries are text but should not be line-ending rewritten.
+vendor/** -text
