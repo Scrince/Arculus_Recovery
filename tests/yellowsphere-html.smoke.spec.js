@@ -59,6 +59,29 @@ test('standalone production HTML critical browser flows', async ({ appPage: page
   await expect(page.locator('#status')).toHaveText('Key export saved as PDF.');
 });
 
+test('Tab advances through numbered mnemonic word fields', async ({ appPage: page }) => {
+  const wordInputs = page.locator('#wordsGrid input');
+  await wordInputs.nth(0).click();
+  await wordInputs.nth(0).fill('abandon');
+  await page.keyboard.press('Tab');
+  await expect(wordInputs.nth(1)).toBeFocused();
+
+  await wordInputs.nth(1).fill('ability');
+  await page.keyboard.press('Shift+Tab');
+  await expect(wordInputs.nth(0)).toBeFocused();
+});
+
+test('Clear All after generated seed re-enables numbered mnemonic fields', async ({ appPage: page }) => {
+  const wordInputs = page.locator('#wordsGrid input');
+  await page.getByRole('button', { name: 'Generate Random Seed' }).click();
+  await expect(wordInputs.nth(0)).toBeDisabled();
+
+  await page.getByRole('button', { name: 'Clear All' }).click();
+  await expect(wordInputs.nth(0)).toBeEnabled();
+  await wordInputs.nth(0).fill('abandon');
+  await expect(wordInputs.nth(0)).toHaveValue('abandon');
+});
+
 test('Cardano derivation applies the BIP39 passphrase', async ({ appPage: page }) => {
   const mnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
   await page.locator('#mnemonic').fill(mnemonic);
