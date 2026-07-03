@@ -4,16 +4,16 @@
 v1.6.6 Python release boundary (2026-06-26)
 -------------------------------------------
 
-The v1.6.6 Python release was built with Python 3.14.0 using the PEP 517
+The v1.6.6 Python release was built with Python 3.14.5 using the PEP 517
 setuptools backend in an isolated environment. The source tree was staged on a
 Windows workspace with AppleDouble sidecar files excluded before building.
 
 The measured Python release artifacts are:
 
-  ef5f226ea60d84779d0bcfa64ffd87efce9db55b9fd864e8edc38c45d8dde5ae  releases/python/yellowsphere-1.6.6-py3-none-any.whl
-  2b2717534eeed2a917ca08e4e80987c452a2dd89f12cae90432772a260e9db03  releases/python/yellowsphere-1.6.6.tar.gz
+  bd8086ad38dc2939dbfc8238dcebcd35f10b38a9baee4df21373875ba2c702c7  releases/python/yellowsphere-1.6.6-py3-none-any.whl
+  a8f5e8854624cf18a4124e333fa309ae1d01fa7c6fe92459a4b62ced2fef26d1  releases/python/yellowsphere-1.6.6.tar.gz
 
-Their byte sizes are 345,493 (wheel) and 348,982 (source archive). The wheel
+Their byte sizes are 345,509 (wheel) and 349,199 (source archive). The wheel
 metadata reports yellowsphere 1.6.6 with Python >=3.10 and includes the
 v1.6.6 offline HTML GUI asset. The console entry point reported 1.6.6 from the
 source tree. All 14 Python tests passed with `PYTHONPATH=src`. Neither archive
@@ -183,6 +183,30 @@ The v1.6.0 release hashes are:
 Verify them from the repository root with:
 
   shasum -a 256 -c docs/SHA256SUMS
+
+For v1.6.6, YellowSphere.html, the checksum manifest, and rebuilt
+Python/Windows release artifacts also have detached PGP signatures. The public
+release-signing key is:
+
+  docs/YellowSphere_Release_Signing_2026_pubkey.asc
+
+Release signing key fingerprint:
+
+  6A88 D329 DCF6 1A44 EF69 101B 019E C328 3B45 1469
+
+Inspect the public key:
+
+  gpg --show-keys docs/YellowSphere_Release_Signing_2026_pubkey.asc
+
+Verify the signed checksum manifest:
+
+  gpg --import docs/YellowSphere_Release_Signing_2026_pubkey.asc
+  gpg --verify docs/SHA256SUMS.asc docs/SHA256SUMS
+
+Verify an artifact signature:
+
+  gpg --verify YellowSphere.html.asc YellowSphere.html
+  gpg --verify releases/tauri/windows/YellowSphere_1.6.6_x64-setup.exe.asc releases/tauri/windows/YellowSphere_1.6.6_x64-setup.exe
 
 
 Recorded macOS Build Host
@@ -397,8 +421,8 @@ Verify Debian package metadata:
 
 Required fields:
 
-  Package: yellowsphere
-  Version: 1.6.2
+  Package: yellow-sphere
+  Version: 1.6.6
   Architecture: amd64
   Depends: libwebkit2gtk-4.1-0, libgtk-3-0
 
@@ -408,13 +432,13 @@ Verify RPM package metadata:
 
 Required fields:
 
-  Name: yellowsphere
-  Version: 1.6.2
+  Name: yellow-sphere
+  Version: 1.6.6
   Release: 1
   Architecture: x86_64
   Signature: (none)
 
-The RPM is unsigned in v1.6.2. Hash verification is mandatory.
+The RPM is unsigned in v1.6.6. Hash verification is mandatory.
 
 
 Byte-for-Byte Constraints
