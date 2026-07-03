@@ -17,8 +17,8 @@ Use this tool only on a trusted offline machine. It handles seed phrases, BIP39 
 | `YellowSphere.py` | Compatibility launcher for Python GUI and CLI |
 | Python CLI | Scripted derivation/export compatibility surface; coin coverage may differ from the browser GUI |
 | PySide6 GUI | Desktop wrapper around the packaged HTML asset |
-| Python distributions | Build from source for YellowSphere v1.6.6; checked-in package artifacts remain historical until rebuilt |
-| Tauri wrapper | Build from source for v1.6.6; checked-in desktop artifacts remain historical until rebuilt |
+| Python distributions | v1.6.6 wheel and source archive are checked in under `releases/python/` |
+| Tauri wrapper | v1.6.6 Windows, macOS, and Linux desktop artifacts are checked in under `releases/tauri/` |
 
 Do not mix files from different releases. The root HTML, packaged assets, Python package, Tauri wrapper, documentation, and release artifacts should be treated as one build set.
 
@@ -329,11 +329,11 @@ dist/yellowsphere-1.6.6-py3-none-any.whl
 dist/yellowsphere-1.6.6.tar.gz
 ```
 
-No YellowSphere v1.6.6 Python wheel/source archive is checked in yet. Existing
-package artifacts under `releases/python/` remain historical until rebuilt from
-the YellowSphere source tree. The rebuilt wheel should contain the offline v1.6.6
-HTML, jsPDF, favicon, and settings icon assets. Install GUI dependencies
-separately with `python -m pip install ".[gui]"` when building from source.
+The v1.6.6 Python wheel and source archive are checked in under
+`releases/python/` and hashed in `docs/SHA256SUMS`. The wheel contains the
+offline v1.6.6 HTML, jsPDF, favicon, and settings icon assets. Install GUI
+dependencies separately with `python -m pip install ".[gui]"` when building from
+source.
 
 ## Tauri Build
 
@@ -361,8 +361,15 @@ The equivalent direct Windows release command is:
 cargo tauri build --bundles msi,nsis --ci
 ```
 
-No v1.6.6 Windows installer set is checked in. Rebuild the Windows MSI/NSIS
-artifacts on a Windows host before publishing them as YellowSphere artifacts.
+The Windows build produces the standalone executable plus MSI and NSIS
+installers. The v1.6.6 Windows release set is checked in under
+`releases/tauri/windows/` and hashed in `docs/SHA256SUMS`:
+
+```text
+releases/tauri/windows/yellowsphere.exe
+releases/tauri/windows/YellowSphere_1.6.6_x64_en-US.msi
+releases/tauri/windows/YellowSphere_1.6.6_x64-setup.exe
+```
 
 macOS release builds can also be produced per architecture:
 
@@ -406,10 +413,46 @@ find YellowSphere.html lts/YellowSphere_v1.6.4_LTS.html lts/YellowSphere_v1.6.2_
 ```
 
 Publish hashes for release artifacts with the exact build they came from. This
-repository currently contains v1.6.6 browser, Python, macOS, and Linux
-artifacts. Rebuild and hash missing Windows artifacts before publishing them as
-v1.6.6 YellowSphere releases. Archived
+repository currently contains v1.6.6 browser, Python, Windows, macOS, and Linux
+artifacts hashed in `docs/SHA256SUMS`. Archived
 v1.6.2/v1.6.1/v1.6.0/v1.5.0 artifacts are kept under `releases/` for reference.
+
+## PGP Release Signatures
+
+The v1.6.6 standalone HTML application, Windows artifacts, and Python release
+artifacts include detached ASCII-armored PGP signatures (`*.asc`) next to the
+files they sign. The release-signing public key is checked in as:
+
+```text
+docs/YellowSphere_Release_Signing_2026_pubkey.asc
+```
+
+Release signing key:
+
+```text
+YellowSphere Release Signing (2026) <release@yellowsphere.local>
+Fingerprint: 6A88 D329 DCF6 1A44 EF69 101B 019E C328 3B45 1469
+```
+
+Verify the key fingerprint before trusting release signatures:
+
+```bash
+gpg --show-keys docs/YellowSphere_Release_Signing_2026_pubkey.asc
+```
+
+Import the public key and verify an artifact:
+
+```bash
+gpg --import docs/YellowSphere_Release_Signing_2026_pubkey.asc
+gpg --verify YellowSphere.html.asc YellowSphere.html
+gpg --verify releases/tauri/windows/YellowSphere_1.6.6_x64-setup.exe.asc releases/tauri/windows/YellowSphere_1.6.6_x64-setup.exe
+```
+
+The checksum manifest is also signed:
+
+```bash
+gpg --verify docs/SHA256SUMS.asc docs/SHA256SUMS
+```
 
 ## Repository Map
 
