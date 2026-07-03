@@ -1,39 +1,39 @@
-﻿YellowSphere v1.6.4 - Linux Release Notes
+YellowSphere v1.6.6 - Linux Release Notes
 =============================================
 
 Release status
 --------------
 
-This file records the published v1.6.4 Linux artifacts with their measured
-filenames, metadata, and hashes. YellowSphere.html v1.6.4 is the promoted
-production source. See Release_v1.6.4.txt for the completed release checklist.
+This file records the published v1.6.6 Linux artifacts with their measured
+filenames, metadata, and hashes. YellowSphere.html v1.6.6 is the promoted
+production source. See Release_v1.6.6.txt for the completed release checklist.
 
 Scope
 -----
 
 This document records Linux-specific release, installation, verification, and
-operational notes for the v1.6.4 Tauri desktop build.
+operational notes for the v1.6.6 Tauri desktop build.
 
-The canonical application remains YellowSphere.html v1.6.4. The Linux
-Tauri build packages that same offline application inside a native WebKitGTK
-desktop wrapper with the Tauri save_export bridge.
+The canonical application remains YellowSphere.html v1.6.6. The Linux Tauri
+build packages that same offline application inside a native WebKitGTK desktop
+wrapper with the Tauri save_export bridge.
 
 
 Release Artifacts
 -----------------
 
-The v1.6.4 Linux release set currently contains amd64 artifacts only:
+The v1.6.6 Linux release set currently contains amd64 artifacts only:
 
   releases/tauri/linux/yellowsphere
-  releases/tauri/linux/YellowSphere_1.6.4_amd64.deb
-  releases/tauri/linux/YellowSphere-1.6.4-1.x86_64.rpm
+  releases/tauri/linux/YellowSphere_1.6.6_amd64.deb
+  releases/tauri/linux/YellowSphere-1.6.6-1.x86_64.rpm
 
 The binary artifact is an x86-64 Linux ELF executable. The Debian package is
 for amd64 systems. The RPM package is for x86_64 systems.
 
 No Linux arm64/aarch64 package was produced for this release.
 
-No AppImage artifact is part of the v1.6.4 Linux release set. The v1.6.4 build
+No AppImage artifact is part of the v1.6.6 Linux release set. The v1.6.6 build
 published only the raw ELF, .deb, and .rpm files. The earlier v1.6.0 AppImage
 retry reached Tauri's linuxdeploy packaging step and failed inside the Docker
 amd64 build environment.
@@ -48,23 +48,26 @@ The Linux binary was verified as:
 
 The Debian package metadata was verified as:
 
-  Package: yellowsphere
-  Version: 1.6.4
+  Package: yellow-sphere
+  Version: 1.6.6
   Architecture: amd64
   Depends: libwebkit2gtk-4.1-0, libgtk-3-0
   Description: Offline BIP39/BIP32 recovery and key-derivation tool
 
 The RPM package metadata was verified as:
 
-  Name: yellowsphere
-  Version: 1.6.4
+  Name: yellow-sphere
+  Version: 1.6.6
   Release: 1
   Architecture: x86_64
   Signature: none
   Summary: Offline BIP39/BIP32 recovery and key-derivation tool
 
-The RPM package is not signed. Verify the SHA-256 digest from
-docs/SHA256SUMS before installation.
+The installed command is still `yellowsphere`. The Linux package name is
+`yellow-sphere`.
+
+The RPM package is not signed. Verify the SHA-256 digest from docs/SHA256SUMS
+before installation.
 
 
 SHA-256 Verification
@@ -72,9 +75,9 @@ SHA-256 Verification
 
 The Linux artifact hashes are recorded in docs/SHA256SUMS:
 
-  9f847f0ee83bee76fc197fb28116dc48ebb6482eddb85d9a56ef621bf26616ea  releases/tauri/linux/yellowsphere
-  25feb4f563350259a9bd5d4149b74e7d241bea9096c2c7d980a3d6224b4267b7  releases/tauri/linux/YellowSphere_1.6.4_amd64.deb
-  61ea1426bcf4b08c02db005a9c5f22a0a2555006d93bbe1754fe7a9358f9d9d5  releases/tauri/linux/YellowSphere-1.6.4-1.x86_64.rpm
+  baac9c3a8da73db7792c12382f135567ee50760b7f8b7649e21b8add18c2f81b  releases/tauri/linux/yellowsphere
+  92be81e6704138c0a6549e1277fab601973c29763f639d5676bd6d0d649bab82  releases/tauri/linux/YellowSphere_1.6.6_amd64.deb
+  162ec234d05376b7b43da72a79eecd34e2a6f594b6bd764a1aafb08494b20211  releases/tauri/linux/YellowSphere-1.6.6-1.x86_64.rpm
 
 Verify from the repository root with:
 
@@ -84,8 +87,8 @@ or on systems using GNU coreutils:
 
   sha256sum releases/tauri/linux/*
 
-Compare the output byte-for-byte against docs/SHA256SUMS before entering
-seed material.
+Compare the output byte-for-byte against docs/SHA256SUMS before entering seed
+material.
 
 
 Debian or Ubuntu Installation
@@ -93,11 +96,11 @@ Debian or Ubuntu Installation
 
 Install the .deb package with:
 
-  sudo apt install ./releases/tauri/linux/YellowSphere_1.6.4_amd64.deb
+  sudo apt install ./releases/tauri/linux/YellowSphere_1.6.6_amd64.deb
 
 or:
 
-  sudo dpkg -i ./releases/tauri/linux/YellowSphere_1.6.4_amd64.deb
+  sudo dpkg -i ./releases/tauri/linux/YellowSphere_1.6.6_amd64.deb
   sudo apt -f install
 
 The package declares these runtime dependencies:
@@ -115,11 +118,11 @@ RPM Installation
 
 Install the RPM package on Fedora-like systems with:
 
-  sudo dnf install ./releases/tauri/linux/YellowSphere-1.6.4-1.x86_64.rpm
+  sudo dnf install ./releases/tauri/linux/YellowSphere-1.6.6-1.x86_64.rpm
 
 On systems using rpm directly:
 
-  sudo rpm -i ./releases/tauri/linux/YellowSphere-1.6.4-1.x86_64.rpm
+  sudo rpm -i ./releases/tauri/linux/YellowSphere-1.6.6-1.x86_64.rpm
 
 The RPM is unsigned, so hash verification is mandatory before installation.
 
@@ -159,12 +162,12 @@ export only the required artifacts, and clear the session before shutdown.
 Build Reference
 ---------------
 
-The v1.6.4 Linux amd64 release was built in a Linux amd64 Docker environment
+The v1.6.6 Linux amd64 release was built in a Linux amd64 Docker environment
 from the prepared Tauri assets without editing HTML files.
 
 The package build command was:
 
   cargo tauri build --bundles deb,rpm --ci
 
-No AppImage command was run for v1.6.4. Do not document an AppImage as
+No AppImage command was run for v1.6.6. Do not document an AppImage as
 available unless a future release successfully produces and verifies one.
