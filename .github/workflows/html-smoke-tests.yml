@@ -26,5 +26,5 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
-      - name: Run standalone HTML smoke tests
-        run: npm run test:smoke
+      - name: Run standalone HTML and encryption tests
+        run: npm run test:html
