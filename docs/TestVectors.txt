@@ -1737,9 +1737,11 @@ Required JSON fields:
   accounts[0].receiving[0].stellar_secret_seed:
     SBUV3MRWKNS6AYKZ6E6MOUVF2OYMON3MIUASWL3JLY5E3ISDJFELYBRZ
 
-Monero command:
+Archived v1.6.0 LTS Monero command:
 
-  python YellowSphere.py --mnemonic "<TV1>" --coin monero --output-format json
+  Use lts/YellowSphere_v1.6.0_LTS.html or an archived v1.6.0-compatible
+  implementation for this vector. The v1.6.6 Python CLI does not accept
+  --coin monero.
 
 Required JSON fields:
 
