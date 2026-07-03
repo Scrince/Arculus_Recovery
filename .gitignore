@@ -23,6 +23,7 @@ ENV/
 .coverage
 htmlcov/
 .codex-tools/
+/.gnupg-release/
 
 # Python packaging/build outputs
 build/
@@ -56,10 +57,15 @@ releases/
 *.deb
 *.rpm
 !releases/
+!releases/python/
+!releases/python/*.whl
+!releases/python/*.tar.gz
+!releases/python/*.asc
 !releases/tauri/
 !releases/tauri/windows/
 !releases/tauri/windows/*.exe
 !releases/tauri/windows/*.msi
+!releases/tauri/windows/*.asc
 !releases/tauri/macos/
 !releases/tauri/macos/*.app/
 !releases/tauri/macos/*.dmg
@@ -73,6 +79,9 @@ releases/**/._*
 # Local/generated documents and exports
 /favicon.png
 /settings-icon.png
+!/YellowSphere.html.asc
+/YellowSphere_asset_pack/
+/YellowSphere_asset_pack.zip
 RepoTree.txt
 ReleaseTree.txt
 YellowSphere_Key_Export_*.pdf
