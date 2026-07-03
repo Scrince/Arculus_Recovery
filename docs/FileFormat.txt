@@ -533,13 +533,17 @@ Supported coin ids:
   litecoin
   dogecoin
   ethereum
+  bnbchain
+  avalanche
+  polygon
+  tron
+  cosmos
   solana
   stellar
-  monero
   cardano
   xrp
 
-Python 1.6.2 producer note:
+Python v1.6.6 producer note:
 
   The Python CLI writes the same top-level JSON object shape for all supported
   v1.6.6 command-line coin ids. It serializes with json.dumps(data, indent=2)
@@ -551,19 +555,23 @@ Python 1.6.2 producer note:
   Python --coin accepts exactly:
 
     bitcoin
+    avalanche
     bitcoincash
-    litecoin
+    bnbchain
+    cardano
+    cosmos
     dogecoin
     ethereum
+    litecoin
+    polygon
     solana
     stellar
-    monero
-    cardano
+    tron
     xrp
 
   Python --script-type defaults to auto. For Bitcoin Cash this resolves to
   P2PKH/CashAddr; unsupported script families must fail rather than emit an
-  address. For Solana, Stellar, Monero, and Cardano, script type does not select
+  address. For Solana, Stellar, and Cardano, script type does not select
   a UTXO script and the coin-specific derivation family controls output fields.
 
 For secp256k1/UTXO families, account objects can include:
@@ -1122,7 +1130,7 @@ XRP row minimum:
     "xrp_note": "<destination-tag note>"
   }
 
-Solana/Stellar/Monero/Cardano:
+Solana/Stellar/Cardano:
 
   These families use Ed25519 or Ed25519-derived schemes. Their exact private
   key, public key, chain-code, address, and note fields are specified in
