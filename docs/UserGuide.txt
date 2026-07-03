@@ -70,6 +70,38 @@ where the operator controls the machine, browser profile, clipboard, screen
 capture, and downloaded files.
 
 
+Release Signature Verification
+------------------------------
+
+Version 1.6.6 standalone HTML, Python, and Windows release artifacts include
+detached PGP signatures. The release-signing public key is:
+
+  docs/YellowSphere_Release_Signing_2026_pubkey.asc
+
+Release signing key:
+
+  YellowSphere Release Signing (2026) <release@yellowsphere.local>
+  Fingerprint: 6A88 D329 DCF6 1A44 EF69 101B 019E C328 3B45 1469
+
+Before trusting a signature, inspect the public key and confirm that the
+fingerprint matches the value above:
+
+  gpg --show-keys docs/YellowSphere_Release_Signing_2026_pubkey.asc
+
+To verify the signed checksum manifest:
+
+  gpg --import docs/YellowSphere_Release_Signing_2026_pubkey.asc
+  gpg --verify docs/SHA256SUMS.asc docs/SHA256SUMS
+
+To verify a release artifact:
+
+  gpg --verify YellowSphere.html.asc YellowSphere.html
+  gpg --verify releases/tauri/windows/YellowSphere_1.6.6_x64-setup.exe.asc releases/tauri/windows/YellowSphere_1.6.6_x64-setup.exe
+
+PGP signatures confirm that the artifact matches the key holder's signature.
+They do not make Windows treat the installer as Authenticode-signed.
+
+
 Supported Recovery Scope
 ------------------------
 
