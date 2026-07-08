@@ -23,7 +23,13 @@ ENV/
 .coverage
 htmlcov/
 .codex-tools/
-/.gnupg-release/
+
+# Secret material and local signing keys
+.gnupg-release/
+*.pfx
+*.p12
+*.key
+*.pem
 
 # Python packaging/build outputs
 build/
